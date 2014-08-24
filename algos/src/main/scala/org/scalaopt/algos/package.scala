@@ -48,12 +48,12 @@ package object algos {
   implicit def toRichMatrix(m: DoubleMatrix) = new RichMatrix(m)
 
   /** Create an n-vector of coordinates filled with a constant value */
-  def vector(n: Int, value: Double) = (1 to n).map(i => value)
+  def vector(n: Int, value: Double): Coordinates = (1 to n).map(i => value)
   
   /** Create a n-vector of coordinates filled with zeros */
-  def zeros(n: Int) = vector(n, 0.0)
+  def zeros(n: Int): Coordinates = vector(n, 0.0)
   
   /** Create an n-vector of coordinates filled with ones */
-  def ones(n: Int) = vector(n, 1.0)
+  def ones(n: Int): Coordinates = vector(n, 1.0)
 
 }

@@ -25,7 +25,7 @@ class NelderMeadSpec extends FlatSpec with Matchers {
   import NelderMead._
 
   val x0 = Vector(0.5, 2.0)
-  def fQuad(x: Seq[Double]): Double = (x - x0) dot (x - x0)
+  def fQuad(x: Coordinates): Double = (x - x0) dot (x - x0)
 
   val x1 = Vector(1.0, -1.0)
   val v1 = Vertex(x1, fQuad)

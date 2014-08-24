@@ -25,9 +25,9 @@ class ConjugateGradientSpec extends FlatSpec with Matchers {
   import ConjugateGradient._
   
   val x0 = Vector(0.5, 2.0)
-  def fQuad(x: Seq[Double]): Double = 
+  def fQuad(x: Coordinates): Double =
     (x - x0) dot (x - x0)
-  def dfQuad(x: Seq[Double]): Seq[Double] = 
+  def dfQuad(x: Coordinates): Coordinates =
     (x - x0) * 2.0
 
   val config = new CGConfig(tol = 1.0e-6)

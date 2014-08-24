@@ -18,35 +18,36 @@ package org.scalaopt.algos.derivativefree
 
 import org.scalaopt.algos._
 import scala.util.{Try, Success, Failure}
-import org.scalatest.FunSuite
+import org.scalatest._
+import org.scalatest.Matchers._
 
-class PowellSuite extends FunSuite {
+class PowellSpec extends FlatSpec with Matchers {
   import Powell._
   
   val x0 = Vector(0.5, 2.0)
-  def fQuad(x: Seq[Double]): Double = 
+  def fQuad(x: Coordinates): Double =
     (x - x0) dot (x - x0)
 
   val config = new PowellConfig(tol = 1.0e-6)
     
-  test("Find minimum of fQuad") {
+  "minimize" should "be close to x0" in {
     val d = minimize(fQuad, Vector(0.0, 0.0)) match {
       case Success(xmin) => xmin - x0
       case Failure(e) => x0
     }
-    assert((d dot d) < config.tol * config.tol)
+    (d dot d) should be < (config.tol * config.tol)
   }
-  
-  test("Throw error if reaching max number of iterations") {
-    intercept[MaxIterException] {
+
+  it should "throw an error if reaching max number of iterations" in {
+    a [MaxIterException] should be thrownBy {
       minimize(x => x(0) + x(1), Vector(0.0, 0.0))
     }
   }
   
-  test("Throw error if wrong configuration type") {
+  it should "throw an error if wrong configuration type" in {
     import NelderMead.NelderMeadConfig
     val wrongc = new NelderMeadConfig
-    intercept[IllegalArgumentException] {
+    a [IllegalArgumentException] should be thrownBy {
       minimize(x => x(0) + x(1), Vector(0.0, 0.0))(wrongc)
     }
   }

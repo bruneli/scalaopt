@@ -16,32 +16,36 @@
 
 package org.scalaopt.algos.linesearch
 
-import org.scalatest.FunSuite
 import org.scalaopt.algos.MaxIterException
 import scala.util.{Try, Success, Failure}
+import org.scalatest._
+import org.scalatest.Matchers._
 
-class GoldSearchSuite extends FunSuite {
+class GoldSearchSpec extends FlatSpec with Matchers {
   import GoldSearch._
   
-  test("Bracket a minimum") {
+  "bracket" should "find a < 0 and b > 0" in {
     bracket(x => x * x, 4.0) match {
-      case Success((a , b)) => assert(a < 0.0 && b > 0.0)
+      case Success((a , b)) => {
+        a should be < 0.0
+        b should be > 0.0
+      }
       case Failure(e) => assert(false)
     }
   }
   
-  test("Fails to bracket") {
-    intercept[MaxIterException] {
+  it should "throw an exception when reaching max number of iterations" in {
+    a [MaxIterException] should be thrownBy {
       bracket(x => x, 4.0)
     }
   }
   
-  test("Find a minimum") {
+  "minimize" should "converge to x0" in {
     val tol: Double = 1.0e-9
     val x0: Double = 1.0
     def f(x: Double) = (x- x0) * (x - x0)
     val (xmin, fmin) = minimize(f, -4.0, 4.0)
-    assert(math.abs(xmin - x0) < tol)
-    assert(f(xmin) < f(x0 + tol))
+    math.abs(xmin - x0) should be < tol
+    f(xmin) should be < f(x0 + tol)
   }
 }

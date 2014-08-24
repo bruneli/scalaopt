@@ -29,8 +29,8 @@ object LevenbergMarquardt {
   val stepBound = 100.0
   
   type ObjFunWithData = (Coordinates, Seq[Double]) => Double
-  type DataSet = Vector[(Vector[Double], Double)]
-  type Jacobian = Vector[Vector[Double]]
+  type DataSet = Vector[(Seq[Double], Double)]
+  type Jacobian = Vector[Seq[Double]]
 
   def minimize(
       f: ObjFunWithData,
@@ -167,7 +167,7 @@ object LevenbergMarquardt {
       val ajLowerRows = ajj +: (a(j).drop(j) / ajNorm)
 
       // Scale all columns on the right of aj
-      def updateColumn(ak: Vector[Double]) = {
+      def updateColumn(ak: Seq[Double]) = {
         val (akUpperRows, akLowerRows) = ak.splitAt(j - 1)
         val alpha = (akLowerRows dot ajLowerRows) / ajj
         akUpperRows ++ (akLowerRows - ajLowerRows * alpha)
@@ -383,15 +383,15 @@ object LevenbergMarquardt {
     val n = qrObj.rDiag.length
     
     def diagonalElimination(
-        previous: (Vector[Coordinates], Coordinates, Coordinates), 
+        previous: (IndexedSeq[Coordinates], Coordinates, Coordinates),
         j: Int) = {
       val (s0, sDiag0, qtb0) = previous
       val jpvt = qrObj.ipvt(j)
       if (diag(jpvt) == 0.0) {
         (s0.updated(j, s0(j).updated(j, qrObj.rDiag(j))), sDiag0.updated(j, s0(j)(j)), qtb0)
       } else {
-        val sDiag0 = diag(jpvt) +: zeros(n - j - 1)
-        val (sj, sDiag, qtb, qtbpj) = 
+        val sDiag0: Seq[Double] = diag(jpvt) +: zeros(n - j - 1)
+        val (sj, sDiag, qtb, qtbpj) =
           (j until n).foldLeft((s0(j), sDiag0, qtb0, 0.0))(rotation)
         (s0.updated(j, sj), sDiag, qtb)
       }
@@ -399,7 +399,7 @@ object LevenbergMarquardt {
     
     def rotation(
         previous: (Coordinates, Coordinates, Coordinates, Double), 
-        k: Int) = {
+        k: Int): (Coordinates, Coordinates, Coordinates, Double) = {
       val (sk0, sDiag0, qtb0, qtbpj0) = previous
       if (sDiag0(k) == 0.0) {
         previous
@@ -429,9 +429,9 @@ object LevenbergMarquardt {
     // Eliminate the row of p^T*d*p*z = 0 with rotations
     // While doing it, update accordingly the matrix r and vector qtb
     // Resulting version of r is stored in s and qtb
-    val s0 = for (j <- 0 until n) yield qrObj.r(j)
+    val s0: IndexedSeq[Coordinates] = for (j <- 0 until n) yield qrObj.r(j)
     val (s, sDiag, qtb) = 
-      (0 until n).foldLeft((s0.toVector, zeros(n), qtb0))(diagonalElimination)
+      (0 until n).foldLeft((s0, zeros(n), qtb0))(diagonalElimination)
 
     // Solve the modified triangular system s*z = qtb
     // If the system is singular, obtain a least square solution
