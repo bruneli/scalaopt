@@ -1,1 +1,10 @@
 target/
+project
+*target*
+*/target/
+*class
+*class
+*jar*
+.*.swp
+.idea*
+.idea
