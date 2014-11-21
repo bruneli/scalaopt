@@ -40,7 +40,13 @@ package object algos {
   
   /** Define an ObjectiveFunction type as a real-valued function */ 
   type ObjectiveFunction = Coordinates => Double
+
+  /** Define an observed data pair as a real-valued vector X associated to an observed value y */
+  type Xy = (Seq[Double], Double)
   
+  /** Define a real-valued objective function applied to some observed data X */
+  type ObjFunWithData = (Coordinates, Seq[Double]) => Double
+
   /** Implicit conversion of Seq[Double] to RichCoordinates */
   implicit def toRichCoordinates(v: Coordinates) = new RichCoordinates(v)
 

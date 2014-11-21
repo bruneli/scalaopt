@@ -2,7 +2,11 @@ organization := "org.scalaopt"
 
 name := "scalaopt"
 
-lazy val algos = project
+lazy val root = project.in( file(".")).aggregate(algos, sparkapps)
+
+lazy val algos = project.in( file("algos"))
+
+lazy val sparkapps = project.in( file("spark-apps")).dependsOn(algos)
 
 scalaVersion := "2.11.2"
 

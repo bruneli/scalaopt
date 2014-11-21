@@ -66,7 +66,7 @@ class RichCoordinates(v: Coordinates) {
   def norm: Double = math.sqrt(norm2)
   
   /** L2 norm squared */
-  def norm2: Double = this inner this.v
+  def norm2: Double = this.v.map(x => x * x).sum
   
   /** Conversion to a column matrix */
   def toMatrix: DoubleMatrix = new DoubleMatrix(v.toArray)
