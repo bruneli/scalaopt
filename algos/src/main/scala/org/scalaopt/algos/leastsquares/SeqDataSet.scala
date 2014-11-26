@@ -16,6 +16,8 @@
 
 package org.scalaopt.algos.leastsquares
 
+import scala.reflect.ClassTag
+
 object SeqDataSetConverter {
 
   /**
@@ -25,7 +27,7 @@ object SeqDataSetConverter {
    */
   implicit class SeqDataSet[+A](v: Seq[A]) extends DataSet[A] {
 
-    override def aggregate[B](z: => B)(
+    override def aggregate[B: ClassTag](z: => B)(
       seqop: (B, A) => B, combop: (B, B) => B): B = {
       v.aggregate(z)(seqop, combop)
     }
@@ -36,7 +38,7 @@ object SeqDataSetConverter {
 
     override def foreach(f: (A) => Unit): Unit = v foreach f
     
-    override def map[B](f: (A) => B): DataSet[B] = v map f
+    override def map[B: ClassTag](f: (A) => B): DataSet[B] = v map f
 
     override def zipWithIndex: DataSet[(A, Int)] = v.zipWithIndex
 

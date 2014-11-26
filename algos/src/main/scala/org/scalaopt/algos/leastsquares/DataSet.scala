@@ -16,6 +16,8 @@
 
 package org.scalaopt.algos.leastsquares
 
+import scala.reflect.ClassTag
+
 /**
  * An ordered list of elements that is used in the context of this library
  * to store observed values or intermediate results.
@@ -35,7 +37,7 @@ trait DataSet[+A] {
    * @tparam B     the type of accumulated results
    * @return the accumulated result
    */
-  def aggregate[B](z: => B)(seqop: (B, A) => B, combop: (B, B) => B): B
+  def aggregate[B: ClassTag](z: => B)(seqop: (B, A) => B, combop: (B, B) => B): B
 
   def collect(): Seq[A]
   
@@ -56,7 +58,7 @@ trait DataSet[+A] {
    * @return a new data set resulting from applying the given function f
    *         to each element of this data set and collecting the results.
    */
-  def map[B](f: (A) => B): DataSet[B]
+  def map[B: ClassTag](f: (A) => B): DataSet[B]
 
   /**
    * Zips this sequence with its indices.
