@@ -25,7 +25,14 @@ object SparkDataSetConverter {
 
     override def map[B: ClassTag](f: (A) => B): DataSet[B] = rdd map f
 
-    override def zipWithIndex: DataSet[(A, Int)] = null
+    override def zipWithIndex: DataSet[(A, Int)] = rdd.mapPartitionsWithIndex(setIndicesInFirstPartition[A])
+
+    private def setIndicesInFirstPartition[B](index: Int, iterator: Iterator[B]): Iterator[(B, Int)] =
+      if (index == 0) {
+        iterator.zipWithIndex
+      } else {
+        iterator.map { b: B => (b, Int.MaxValue) }
+      }
 
   }
 
