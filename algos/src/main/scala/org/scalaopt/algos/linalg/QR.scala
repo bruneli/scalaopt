@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package org.scalaopt.algos.leastsquares
+package org.scalaopt.algos.linalg
 
 import org.scalaopt.algos._
-import org.scalaopt.algos
-import org.jblas.DoubleMatrix
 
 /**
  * Results from the rank-revealing QR decomposition of the 
@@ -27,7 +25,7 @@ import org.jblas.DoubleMatrix
  * @param r       an n x n upper triangular matrix
  * @param rDiag   an n vector for fast access to diagonal elements of R
  * @param qtb     a vector with the first n rows resulting 
- *                from the product Q^t * B
+ *                from the product Qt * B
  * @param ipvt    a permutation matrix represented by an n-vector
  * @param acNorms initial column norms of matrix A
  * @param bNorm   norm of vector B
@@ -132,13 +130,13 @@ object QR {
 
   /**
    * Perform the rank-revealing QR decomposition of matrix A
-   * and compute the product Q^t * B.
+   * and compute the product Qt * B.
    *
    * @param ab       an augmented m * (n+1) matrix representing
    *                 the linear equation system A X = B
    * @param n        the number of columns of matrix A
    * @param pivoting perform a pivoting of columns while decomposing
-   * @return an object with the matrix R, the vector Q^tB and 
+   * @return an object with the matrix R, the vector QtB and
    *         the permutation matrix
    */
   def apply(
@@ -173,29 +171,6 @@ object QR {
   def solve(ab: DataSet[AugmentedRow], n: Int): Coordinates = {
     val qr = QR(ab, n)
     qr.solution
-  }
-
-  /**
-   * Row to represent an augmented matrix used to solve a linear system AX = B
-   *
-   * @param a a row in the matrix
-   * @param b solution for that row
-   * @param i index of the row
-   */
-  case class AugmentedRow(a: Coordinates, b: Double, i: Long) {
-
-    def +(that: AugmentedRow): AugmentedRow =
-      AugmentedRow(that.a + this.a, that.b + this.b, i)
-
-    override def toString = s"row $i (${a.mkString(", ")} | $b)"  
-      
-  }
-
-  object AugmentedRow {
-
-    def zeros(n: Int): AugmentedRow = 
-      AugmentedRow(algos.zeros(n), 0.0, 0)
-
   }
 
   /**

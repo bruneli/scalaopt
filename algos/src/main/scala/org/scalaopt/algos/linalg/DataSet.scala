@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.scalaopt.algos.leastsquares
+package org.scalaopt.algos.linalg
 
 import scala.reflect.ClassTag
 
@@ -66,6 +66,6 @@ trait DataSet[+A] {
    * @return A new sequence containing pairs consisting of all elements of
    *         this sequence paired with their index.
    */
-  def zipWithIndex: DataSet[(A, Int)]
+  def zipWithIndex: DataSet[(A, Long)]
 
 }

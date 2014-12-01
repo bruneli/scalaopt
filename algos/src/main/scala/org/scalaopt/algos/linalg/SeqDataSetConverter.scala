@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.scalaopt.algos.leastsquares
+package org.scalaopt.algos.linalg
 
 import scala.reflect.ClassTag
 
@@ -40,7 +40,9 @@ object SeqDataSetConverter {
     
     override def map[B: ClassTag](f: (A) => B): DataSet[B] = v map f
 
-    override def zipWithIndex: DataSet[(A, Int)] = v.zipWithIndex
+    override def zipWithIndex: DataSet[(A, Long)] = v.zipWithIndex.map {
+      case (a, i) => (a, i.toLong)
+    }
 
   }
 

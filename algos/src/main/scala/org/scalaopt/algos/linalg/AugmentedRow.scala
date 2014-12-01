@@ -14,23 +14,32 @@
  * limitations under the License.
  */
 
-package org.scalaopt.sparkapps
+package org.scalaopt.algos.linalg
 
-import org.apache.spark.SparkContext
-import org.scalaopt.algos.Coordinates
+import org.scalaopt.algos
+import org.scalaopt.algos._
 
 /**
+ * Row to represent an augmented matrix used to solve a linear system AX = B
+ *
+ * @param a a row in the matrix
+ * @param b solution for that row
+ * @param i index of the row
+ *
  * @author bruneli
  */
-object LinearModel {
+case class AugmentedRow(a: Coordinates, b: Double, i: Long) {
 
-  def nllr(mu: Double)(n: Int) = mu - n*Math.log(mu)
+  def +(that: AugmentedRow): AugmentedRow =
+    AugmentedRow(that.a + this.a, that.b + this.b, i)
 
-  def main(args: Array[String]) {
-/*
-    val sc = new SparkContext()
-    val rdd = sc.parallelize(1 to 10)
-*/
-    println(s"Solving a linear model via QR decomposition.")
-  }
+  override def toString = s"row $i (${a.mkString(", ")} | $b)"
+
+}
+
+object AugmentedRow {
+
+  def zeros(n: Int): AugmentedRow =
+    AugmentedRow(algos.zeros(n), 0.0, 0)
+
 }

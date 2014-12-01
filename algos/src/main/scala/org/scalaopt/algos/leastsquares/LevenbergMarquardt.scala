@@ -17,6 +17,7 @@
 package org.scalaopt.algos.leastsquares
 
 import org.scalaopt.algos._
+import org.scalaopt.algos.linalg.{AugmentedRow, DataSet, QR}
 import scala.util.{Try, Success, Failure}
 import QR._
 
