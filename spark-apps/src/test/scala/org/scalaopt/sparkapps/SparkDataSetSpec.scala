@@ -16,14 +16,14 @@
 
 package org.scalaopt.sparkapps
 
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkConf, SparkContext}
 import org.scalaopt.algos.linalg.{QR, AugmentedRow}
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{BeforeAndAfter, Matchers, FlatSpec}
 
 /**
  * @author bruneli
  */
-class SparkDataSetSpec extends FlatSpec with Matchers {
+class SparkDataSetSpec extends FlatSpec with Matchers with BeforeAndAfter {
 
   import SparkDataSetConverter._
 
@@ -39,14 +39,20 @@ class SparkDataSetSpec extends FlatSpec with Matchers {
   val sol = List(2.5, -0.7, -0.9)
 
   val m = ab.zipWithIndex.map {
-    case (ab, i) => AugmentedRow(ab.init, ab.last, i.toLong)
+    case (row, i) => AugmentedRow(row.init, row.last, i.toLong)
   }
 
-  val sparkContext = new SparkContext("local[1]", "test App")
-  val sc = new SparkContext(sparkContext)
-  val rdd = sc.parallelize(m)
+  var sc: SparkContext = _
+
+  before {
+    System.clearProperty("spark.driver.port")
+    System.clearProperty("spark.hostPort")
+
+    sc = new SparkContext("local", "SparkDataSetSpec")
+  }
 
   "spark data set" should "invert a matrix via QR decomposition" in {
+    val rdd = sc.parallelize(m)
     val qr = QR(rdd, 3, pivoting = true)
 
     val r = List(
@@ -77,5 +83,13 @@ class SparkDataSetSpec extends FlatSpec with Matchers {
     sol.zip(qr.solution).map {
       case (x, y) => x shouldBe y +- tol
     }
+  }
+
+  after {
+    sc.stop()
+    sc = null
+
+    System.clearProperty("spark.driver.port")
+    System.clearProperty("spark.hostPort")
   }
 }

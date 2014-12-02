@@ -37,7 +37,7 @@ class QRSpec extends FlatSpec with Matchers {
   val sol = List(2.5, -0.7, -0.9)
 
   val m = ab.zipWithIndex.map {
-    case (ab, i) => AugmentedRow(ab.init, ab.last, i.toLong)
+    case (row, i) => AugmentedRow(row.init, row.last, i.toLong)
   }
 
   /**
