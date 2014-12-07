@@ -20,6 +20,8 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.scalaopt.algos.linalg.{QR, AugmentedRow}
 import org.scalatest.{BeforeAndAfter, Matchers, FlatSpec}
 
+import scala.util.Random
+
 /**
  * @author bruneli
  */
@@ -85,6 +87,20 @@ class SparkDataSetSpec extends FlatSpec with Matchers with BeforeAndAfter {
     }
   }
 
+  "spark data set" should "provide a solution when run with lm" in {
+    val random = new Random(12345)
+    val n = 100
+    val pars = for (j <- 0 until n) yield (j / 10).toDouble
+    val data = for (i <- 0 until 10000) yield {
+      val x = randomVec(n, random)
+      val y = 80.0 + x.zip(pars).map { case (x, p) => x*p }.sum + random.nextGaussian()
+      AugmentedRow(1.0 +: x, y, i)
+    }
+    val rdd = sc.parallelize(data)
+    val sol = QR(rdd, n + 1).solution
+    sol.length shouldBe (n + 1)
+  }
+
   after {
     sc.stop()
     sc = null
@@ -92,4 +108,6 @@ class SparkDataSetSpec extends FlatSpec with Matchers with BeforeAndAfter {
     System.clearProperty("spark.driver.port")
     System.clearProperty("spark.hostPort")
   }
+
+  private def randomVec(n: Int, random: Random) = for (i <- 0 until n) yield random.nextDouble()
 }

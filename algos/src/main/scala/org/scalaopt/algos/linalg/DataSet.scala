@@ -49,7 +49,9 @@ trait DataSet[+A] {
    * @param f the function that is applied for its side-effect to every element
    */
   def foreach(f: (A) => Unit): Unit
-  
+
+  def head: A
+
   /**
    * Builds a new data set by applying a function to all elements of this list.
    *

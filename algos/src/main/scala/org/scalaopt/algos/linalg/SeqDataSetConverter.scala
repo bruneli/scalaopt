@@ -37,6 +37,8 @@ object SeqDataSetConverter {
     override def filter(p: A => Boolean): DataSet[A] = v filter p
 
     override def foreach(f: (A) => Unit): Unit = v foreach f
+
+    override def head: A = v head
     
     override def map[B: ClassTag](f: (A) => B): DataSet[B] = v map f
 

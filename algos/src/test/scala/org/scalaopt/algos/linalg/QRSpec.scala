@@ -144,4 +144,18 @@ class QRSpec extends FlatSpec with Matchers {
       case (x, y) => x shouldBe y +- tol
     }
   }
+
+  "QR decomposition" should "fail if dataset is empty" in {
+    val mat = List[AugmentedRow]()
+    a [IllegalArgumentException] should be thrownBy {
+      QR(mat, 3)
+    }
+  }
+
+  "QR decomposition" should "fail if number of rows provided is insuffient" in {
+    val mat = List(AugmentedRow(List(1.0, 2.0, 3.0), 0.0, 0l))
+    a [IllegalArgumentException] should be thrownBy {
+      QR(mat, 3)
+    }
+  }
 }

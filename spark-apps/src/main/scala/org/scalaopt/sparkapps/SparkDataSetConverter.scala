@@ -39,6 +39,8 @@ object SparkDataSetConverter {
 
     override def foreach(f: (A) => Unit): Unit = rdd foreach f
 
+    override def head: A = rdd first()
+
     override def map[B: ClassTag](f: (A) => B): DataSet[B] = rdd map f
 
     override def zipWithIndex: DataSet[(A, Long)] = rdd.mapPartitionsWithIndex(setIndicesInFirstPartition[A])

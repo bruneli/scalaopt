@@ -42,6 +42,9 @@ class QR(
   
   /** Number of columns or rows in R */
   val n = rDiag.length
+
+  require(n > 0, "QR decomposition is empty")
+  require(n == r.length, "R is not a square matrix")
   
   /**
    * Rij element of matrix R
@@ -125,8 +128,6 @@ class QR(
 }
 
 object QR {
-
-  val eps = 1.0e-8
 
   /**
    * Perform the rank-revealing QR decomposition of matrix A

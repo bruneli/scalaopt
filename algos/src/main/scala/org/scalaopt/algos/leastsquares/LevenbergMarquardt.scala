@@ -19,7 +19,6 @@ package org.scalaopt.algos.leastsquares
 import org.scalaopt.algos._
 import org.scalaopt.algos.linalg.{AugmentedRow, DataSet, QR}
 import scala.util.{Try, Success, Failure}
-import QR._
 
 object LevenbergMarquardt {
   
@@ -31,6 +30,7 @@ object LevenbergMarquardt {
   val maxOuterIters = 1
   val maxInnerIters = 10
   val maxStepLengthIters = 10
+  val eps = 1.0e-8
 
   def minimize(
       f: ObjFunWithData,
