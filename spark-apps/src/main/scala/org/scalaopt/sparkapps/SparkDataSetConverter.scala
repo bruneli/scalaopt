@@ -17,7 +17,7 @@
 package org.scalaopt.sparkapps
 
 import org.apache.spark.rdd.RDD
-import org.scalaopt.algos.linalg.DataSet
+import org.scalaopt.algos.DataSet
 
 import scala.reflect.ClassTag
 

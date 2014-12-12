@@ -16,7 +16,7 @@
 
 package org.scalaopt.algos
 
-import org.scalaopt.algos.linalg.{AugmentedRow, QR, DataSet}
+import org.scalaopt.algos.linalg.{AugmentedRow, QR}
 
 import scala.util.Try
 
@@ -25,12 +25,14 @@ import scala.util.Try
  */
 package object linear {
 
-  def lm(f: ObjFunWithData,
-         data: DataSet[Xy]): Try[Coordinates] =
+  def lm(data: DataSet[Xy], addOrigin: Boolean = true): Try[Coordinates] =
     Try {
-      val n = data.head._1.size
+      val n = if (addOrigin) data.head._1.size + 1 else data.head._1.size
       val ab = data.zipWithIndex.map {
-        case (row, index) => AugmentedRow(row._1, row._2, index)
+        case (row, index) => {
+          val a = if (addOrigin) 1.0 +: row._1 else row._1
+          AugmentedRow(a, row._2, index)
+        }
       }
       QR(ab, n).solution
     }

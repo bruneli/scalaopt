@@ -17,26 +17,45 @@
 package org.scalaopt.algos.leastsquares
 
 import org.scalaopt.algos._
-import org.scalaopt.algos.linalg.{AugmentedRow, DataSet, QR}
+import org.scalaopt.algos.linalg.{AugmentedRow, QR}
 import scala.util.{Try, Success, Failure}
 
 object LevenbergMarquardt {
-  
-  val fTol = 1.49012e-8
-  val xTol = fTol
-  val gTol = 0.0
-  val ratioTol = 0.0001
-  val stepBound = 100.0
-  val maxOuterIters = 1
-  val maxInnerIters = 10
-  val maxStepLengthIters = 10
-  val eps = 1.0e-8
+  /**
+   * Configuration parameters for the BFGS algorithm.
+   *
+   * @param tol tolerance on the scaled reduction of the norm of f
+   * @param maxIter maximum number of iterations
+   * @param eps finite differences step to evaluate derivatives
+   * @param xTol xxx
+   * @param gTol xxx
+   * @param ratioTol xxx
+   * @param stepBound xxx
+   * @param maxInnerIter xxx
+   * @param maxStepLengthIter xxx
+   */
+  class LevenbergMarquardtConfig(
+    override val tol: Double = 1.49012e-8,
+    override val maxIter: Int = 10,
+    override val eps: Double = 1.0e-8,
+    val xTol: Double = 1.49012e-8,
+    val gTol: Double = 0.0,
+    val ratioTol: Double = 0.0001,
+    val stepBound: Double = 100.0,
+    val maxInnerIter: Int = 10,
+    val maxStepLengthIter: Int = 10) extends ConfigPars(tol, maxIter, eps)
 
-  def minimize(
-      f: ObjFunWithData,
-      data: DataSet[Xy],
-      x0: Coordinates): Try[Coordinates] = {
-    
+  implicit val defaultLevenbergMarquardt: LevenbergMarquardtConfig = new LevenbergMarquardtConfig
+
+  def minimize[C <: ConfigPars](
+    f: ObjFunWithData,
+    data: DataSet[Xy],
+    x0: Coordinates)(
+    implicit c: ConfigPars): Try[Coordinates] = {
+
+    // Check configuration parameters
+    val pars = ConfigPars.checkConfig[LevenbergMarquardtConfig, C](c)
+
     val n = x0.length
     
     def iterate(
@@ -45,10 +64,10 @@ object LevenbergMarquardt {
         diag0: Coordinates,
         xNorm0: Double,
         delta0: Double): Coordinates = {
-      val qr = QR(jacobianMatrix(x0, f, data), x0.length)
+      val qr = QR(jacobianMatrix(x0, f, data, pars.eps), x0.length)
       val fNorm0 = qr.bNorm
       val (diag, xNorm, delta1) =
-        updateDiagNormDelta(outer, x0, diag0, xNorm0, delta0, qr)
+        updateDiagNormDelta(outer, x0, diag0, xNorm0, delta0, qr, pars.stepBound)
         
       // norm of the scaled gradient
       def scaledGradientNorm(gNorm0: Double, j: Int): Double = {
@@ -68,7 +87,7 @@ object LevenbergMarquardt {
       val (x, fNorm, delta2, ratio) = 
         innerLoop(0, x0, qr, diag, delta1, 0.0, fNorm0)
       println(s"outer loop result $outer $x $fNorm $delta2 $ratio")
-      if (ratio < ratioTol & outer < maxOuterIters) {
+      if (ratio < pars.ratioTol & outer < pars.maxIter) {
         iterate(outer + 1, x, diag, fNorm, delta2)
       } else {
         x
@@ -84,7 +103,8 @@ object LevenbergMarquardt {
       par0: Double,
       fNorm0: Double): (Coordinates, Double, Double, Double) = {
       println("Starting inner loop",inner)
-      val (par, pk, xDiag) = lmPar(qr, diag, delta0, par0)
+      val (par, pk, xDiag) = lmPar(qr, diag, delta0, par0, pars.maxStepLengthIter)
+      val xDiagNorm = Math.sqrt(xDiag inner xDiag)
       val x = x0 - pk
       def residualSquareSum(rss: Double, xy: Xy) = {
         val r = residual(x, xy, f)
@@ -92,26 +112,52 @@ object LevenbergMarquardt {
       }
       val fNorm = Math.sqrt(data.aggregate(0.0)(residualSquareSum, _ + _))
       
-      // Predicted reduction
-      //def multiply(predicted0: Coordinates, j: Int): Coordinates = {
-      //  if (j == predicted0.length) {
-      //    predicted0
-      //  } else {
-      //    val predicted = predicted0 - qr.R(j) * pk(j)
-      //    multiply(predicted, j + 1)
-      //  }
-      //}
-      //val predicted = multiply(zeros(diag.length))      
+      // Scaled predicted reduction and scaled directional derivative
+      def multiply(predicted0: Coordinates, j: Int): Coordinates = {
+        if (j == predicted0.length) {
+          predicted0
+        } else {
+          val predicted = predicted0 - qr.R(j) * pk(qr.ipvt(j))
+          multiply(predicted, j + 1)
+        }
+      }
+      val predicted = multiply(zeros(diag.length), 0)
+      val scaledPredictedNorm2 = (predicted inner predicted) / (fNorm0 * fNorm0)
+      val scaledxDiagNorm2 = par * (xDiagNorm * xDiagNorm) / (fNorm0 * fNorm0)
+      val predictedReduction = scaledPredictedNorm2 + 2.0 * scaledxDiagNorm2
+      val directionalDerivative = -(scaledPredictedNorm2 + scaledxDiagNorm2)
       //val fNorm = Math.sqrt(x inner x)
-      
-      val reduction = 1.0 - (fNorm * fNorm) / (fNorm0 * fNorm0)
-      val delta = 2.0 * Math.sqrt(xDiag inner xDiag)
-      val ratio = ratioTol
-      println(s"inner loop result $inner $reduction $fNorm $fNorm0 $ratio $par $x $delta")
-      if (reduction <= fTol || delta <= xTol * fNorm || inner >= maxInnerIters) {
+
+      // Scaled actual reduction
+      val actualReduction = if (fNorm < fNorm0) 1.0 - (fNorm * fNorm) / (fNorm0 * fNorm0) else -1.0
+
+      // Ratio of the scaled actual reduction by the scaled predicted reduction
+      val ratio = if (predictedReduction != 0.0) actualReduction / predictedReduction else 0.0
+
+      // Update the Levenberg-Marquardt parameter and the step bound delta
+      val (parNew, delta) =
+        if (ratio > 0.25) {
+          if (par != 0.0 && ratio < 0.75) (par, delta0) else (0.5 * par, 2.0 * xDiagNorm)
+        } else {
+          val temp1 =
+            if (actualReduction >= 0.0) {
+              0.5
+            } else {
+              0.5 * directionalDerivative / (directionalDerivative + 0.5 * actualReduction)
+            }
+          val temp2 = if (0.1 * fNorm >= fNorm0 || temp1 < 0.1) 0.1 else temp1
+          (par / temp2, temp2 * Math.min(delta0, 10.0 * xDiagNorm))
+        }
+
+      // Compute the various stopping rules
+      val condition1 = Math.abs(actualReduction) <= pars.tol && predictedReduction <= pars.tol && 0.5 * ratio <= 1.0
+      val condition2 =
+
+      println(s"inner loop result $inner $fNorm $fNorm0 $ratio $par $x $delta")
+      if (actualReduction <= pars.tol || delta <= pars.xTol * fNorm || inner >= pars.maxInnerIter) {
         (x, fNorm, delta, ratio)
       } else {
-        innerLoop(inner + 1, x, qr, xDiag, delta, par, fNorm)
+        innerLoop(inner + 1, x, qr, xDiag, delta, parNew, fNorm)
       }
     }
 
@@ -145,7 +191,8 @@ object LevenbergMarquardt {
   def jacobianMatrix(
     p0: Coordinates,
     f: ObjFunWithData,
-    data: DataSet[Xy]): DataSet[AugmentedRow] = {
+    data: DataSet[Xy],
+    eps: Double): DataSet[AugmentedRow] = {
     val n = p0.length
 
     // For each data row:
@@ -174,7 +221,8 @@ object LevenbergMarquardt {
       diag0: Coordinates, 
       xNorm0: Double,
       delta0: Double,
-      qr: QR) =
+      qr: QR,
+      stepBound: Double) =
     if (iteration == 0) {
       val diag = qr.acNorms map (norm => if (norm > 0.0) norm else 1.0)
       val xNorm = Math.sqrt(diag dot x)
@@ -192,7 +240,8 @@ object LevenbergMarquardt {
       qr: QR,
       diag: Coordinates, 
       delta: Double,
-      par0: Double): (Double, Coordinates, Coordinates) = {
+      par0: Double,
+      maxStepLengthIter: Int): (Double, Coordinates, Coordinates) = {
     println("starting lmPar",par0)
     val n = diag.length
     val p1 = 0.1
@@ -258,7 +307,8 @@ object LevenbergMarquardt {
       def stepLength(
           iter: Int, 
           par0: (Double, Double, Double), 
-          fp0: Double): (Double, Coordinates, Coordinates) = {
+          fp0: Double,
+          maxStepLengthIter: Int): (Double, Coordinates, Coordinates) = {
         println("starting stepLength", iter)
         val aux = diag * Math.sqrt(par0._2)
         val (x, sDiag) = qrSolve(qr, diag)
@@ -268,7 +318,7 @@ object LevenbergMarquardt {
         val fp = dxNorm - delta
         if ((Math.abs(fp) <= p1 * delta) ||
             (par0._1 == 0.0 && fp <= fp0 && fp0 < 0.0) ||
-            (iter == maxStepLengthIters)) {
+            (iter == maxStepLengthIter)) {
           (par0._2, x, xDiag)
         } else {
           val aux0 = for (i <- 0 until n) yield {
@@ -294,11 +344,11 @@ object LevenbergMarquardt {
                 Math.max(parLow, par0._2 + parc), 
                 Math.min(par0._2, par0._3))
           }
-          stepLength(iter + 1, par, fp)
+          stepLength(iter + 1, par, fp, maxStepLengthIter)
         }
       }
       val parI = (parLow, Math.min(Math.max(par0, parLow), parUp), parUp)
-      stepLength(0, parI, fp)
+      stepLength(0, parI, fp, maxStepLengthIter)
     }
   }
   

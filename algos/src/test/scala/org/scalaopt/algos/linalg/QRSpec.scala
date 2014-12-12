@@ -16,6 +16,7 @@
 
 package org.scalaopt.algos.linalg
 
+import org.scalaopt.algos.SeqDataSetConverter
 import org.scalatest.{Matchers, FlatSpec}
 
 /**

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.scalaopt.algos.linalg
+package org.scalaopt.algos
 
 import scala.reflect.ClassTag
 
