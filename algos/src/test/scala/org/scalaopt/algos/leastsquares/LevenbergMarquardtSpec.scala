@@ -18,14 +18,14 @@ package org.scalaopt.algos.leastsquares
 
 import org.scalaopt.algos._
 import org.scalaopt.algos.gradient.ConjugateGradient.CGConfig
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{TryValues, Matchers, FlatSpec}
 
 import scala.util.{Failure, Success, Random}
 
 /**
  * @author bruneli
  */
-class LevenbergMarquardtSpec extends FlatSpec with Matchers {
+class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
   import SeqDataSetConverter._
   import LevenbergMarquardt._
 
@@ -53,6 +53,27 @@ class LevenbergMarquardtSpec extends FlatSpec with Matchers {
       }
       case Failure(e) => assert(false)
     }
+  }
+
+  it should "converge to its solution for a non-linear objective function" in {
+    /** Exponential objective function */
+    def exponential(x: Coordinates, t: Seq[Double]): Double = x(0) * Math.exp(x(1) * t(0))
+
+    val tol = 0.5
+    val n = 10
+    val x0 = Vector(2.0, 1.0)
+    val sigma = 0.1
+
+    val data = for (i <- 0 until n) yield {
+      val t = Seq(i.toDouble * 0.1)
+      val y = exponential(x0, t) + sigma * random.nextGaussian()
+      (t, y)
+    }
+
+    val solution = minimize(exponential, data, Vector(4.0, 0.5))
+    solution should be a 'success
+    solution.get(0) shouldBe x0(0) +- tol
+    solution.get(1) shouldBe x0(1) +- tol
   }
 
   it should "throw an error if wrong configuration type" in {

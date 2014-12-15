@@ -31,6 +31,7 @@ object LevenbergMarquardt {
    * @param gTol xxx
    * @param ratioTol xxx
    * @param stepBound xxx
+   * @param epsmch machine precision
    * @param maxInnerIter xxx
    * @param maxStepLengthIter xxx
    */
@@ -42,6 +43,7 @@ object LevenbergMarquardt {
     val gTol: Double = 0.0,
     val ratioTol: Double = 0.0001,
     val stepBound: Double = 100.0,
+    val epsmch: Double = 2.22044604926e-16,
     val maxInnerIter: Int = 10,
     val maxStepLengthIter: Int = 10) extends ConfigPars(tol, maxIter, eps)
 
@@ -84,13 +86,13 @@ object LevenbergMarquardt {
       val gNorm = (0 until n).foldLeft(0.0)(scaledGradientNorm)
 
       println("Calling innerLoop", outer)
-      val (x, fNorm, delta2, ratio) = 
+      val (x, fNorm, delta2, stoppingRule) =
         innerLoop(0, x0, qr, diag, delta1, 0.0, fNorm0)
-      println(s"outer loop result $outer $x $fNorm $delta2 $ratio")
-      if (ratio < pars.ratioTol & outer < pars.maxIter) {
-        iterate(outer + 1, x, diag, fNorm, delta2)
-      } else {
+      println(s"outer loop result $outer $x $fNorm $delta2 $stoppingRule")
+      if (stoppingRule || outer >= pars.maxIter || gNorm <= pars.gTol || gNorm <= pars.epsmch) {
         x
+      } else {
+        iterate(outer + 1, x, diag, fNorm, delta2)
       }
     }
 
@@ -101,11 +103,12 @@ object LevenbergMarquardt {
       diag: Coordinates,
       delta0: Double,
       par0: Double,
-      fNorm0: Double): (Coordinates, Double, Double, Double) = {
+      fNorm0: Double): (Coordinates, Double, Double, Boolean) = {
       println("Starting inner loop",inner)
       val (par, pk, xDiag) = lmPar(qr, diag, delta0, par0, pars.maxStepLengthIter)
-      val xDiagNorm = Math.sqrt(xDiag inner xDiag)
+      val xDiagNorm = xDiag.norm
       val x = x0 - pk
+      val xNorm = x.norm
       def residualSquareSum(rss: Double, xy: Xy) = {
         val r = residual(x, xy, f)
         rss + r * r
@@ -122,11 +125,10 @@ object LevenbergMarquardt {
         }
       }
       val predicted = multiply(zeros(diag.length), 0)
-      val scaledPredictedNorm2 = (predicted inner predicted) / (fNorm0 * fNorm0)
+      val scaledPredictedNorm2 = predicted.norm2 / (fNorm0 * fNorm0)
       val scaledxDiagNorm2 = par * (xDiagNorm * xDiagNorm) / (fNorm0 * fNorm0)
       val predictedReduction = scaledPredictedNorm2 + 2.0 * scaledxDiagNorm2
       val directionalDerivative = -(scaledPredictedNorm2 + scaledxDiagNorm2)
-      //val fNorm = Math.sqrt(x inner x)
 
       // Scaled actual reduction
       val actualReduction = if (fNorm < fNorm0) 1.0 - (fNorm * fNorm) / (fNorm0 * fNorm0) else -1.0
@@ -150,12 +152,24 @@ object LevenbergMarquardt {
         }
 
       // Compute the various stopping rules
-      val condition1 = Math.abs(actualReduction) <= pars.tol && predictedReduction <= pars.tol && 0.5 * ratio <= 1.0
-      val condition2 =
+      // Convergence tests
+      val convergence1 =
+        Math.abs(actualReduction) <= pars.tol &&
+        predictedReduction <= pars.tol &&
+        0.5 * ratio <= 1.0
+      val convergence2 = delta <= pars.xTol * xNorm
+      // Test for termination and stringent tolerances
+      val termination1 =
+        Math.abs(actualReduction) <= pars.epsmch &&
+        predictedReduction <= pars.epsmch &&
+        0.5 * ratio <= 1.0
+      val termination2 = delta <= pars.epsmch * xNorm
 
-      println(s"inner loop result $inner $fNorm $fNorm0 $ratio $par $x $delta")
-      if (actualReduction <= pars.tol || delta <= pars.xTol * fNorm || inner >= pars.maxInnerIter) {
-        (x, fNorm, delta, ratio)
+      val stoppingRule = convergence1 || convergence2 || termination1 || termination2
+
+      println(s"inner loop result $inner $ratio $stoppingRule $x0 $pk $x")
+      if (stoppingRule || inner >= pars.maxInnerIter || ratio >= 0.0001) {
+        (x, fNorm, delta, stoppingRule)
       } else {
         innerLoop(inner + 1, x, qr, xDiag, delta, parNew, fNorm)
       }
