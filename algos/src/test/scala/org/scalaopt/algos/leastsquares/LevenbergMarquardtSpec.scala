@@ -59,13 +59,13 @@ class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
     /** Exponential objective function */
     def exponential(x: Coordinates, t: Seq[Double]): Double = x(0) * Math.exp(x(1) * t(0))
 
-    val tol = 0.5
+    val tol = 0.2
     val n = 10
     val x0 = Vector(2.0, 1.0)
-    val sigma = 0.01
+    val sigma = 0.1
 
     val data = for (i <- 0 until n) yield {
-      val t = Seq(i.toDouble * 0.01)
+      val t = Seq(i.toDouble / n)
       val y = exponential(x0, t) + sigma * random.nextGaussian()
       (t, y)
     }
