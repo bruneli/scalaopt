@@ -45,7 +45,8 @@ object LevenbergMarquardt {
     val stepBound: Double = 100.0,
     val epsmch: Double = 2.22044604926e-16,
     val maxInnerIter: Int = 10,
-    val maxStepLengthIter: Int = 10) extends ConfigPars(tol, maxIter, eps)
+    val maxStepLengthIter: Int = 10,
+    val usePivoting: Boolean = false) extends ConfigPars(tol, maxIter, eps)
 
   implicit val defaultLevenbergMarquardt: LevenbergMarquardtConfig = new LevenbergMarquardtConfig
 
@@ -66,7 +67,7 @@ object LevenbergMarquardt {
         diag0: Coordinates,
         xNorm0: Double,
         delta0: Double): Coordinates = {
-      val qr = QR(jacobianMatrix(x0, f, data, pars.eps), x0.length)
+      val qr = QR(jacobianMatrix(x0, f, data, pars.eps), x0.length, pars.usePivoting)
       val fNorm0 = qr.bNorm
       val (diag, xNorm, delta1) =
         updateDiagNormDelta(outer, x0, diag0, xNorm0, delta0, qr, pars.stepBound)
@@ -85,11 +86,9 @@ object LevenbergMarquardt {
       }
       val gNorm = (0 until n).foldLeft(0.0)(scaledGradientNorm)
 
-      println("Calling innerLoop", outer)
       val (x, fNorm, delta2, stoppingRule) =
         innerLoop(0, x0, qr, diag, delta1, 0.0, fNorm0)
-      println(s"outer loop result $outer $x $fNorm $delta2 $stoppingRule")
-      if (stoppingRule || outer >= pars.maxIter || gNorm <= pars.gTol || gNorm <= pars.epsmch) {
+       if (stoppingRule || outer >= pars.maxIter || gNorm <= pars.gTol || gNorm <= pars.epsmch) {
         x
       } else {
         iterate(outer + 1, x, diag, fNorm, delta2)
@@ -104,7 +103,6 @@ object LevenbergMarquardt {
       delta0: Double,
       par0: Double,
       fNorm0: Double): (Coordinates, Double, Double, Boolean) = {
-      println("Starting inner loop",inner)
       val (par, pk, xDiag) = lmPar(qr, diag, delta0, par0, pars.maxStepLengthIter)
       val xDiagNorm = xDiag.norm
       val x = x0 - pk
@@ -167,7 +165,6 @@ object LevenbergMarquardt {
 
       val stoppingRule = convergence1 || convergence2 || termination1 || termination2
 
-      println(s"inner loop result $inner $ratio $stoppingRule $x0 $pk $x")
       if (stoppingRule || inner >= pars.maxInnerIter || ratio >= 0.0001) {
         (x, fNorm, delta, stoppingRule)
       } else {
@@ -256,7 +253,6 @@ object LevenbergMarquardt {
       delta: Double,
       par0: Double,
       maxStepLengthIter: Int): (Double, Coordinates, Coordinates) = {
-    println("starting lmPar",par0)
     val n = diag.length
     val p1 = 0.1
     
@@ -264,7 +260,7 @@ object LevenbergMarquardt {
       // Take QtB values till first null R diagonal element
       val firstIdxZero = qr.rDiag.indexWhere(_ == 0.0)
       val nsing = if (firstIdxZero == -1) qr.rDiag.length - 1 else firstIdxZero - 1
-      val qtb = qtb0.zipWithIndex.map { 
+      val qtb = qtb0.zipWithIndex.map {
         case (value, col) => if (col <= nsing) value else 0.0
       }
       
@@ -323,10 +319,8 @@ object LevenbergMarquardt {
           par0: (Double, Double, Double), 
           fp0: Double,
           maxStepLengthIter: Int): (Double, Coordinates, Coordinates) = {
-        println("starting stepLength", iter)
         val aux = diag * Math.sqrt(par0._2)
         val (x, sDiag) = qrSolve(qr, diag)
-        println(s"qrSolve x = $x sDiag = $sDiag")
         val xDiag = x.zip(sDiag).map { case (x, diag) => x * diag }
         val dxNorm = eNorm(xDiag) 
         val fp = dxNorm - delta

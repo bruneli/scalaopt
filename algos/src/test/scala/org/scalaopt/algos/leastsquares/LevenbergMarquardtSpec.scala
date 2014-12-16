@@ -62,10 +62,10 @@ class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
     val tol = 0.5
     val n = 10
     val x0 = Vector(2.0, 1.0)
-    val sigma = 0.1
+    val sigma = 0.01
 
     val data = for (i <- 0 until n) yield {
-      val t = Seq(i.toDouble * 0.1)
+      val t = Seq(i.toDouble * 0.01)
       val y = exponential(x0, t) + sigma * random.nextGaussian()
       (t, y)
     }
