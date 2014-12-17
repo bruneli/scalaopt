@@ -24,16 +24,16 @@ object LevenbergMarquardt {
   /**
    * Configuration parameters for the BFGS algorithm.
    *
-   * @param tol tolerance on the scaled reduction of the norm of f
-   * @param maxIter maximum number of iterations
-   * @param eps finite differences step to evaluate derivatives
-   * @param xTol xxx
-   * @param gTol xxx
-   * @param ratioTol xxx
-   * @param stepBound xxx
-   * @param epsmch machine precision
-   * @param maxInnerIter xxx
-   * @param maxStepLengthIter xxx
+   * @param tol               tolerance on the scaled reduction of the norm of f
+   * @param maxIter           maximum number of iterations for the outer loop
+   * @param eps               finite differences step to evaluate derivatives
+   * @param xTol              tolerance on the norm of x reported to trust region size
+   * @param gTol              tolerance on the scaled gradient norm
+   * @param ratioTol          tolerance on the actual versus predicted reduction ratio
+   * @param stepBound         step bound factor used to define delta, the trust region size
+   * @param epsmch            machine precision
+   * @param maxInnerIter      maximum number of iterations for the inner loop
+   * @param maxStepLengthIter maximum number of iterations for the step length loop
    */
   class LevenbergMarquardtConfig(
     override val tol: Double = 1.49012e-8,
@@ -88,7 +88,7 @@ object LevenbergMarquardt {
 
       val (x, fNorm, delta2, stoppingRule) =
         innerLoop(0, x0, qr, diag, delta1, 0.0, fNorm0)
-       if (stoppingRule || outer >= pars.maxIter || gNorm <= pars.gTol || gNorm <= pars.epsmch) {
+      if (stoppingRule || outer >= pars.maxIter || gNorm <= pars.gTol || gNorm <= pars.epsmch) {
         x
       } else {
         iterate(outer + 1, x, diag, fNorm, delta2)

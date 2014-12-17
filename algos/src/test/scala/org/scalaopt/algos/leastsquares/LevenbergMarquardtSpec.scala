@@ -46,13 +46,10 @@ class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
       (x, y)
     }
 
-    minimize(linear, data, p0) match {
-      case Success(popt) => {
-        popt.size shouldBe (n + 1)
-        for ((estimated, expected) <- popt.zip(p0)) estimated shouldBe expected +- tol
-      }
-      case Failure(e) => assert(false)
-    }
+    val popt = minimize(linear, data, p0)
+    popt should be a 'success
+    popt.get.size should be (n + 1)
+    for ((estimated, expected) <- popt.get.zip(p0)) estimated shouldBe expected +- tol
   }
 
   it should "converge to its solution for a non-linear objective function" in {
