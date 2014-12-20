@@ -61,13 +61,5 @@ class NelderMeadSpec extends FlatSpec with Matchers {
       minimize(x => x(0) + x(1), x1)
     }
   }
-  
-  it should "throw an IllegalArgumentException if wrong configuration type" in {
-    import Powell.PowellConfig
-    val wrongc = new PowellConfig
-    a [IllegalArgumentException] should be thrownBy {
-      minimize(x => x(0) + x(1), x1)(wrongc)
-    }
-  }
 
 }

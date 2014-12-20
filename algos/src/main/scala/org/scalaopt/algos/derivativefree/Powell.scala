@@ -43,43 +43,24 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object Powell extends DerivativeFreeMethod {
-  /**
-   * Configuration parameters for the Powell algorithm.
-   *
-   * @param tol tolerance error for convergence
-   * @param maxIter maximum number of iterations per dimension
-   * @param h step size to bracket a minimum along a line
-   * @param tolLine tolerance error for a line search
-   * @param maxIterLine maximum number of iterations to bracket a minimum
-   */
-  class PowellConfig(
-    override val tol: Double = 1.0e-6,
-    override val maxIter: Int = 30,
-    h: Double = 0.1,
-    tolLine: Double = 1.0e-9,
-    maxIterLine: Int = 100) extends ConfigPars(tol, maxIter) {
-    val goldSearch = new GoldSearchConfig(h, tolLine, maxIterLine)
-  } 
-  implicit val defaultPowell: PowellConfig = new PowellConfig
+object Powell extends DerivativeFreeMethod[PowellConfig] {
+
+  implicit val defaultConfig: PowellConfig = new PowellConfig
   
   /**
    * Minimize an objective function acting on a vector of real values.
    * 
-   * @param f  real-valued objective function
-   * @param x0 initial coordinates
-   * @param c  algorithm configuration parameters
+   * @param f    real-valued objective function
+   * @param x0   initial coordinates
+   * @param pars algorithm configuration parameters
    * @return coordinates at a local minimum
    */
-  def minimize[C <: ConfigPars](
+  override def minimize(
       f:  ObjectiveFunction,
       x0: Coordinates)(
-      implicit c: C): Try[Coordinates] = {
+      implicit pars: PowellConfig): Try[Coordinates] = {
     val n = x0.length // Store number of dimensions
     
-    // Check configuration parameters
-    val pars = ConfigPars.checkConfig[PowellConfig, C](c)
-      
     def stoppingRule(
       iter: Int,
       xnpp: Coordinates,
@@ -156,4 +137,22 @@ object Powell extends DerivativeFreeMethod {
     
     iterate(0, x0, unitVectors)
   }
+}
+
+/**
+ * Configuration parameters for the Powell algorithm.
+ *
+ * @param tol tolerance error for convergence
+ * @param maxIter maximum number of iterations per dimension
+ * @param h step size to bracket a minimum along a line
+ * @param tolLine tolerance error for a line search
+ * @param maxIterLine maximum number of iterations to bracket a minimum
+ */
+class PowellConfig(
+  override val tol: Double = 1.0e-6,
+  override val maxIter: Int = 30,
+  h: Double = 0.1,
+  tolLine: Double = 1.0e-9,
+  maxIterLine: Int = 100) extends ConfigPars(tol, maxIter) {
+  val goldSearch = new GoldSearchConfig(h, tolLine, maxIterLine)
 }

@@ -33,7 +33,7 @@ class BFGSSpec extends FlatSpec with Matchers {
   val config = new BFGSConfig(tol = 1.0e-6)
 
   "minimize with exact derivatives" should "converge to x0" in {
-    val d = minimize(fQuad, dfQuad, Vector(0.0, 0.0)) match {
+    val d = minimizeWithGradient(fQuad, dfQuad, Vector(0.0, 0.0)) match {
       case Success(xmin) => xmin - x0
       case Failure(e) => x0
     }
@@ -53,12 +53,5 @@ class BFGSSpec extends FlatSpec with Matchers {
       minimize(x => x(0) + x(1), Vector(0.0, 0.0))
     }
   }
-  
-  it should "throw an error if wrong configuration type" in {
-    import ConjugateGradient.CGConfig
-    val wrongc = new CGConfig
-    a [IllegalArgumentException] should be thrownBy {
-      minimize(x => x(0) + x(1), Vector(0.0, 0.0))(wrongc)
-    }
-  }
+
 }

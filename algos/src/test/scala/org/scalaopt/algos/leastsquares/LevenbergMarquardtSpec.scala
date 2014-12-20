@@ -17,10 +17,9 @@
 package org.scalaopt.algos.leastsquares
 
 import org.scalaopt.algos._
-import org.scalaopt.algos.gradient.ConjugateGradient.CGConfig
 import org.scalatest.{TryValues, Matchers, FlatSpec}
 
-import scala.util.{Failure, Success, Random}
+import scala.util.Random
 
 /**
  * @author bruneli
@@ -71,19 +70,6 @@ class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
     solution should be a 'success
     solution.get(0) shouldBe x0(0) +- tol
     solution.get(1) shouldBe x0(1) +- tol
-  }
-
-  it should "throw an error if wrong configuration type" in {
-    val wrongc = new CGConfig
-    def f(p: Coordinates, x: Seq[Double]): Double = p.head + p.tail.zip(x).map { case (p, x) => p * x }.sum[Double]
-    val p0 = Vector(10.0, 1.0, 2.0)
-    val data = for (i <- 0 until 10) yield {
-      val x = randomVec(2, random)
-      (x, f(p0, x))
-    }
-    a [IllegalArgumentException] should be thrownBy {
-      minimize(f, data, Vector(0.0, 0.0))(wrongc)
-    }
   }
 
   private def randomVec(n: Int, random: Random) = for (i <- 0 until n) yield random.nextDouble()

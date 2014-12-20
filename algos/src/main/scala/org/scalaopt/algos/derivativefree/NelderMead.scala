@@ -34,30 +34,9 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object NelderMead extends DerivativeFreeMethod {
-  /**
-   * Configuration options for the Nelder-Mead algorithm.
-   *
-   * @param tol          tolerance error for convergence
-   * @param maxIter      maximum number of iterations per dimension
-   * @param cReflection  reflection coefficient
-   * @param cExpansion   expansion coefficient
-   * @param cContraction contraction coefficient
-   * @param cShrink      simplex reduction when shrinking it
-   * @param relDelta     relative distance used to generate a new vertex
-   * @param absDelta     absolute distance used to generate a new vertex 
-   */
-  class NelderMeadConfig(
-    override val tol: Double = 1.0e-5,
-    override val maxIter: Int = 200,
-    val cReflection: Double = 2.0,
-    val cExpansion: Double = 1.0,
-    val cContraction: Double = 0.5,
-    val cShrink: Double = 0.5,
-    val relDelta: Double = 0.05,
-    val absDelta: Double = 0.00025) extends ConfigPars(tol, maxIter) 
-  implicit val defaultNelderMead: NelderMeadConfig = 
-    new NelderMeadConfig
+object NelderMead extends DerivativeFreeMethod[NelderMeadConfig] {
+
+  implicit val defaultConfig: NelderMeadConfig = new NelderMeadConfig
 
   /**
    * Simplex vertex with coordinates and an associated function
@@ -277,19 +256,16 @@ object NelderMead extends DerivativeFreeMethod {
   /**
    * Minimize an objective function acting on a vector of real values.
    * 
-   * @param f  real-valued objective function
-   * @param x0 initial coordinates
-   * @param c  algorithm configuration parameters
+   * @param f    real-valued objective function
+   * @param x0   initial coordinates
+   * @param pars algorithm configuration parameters
    * @return coordinates of a local minimum if it converged
    */
-  def minimize[C <: ConfigPars](
+  override def minimize(
       f: ObjectiveFunction,
       x0: Coordinates)(
-      implicit c: C): Try[Coordinates] = {
+      implicit pars: NelderMeadConfig): Try[Coordinates] = {
 
-    // Check configuration parameters
-    val pars = ConfigPars.checkConfig[NelderMeadConfig, C](c)  
-    
     // Stop when required precision is reached or an exception is raised
     def stoppingRule(s: Try[Simplex]): Boolean = s match {
       case Success(s) => s.move.norm / math.sqrt(s.vertices.length) < pars.tol
@@ -297,10 +273,32 @@ object NelderMead extends DerivativeFreeMethod {
     }
       
     // From an initial simplex, modify it till the stopping rule is satisfied
-    (from(Try(Simplex(f, x0))) find stoppingRule) match {
+    from(Try(Simplex(f, x0)(pars))) find stoppingRule match {
       case Some(s) => s.map(_.vtxMin.x)
       case None => Failure(
           new RuntimeException("Stopping rule is never satisfied."))
     }
   }
 }
+
+/**
+ * Configuration options for the Nelder-Mead algorithm.
+ *
+ * @param tol          tolerance error for convergence
+ * @param maxIter      maximum number of iterations per dimension
+ * @param cReflection  reflection coefficient
+ * @param cExpansion   expansion coefficient
+ * @param cContraction contraction coefficient
+ * @param cShrink      simplex reduction when shrinking it
+ * @param relDelta     relative distance used to generate a new vertex
+ * @param absDelta     absolute distance used to generate a new vertex
+ */
+class NelderMeadConfig(
+  override val tol: Double = 1.0e-5,
+  override val maxIter: Int = 200,
+  val cReflection: Double = 2.0,
+  val cExpansion: Double = 1.0,
+  val cContraction: Double = 0.5,
+  val cShrink: Double = 0.5,
+  val relDelta: Double = 0.05,
+  val absDelta: Double = 0.00025) extends ConfigPars(tol, maxIter)

@@ -38,51 +38,25 @@ import org.jblas.DoubleMatrix
  * 
  * @author bruneli
  */
-object BFGS extends GradientMethod {
-  /**
-   * Configuration parameters for the BFGS algorithm.
-   *
-   * @param tol tolerance error for convergence
-   * @param maxIter maximum number of iterations
-   * @param eps finite differences step to evaluate derivatives
-   * @param maxIterLine maximum number of iterations per line search
-   * @param maxIterZoom maximum number of iterations per line zoom
-   * @param c1 sufficient decrease condition parameter
-   * @param c2 curvature condition parameter
-   * @param c3 parameter to extend the search interval 
-   */
-  class BFGSConfig(
-    override val tol: Double = 1.0e-5,
-    override val maxIter: Int = 200,
-    override val eps: Double = 1.0e-8,      
-    maxIterLine: Int = 10,
-    maxIterZoom: Int = 10,
-    c1: Double = 1.0e-4,
-    c2: Double = 0.9,
-    c3: Double = 2.0) extends ConfigPars(tol, maxIter, eps) {
-    val strongWolfe: StrongWolfeConfig = 
-      new StrongWolfeConfig(maxIterLine, maxIterZoom, c1, c2, c3)
-  }
-  implicit val defaultBFGS: BFGSConfig = new BFGSConfig
+object BFGS extends GradientMethod[BFGSConfig] {
+
+  implicit val defaultConfig: BFGSConfig = new BFGSConfig
 
   /**
    * Minimize an objective function acting on a vector of real values.
    * 
-   * @param f  real-valued objective function
-   * @param df gradient of the real-valued objective function
-   * @param x0 initial coordinates
-   * @param c  algorithm configuration parameters
+   * @param f    real-valued objective function
+   * @param df   gradient of the real-valued objective function
+   * @param x0   initial coordinates
+   * @param pars algorithm configuration parameters
    * @return coordinates at a local minimum
    */
-  def minimize[C <: ConfigPars](
+  override def minimizeWithGradient(
     f:  ObjectiveFunction,
     df: Coordinates => Coordinates,
     x0: Coordinates)(
-    implicit c: ConfigPars): Try[Coordinates] = {
+    implicit pars: BFGSConfig): Try[Coordinates] = {
 
-    // Check configuration parameters
-    val pars = ConfigPars.checkConfig[BFGSConfig, C](c)
-      
     // Number of dimensions
     val n = x0.length
     
@@ -142,4 +116,29 @@ object BFGS extends GradientMethod {
     // Initialize the inverse Hessian with an identity matrix
     iterate(0, x0, identity)
   }
+}
+
+/**
+ * Configuration parameters for the BFGS algorithm.
+ *
+ * @param tol tolerance error for convergence
+ * @param maxIter maximum number of iterations
+ * @param eps finite differences step to evaluate derivatives
+ * @param maxIterLine maximum number of iterations per line search
+ * @param maxIterZoom maximum number of iterations per line zoom
+ * @param c1 sufficient decrease condition parameter
+ * @param c2 curvature condition parameter
+ * @param c3 parameter to extend the search interval
+ */
+class BFGSConfig(
+  override val tol: Double = 1.0e-5,
+  override val maxIter: Int = 200,
+  override val eps: Double = 1.0e-8,
+  maxIterLine: Int = 10,
+  maxIterZoom: Int = 10,
+  c1: Double = 1.0e-4,
+  c2: Double = 0.9,
+  c3: Double = 2.0) extends ConfigPars(tol, maxIter, eps) {
+  val strongWolfe: StrongWolfeConfig =
+    new StrongWolfeConfig(maxIterLine, maxIterZoom, c1, c2, c3)
 }

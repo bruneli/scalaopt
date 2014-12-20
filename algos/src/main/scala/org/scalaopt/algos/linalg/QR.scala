@@ -19,7 +19,7 @@ package org.scalaopt.algos.linalg
 import org.scalaopt.algos._
 
 /**
- * Results from the rank-revealing QR decomposition of the 
+ * Results from the QR decomposition of the
  * equation system AX = B.
  *
  * @param r       an n x n upper triangular matrix
@@ -130,7 +130,7 @@ class QR(
 object QR {
 
   /**
-   * Perform the rank-revealing QR decomposition of matrix A
+   * Perform the QR decomposition with or without pivoting of matrix A
    * and compute the product Qt * B.
    *
    * @param ab       an augmented m * (n+1) matrix representing

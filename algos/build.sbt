@@ -2,7 +2,7 @@ organization := "org.scalaopt"
 
 name := "scalaopt-algos"
 
-scalaVersion := "2.10.3"
+scalaVersion := "2.10.4"
 
 crossScalaVersions := Seq("2.11.1", "2.11.2")
 

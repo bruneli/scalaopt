@@ -2,7 +2,7 @@ organization := "org.scalaopt"
 
 name := "scalaopt-sparkapps"
 
-scalaVersion := "2.10.3"
+scalaVersion := "2.10.4"
 
 crossScalaVersions := Seq("2.10.3")
 

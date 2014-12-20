@@ -20,44 +20,26 @@ import org.scalaopt.algos._
 import org.scalaopt.algos.linalg.{AugmentedRow, QR}
 import scala.util.{Try, Success, Failure}
 
-object LevenbergMarquardt {
+object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
+
+  implicit val defaultConfig: LevenbergMarquardtConfig = new LevenbergMarquardtConfig
+
   /**
-   * Configuration parameters for the BFGS algorithm.
+   * Minimize an objective function acting on a vector of real values
+   * and on a set of data points in the form (X, y)
    *
-   * @param tol               tolerance on the scaled reduction of the norm of f
-   * @param maxIter           maximum number of iterations for the outer loop
-   * @param eps               finite differences step to evaluate derivatives
-   * @param xTol              tolerance on the norm of x reported to trust region size
-   * @param gTol              tolerance on the scaled gradient norm
-   * @param ratioTol          tolerance on the actual versus predicted reduction ratio
-   * @param stepBound         step bound factor used to define delta, the trust region size
-   * @param epsmch            machine precision
-   * @param maxInnerIter      maximum number of iterations for the inner loop
-   * @param maxStepLengthIter maximum number of iterations for the step length loop
+   * @param f    real-valued objective function acting on a vector on
+   *             real-valued coordinates and real-valued observations X
+   * @param data a set of points in the form (X, y)
+   * @param x0   initial coordinates
+   * @param pars algorithm configuration parameters
+   * @return
    */
-  class LevenbergMarquardtConfig(
-    override val tol: Double = 1.49012e-8,
-    override val maxIter: Int = 10,
-    override val eps: Double = 1.0e-8,
-    val xTol: Double = 1.49012e-8,
-    val gTol: Double = 0.0,
-    val ratioTol: Double = 0.0001,
-    val stepBound: Double = 100.0,
-    val epsmch: Double = 2.22044604926e-16,
-    val maxInnerIter: Int = 10,
-    val maxStepLengthIter: Int = 10,
-    val usePivoting: Boolean = false) extends ConfigPars(tol, maxIter, eps)
-
-  implicit val defaultLevenbergMarquardt: LevenbergMarquardtConfig = new LevenbergMarquardtConfig
-
-  def minimize[C <: ConfigPars](
+  override def minimize(
     f: ObjFunWithData,
     data: DataSet[Xy],
     x0: Coordinates)(
-    implicit c: ConfigPars): Try[Coordinates] = {
-
-    // Check configuration parameters
-    val pars = ConfigPars.checkConfig[LevenbergMarquardtConfig, C](c)
+    implicit pars: LevenbergMarquardtConfig): Try[Coordinates] = {
 
     val n = x0.length
     
@@ -469,3 +451,30 @@ object LevenbergMarquardt {
   def eNorm(v: Coordinates) = Math.sqrt(v map (x => x * x) sum)
 
 }
+
+/**
+ * Configuration parameters for the BFGS algorithm.
+ *
+ * @param tol               tolerance on the scaled reduction of the norm of f
+ * @param maxIter           maximum number of iterations for the outer loop
+ * @param eps               finite differences step to evaluate derivatives
+ * @param xTol              tolerance on the norm of x reported to trust region size
+ * @param gTol              tolerance on the scaled gradient norm
+ * @param ratioTol          tolerance on the actual versus predicted reduction ratio
+ * @param stepBound         step bound factor used to define delta, the trust region size
+ * @param epsmch            machine precision
+ * @param maxInnerIter      maximum number of iterations for the inner loop
+ * @param maxStepLengthIter maximum number of iterations for the step length loop
+ */
+class LevenbergMarquardtConfig(
+  override val tol: Double = 1.49012e-8,
+  override val maxIter: Int = 10,
+  override val eps: Double = 1.0e-8,
+  val xTol: Double = 1.49012e-8,
+  val gTol: Double = 0.0,
+  val ratioTol: Double = 0.0001,
+  val stepBound: Double = 100.0,
+  val epsmch: Double = 2.22044604926e-16,
+  val maxInnerIter: Int = 10,
+  val maxStepLengthIter: Int = 10,
+  val usePivoting: Boolean = false) extends ConfigPars(tol, maxIter, eps)

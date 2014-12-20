@@ -14,21 +14,18 @@
  * limitations under the License.
  */
 
-package org.scalaopt.algos
+package org.scalaopt.algos.derivativefree
 
 import org.scalaopt.algos._
 
-import scala.util.Try
+import scala.util.{Failure, Try}
 
 /**
- * An optimizer should implement at least one minimize method.
+ * Abstract class to define derivative-free optimization methods.
  *
- * @tparam C configuration parameters type
  * @author bruneli
  */
-trait Optimizer[C <: ConfigPars] {
-
-  val defaultConfig: C
+abstract class DerivativeFreeMethod[C <: ConfigPars] extends Optimizer[C] {
 
   /**
    * Minimize an objective function acting on a vector of real values.
@@ -38,59 +35,31 @@ trait Optimizer[C <: ConfigPars] {
    * @param pars algorithm configuration parameters
    * @return coordinates at a local minimum or failure
    */
-  def minimize(
+  override def minimize(
     f:  ObjectiveFunction,
     x0: Coordinates)(
     implicit pars: C): Try[Coordinates]
 
   /**
    * Minimize an objective function acting on a vector of real values
-   * and on a set of data points in the form (X, y)
+   * and on a set of data points in the form (X, y).
+   * This method is not implemented.
    *
    * @param f    real-valued objective function acting on a vector on
    *             real-valued coordinates and real-valued observations X
    * @param data a set of points in the form (X, y)
    * @param x0   initial coordinates
    * @param pars algorithm configuration parameters
+   * @tparam C   config parameters type
    * @return
    */
-  def minimize(
+  override def minimize(
     f: ObjFunWithData,
     data: DataSet[Xy],
     x0: Coordinates)(
-    implicit pars: C): Try[Coordinates]
-
-}
-
-/**
- * Common set of configuration parameters.
- *
- * @param tol     tolerance error for convergence
- * @param maxIter maximum number of iterations
- * @param eps     finite differences step to evaluate derivatives
- */
-class ConfigPars(
-  val tol: Double = 1.0e-5,
-  val maxIter: Int = 200,
-  val eps: Double = 1.0e-8) {
-  require(tol > 0.0, "tolerance error must be strictly positive.")
-  require(maxIter > 0, "Maximum number of iterations must be > 0.")
-  require(eps > 0.0, "epsilon must be strictly positive.")  
-}
-
-object ConfigPars {
-  import scala.reflect.ClassTag
-
-  /**
-   * Check if configuration parameters are of type T
-   * 
-   * @param c configuration parameters
-   * @return configuration parameters of type T
-   */
-  def checkConfig[T: ClassTag, C <: ConfigPars](
-      c: ConfigPars): T = c match {
-    case c: T => c
-    case _ => throw new IllegalArgumentException(
-          "Incorrect type of configuration parameters.")
+    implicit pars: C): Try[Coordinates] = {
+    Failure(throw new UnsupportedOperationException(
+      "Derivative free methods do not act directly on objective functions linked to data"))
   }
+
 }
