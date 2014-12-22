@@ -37,8 +37,8 @@ import scala.util.{Try, Success, Failure}
  * Example, find the minimum of a quadratic convex function
  * {{{
  * scala> import org.scalaopt.algos._
- * scala> import org.scalaopt.algos.derivativefree.Powell
- * scala> Powell.minimize(x => x dot x, Vector(2.0, 4.0))
+ * scala> import org.scalaopt.algos.derivativefree.Powell._
+ * scala> minimize(x => x dot x, Vector(2.0, 4.0))
  * }}}
  * 
  * @author bruneli

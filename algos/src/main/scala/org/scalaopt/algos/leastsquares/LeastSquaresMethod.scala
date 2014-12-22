@@ -60,4 +60,24 @@ abstract class LeastSquaresMethod[C <: ConfigPars] extends Optimizer[C] {
     x0: Coordinates)(
     implicit pars: C): Try[Coordinates]
 
+  /**
+   * Minimize an objective function acting on a vector of real values
+   * and on a set of data points in the form (X, y)
+   *
+   * @param f    real-valued objective function acting on a vector on
+   *             real-valued coordinates and real-valued observations X
+   * @param data a Seq of real valued points in the form (X, y)
+   * @param x0   initial coordinates
+   * @param pars algorithm configuration parameters
+   * @return
+   */
+  def minimize(
+    f: ObjFunWithData,
+    data: Seq[Xy],
+    x0: Coordinates)(
+    implicit pars: C): Try[Coordinates] = {
+    import org.scalaopt.algos.SeqDataSetConverter.SeqDataSet
+    minimize(f, SeqDataSet(data), x0)(pars)
+  }
+
 }

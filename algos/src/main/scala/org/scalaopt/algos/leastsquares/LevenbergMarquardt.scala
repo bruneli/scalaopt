@@ -20,6 +20,84 @@ import org.scalaopt.algos._
 import org.scalaopt.algos.linalg.{AugmentedRow, QR}
 import scala.util.{Try, Success, Failure}
 
+/**
+ * Least squares solution of a non-linear problem with the Levenberg-Marquardt method.
+ *
+ * The Levenberg-Marquardt method is equivalent to the Gauss-Newton method but with
+ * a trust region strategy meaning that beyond some distance delta, a gradient descent
+ * method is used instead of a Gauss-Newton algorithm. The Gauss-Newton method is a
+ * modified Newton's method with line search that simplifies via an approximation the
+ * computation of the Hessian in case of quadratic Loss function (Least squares problem).
+ * Example: find the best exponential curve passing through points
+ * {{{
+ * scala> import org.scalaopt.algos._
+ * scala> import org.scalaopt.algos.leastsquares.LevenbergMarquardt._
+ * scala> val random = new Random(12345)
+ * scala> val data = for (i <- 1 to 10) yield {
+ *      |   val x = i / 10.0
+ *      |   val y = 2.0 * Math.exp(0.5 * x) + 0.1 * random.nextGaussian()
+ *      |   (Seq(x), y)
+ *      | }
+ * scala> minimize((p: Coordinates, x: Seq[Double]) => p(0) * Math.exp(p(1) * x(0)), data, Vector(1.0, 1.0))
+ * }}}
+ *
+ * Although modified, the code implemented below has been inspired from
+ * the minpack package licensed under:
+ *
+ * Minpack Copyright Notice (1999) University of Chicago.  All rights reserved
+ *
+ * Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the
+ * following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer in the documentation and/or other materials
+ * provided with the distribution.
+ *
+ * 3. The end-user documentation included with the
+ * redistribution, if any, must include the following
+ * acknowledgment:
+ *
+ *  "This product includes software developed by the
+ *  University of Chicago, as Operator of Argonne National
+ *  Laboratory.
+ *
+ * Alternately, this acknowledgment may appear in the software
+ * itself, if and wherever such third-party acknowledgments
+ * normally appear.
+ *
+ * 4. WARRANTY DISCLAIMER. THE SOFTWARE IS SUPPLIED "AS IS"
+ * WITHOUT WARRANTY OF ANY KIND. THE COPYRIGHT HOLDER, THE
+ * UNITED STATES, THE UNITED STATES DEPARTMENT OF ENERGY, AND
+ * THEIR EMPLOYEES: (1) DISCLAIM ANY WARRANTIES, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO ANY IMPLIED WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE
+ * OR NON-INFRINGEMENT, (2) DO NOT ASSUME ANY LEGAL LIABILITY
+ * OR RESPONSIBILITY FOR THE ACCURACY, COMPLETENESS, OR
+ * USEFULNESS OF THE SOFTWARE, (3) DO NOT REPRESENT THAT USE OF
+ * THE SOFTWARE WOULD NOT INFRINGE PRIVATELY OWNED RIGHTS, (4)
+ * DO NOT WARRANT THAT THE SOFTWARE WILL FUNCTION
+ * UNINTERRUPTED, THAT IT IS ERROR-FREE OR THAT ANY ERRORS WILL
+ * BE CORRECTED.
+ *
+ * 5. LIMITATION OF LIABILITY. IN NO EVENT WILL THE COPYRIGHT
+ * HOLDER, THE UNITED STATES, THE UNITED STATES DEPARTMENT OF
+ * ENERGY, OR THEIR EMPLOYEES: BE LIABLE FOR ANY INDIRECT,
+ * INCIDENTAL, CONSEQUENTIAL, SPECIAL OR PUNITIVE DAMAGES OF
+ * ANY KIND OR NATURE, INCLUDING BUT NOT LIMITED TO LOSS OF
+ * PROFITS OR LOSS OF DATA, FOR ANY REASON WHATSOEVER, WHETHER
+ * SUCH LIABILITY IS ASSERTED ON THE BASIS OF CONTRACT, TORT
+ * (INCLUDING NEGLIGENCE OR STRICT LIABILITY), OR OTHERWISE,
+ * EVEN IF ANY OF SAID PARTIES HAS BEEN WARNED OF THE
+ * POSSIBILITY OF SUCH LOSS OR DAMAGES.
+ *
+ * @author bruneli
+ */
 object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
 
   implicit val defaultConfig: LevenbergMarquardtConfig = new LevenbergMarquardtConfig

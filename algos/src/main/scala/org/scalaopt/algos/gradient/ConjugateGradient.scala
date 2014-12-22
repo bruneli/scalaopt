@@ -30,7 +30,7 @@ import org.jblas.DoubleMatrix
  * scala> import org.scalaopt.algos._
  * scala> import org.scalaopt.algos.gradient.ConjugateGradient._
  * scala> minimize(x => x dot x, Vector(2.0, 4.0)) // Approximate derivatives
- * scala> minimize(x => x dot x, x => x * 2.0, Vector(2.0, 4.0)) // Exact derivatives
+ * scala> minimizeWithGradient(x => x dot x, x => x * 2.0, Vector(2.0, 4.0)) // Exact derivatives
  * }}}
  * 
  * @author bruneli

@@ -2,7 +2,7 @@ organization := "org.scalaopt"
 
 name := "scalaopt"
 
-lazy val root = project.in( file(".")).aggregate(algos, stdapps, sparkapps)
+lazy val root = project.in( file(".")).aggregate(algos, stdapps, sparkapps).dependsOn(algos, stdapps, sparkapps)
 
 lazy val algos = project.in( file("algos"))
 
