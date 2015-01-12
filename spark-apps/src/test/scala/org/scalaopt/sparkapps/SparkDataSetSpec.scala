@@ -50,7 +50,7 @@ class SparkDataSetSpec extends FlatSpec with Matchers with BeforeAndAfter {
     System.clearProperty("spark.driver.port")
     System.clearProperty("spark.hostPort")
 
-    sc = new SparkContext("local", "SparkDataSetSpec")
+    sc = new SparkContext("local[4]", "SparkDataSetSpec")
   }
 
   "spark data set" should "invert a matrix via QR decomposition" in {
@@ -96,7 +96,7 @@ class SparkDataSetSpec extends FlatSpec with Matchers with BeforeAndAfter {
       val y = 80.0 + x.zip(pars).map { case (x, p) => x*p }.sum + random.nextGaussian()
       AugmentedRow(1.0 +: x, y, i)
     }
-    val rdd = sc.parallelize(data)
+    val rdd = sc.parallelize(data, 4)
     val sol = QR(rdd, n + 1).solution
     sol.length shouldBe (n + 1)
   }

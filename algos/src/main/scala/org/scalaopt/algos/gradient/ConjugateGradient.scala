@@ -19,7 +19,6 @@ package org.scalaopt.algos.gradient
 import org.scalaopt.algos._
 import org.scalaopt.algos.linesearch.StrongWolfe.{StrongWolfeConfig, findStepLength}
 import scala.util.{Try, Success, Failure}
-import org.jblas.DoubleMatrix
 
 /**
  * Implements the non-linear conjugate gradient method.
@@ -102,7 +101,7 @@ object ConjugateGradient extends GradientMethod[CGConfig] {
       case _ => Math.max(0.0, (dfkpp dot (dfkpp - dfk)) / norm2dfk)
     }
   }
-    
+
 }
 
 /**

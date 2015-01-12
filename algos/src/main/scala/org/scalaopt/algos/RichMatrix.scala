@@ -16,60 +16,70 @@
 
 package org.scalaopt.algos
 
-import org.jblas.DoubleMatrix
+import org.apache.commons.math3.linear.{ArrayRealVector, RealMatrix}
 
 /**
- * Enrich org.jblas.DoubleMatrix with operators.
+ * Enrich apache math3 RealMatrix with operators.
  *
  * @param m a matrix of Double values
  *   
  * @author bruneli
  */
-class RichMatrix(m: DoubleMatrix) {
+class RichMatrix(m: RealMatrix) {
 
   /** Element-wise addition */
-  def +(that: DoubleMatrix): DoubleMatrix =
-    if (m.rows == that.rows && m.columns == that.columns)
+  def +(that: RealMatrix): RealMatrix =
+    if (m.getRowDimension == that.getRowDimension &&
+      m.getColumnDimension == that.getColumnDimension) {
       m.add(that)
-    else
+    } else {
       throw new IllegalArgumentException(
-          "Matrices should have same dimensions")
-  
+        s"${asStr("this", m)} and ${asStr("that", that)} should have same dimensions")
+    }
+
   /** Element-wise subtraction */
-  def - (that: DoubleMatrix): DoubleMatrix =
-    if (m.rows == that.rows && m.columns == that.columns)
-      m.sub(that)
-    else
+  def - (that: RealMatrix): RealMatrix =
+    if (m.getRowDimension == that.getRowDimension &&
+      m.getColumnDimension == that.getColumnDimension) {
+      m.subtract(that)
+    } else {
       throw new IllegalArgumentException(
-          "Matrices should have same dimensions")
+        s"${asStr("this", m)} and ${asStr("that", that)} should have same dimensions")
+    }
 
   /** Negative of a matrix */
-  def unary_- : DoubleMatrix = m.neg
+  def unary_- : RealMatrix = m.scalarMultiply(-1.0)
   
   /** Multiplication by a scalar */
-  def * (scalar: Double): DoubleMatrix = m.mul(scalar)
+  def * (scalar: Double): RealMatrix = m.scalarMultiply(scalar)
   
   /** Division by a scalar */
-  def / (scalar: Double): DoubleMatrix = 
-    if (scalar == 0.0)
+  def / (scalar: Double): RealMatrix = 
+    if (scalar == 0.0) {
       throw new IllegalArgumentException("scalar should be != 0.0")
-    else
-      m.div(scalar)
-  
+    } else {
+      m.scalarMultiply(1.0 / scalar)
+    }
+
   /** Matrix-matrix multiplication */
-  def * (that: DoubleMatrix): DoubleMatrix =
-    if (m.columns == that.rows)
-      m.mmul(that)
-    else
+  def * (that: RealMatrix): RealMatrix =
+    if (m.getColumnDimension == that.getRowDimension) {
+      m.multiply(that)
+    } else {
       throw new IllegalArgumentException(
-          "Number of columns of m1 != number of rows of m2")
-  
+        s"${asStr("this", m)} and ${asStr("that", that)} should have same dimensions")
+    }
+
   /** Matrix-Vector multiplication */
   def * (that: Coordinates): Coordinates =
-    if (m.columns == that.length)
-      (m.mmul(that.toMatrix)).data
-    else
+    if (m.getColumnDimension == that.length) {
+      m.operate(that.toArray)
+    } else {
       throw new IllegalArgumentException(
-          "Number of columns of m1 != number of rows of m2")
-  
+        s"Number of columms ${m.getColumnDimension} != vector dimension ${that.length}")
+    }
+
+  private def asStr(str: String, m: RealMatrix) =
+    s"$str(${m.getRowDimension}, ${m.getColumnDimension})"
+
 }

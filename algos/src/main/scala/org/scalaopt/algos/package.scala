@@ -16,7 +16,7 @@
 
 package org.scalaopt
 
-import org.jblas.DoubleMatrix
+import org.apache.commons.math3.linear.RealMatrix
 
 /**
  * Numerical Optimization Algorithms written in Scala.
@@ -50,8 +50,8 @@ package object algos {
   /** Implicit conversion of Seq[Double] to RichCoordinates */
   implicit def toRichCoordinates(v: Coordinates) = new RichCoordinates(v)
 
-  /** Implicit conversion of DoubleMatrix to RichMatrix */
-  implicit def toRichMatrix(m: DoubleMatrix) = new RichMatrix(m)
+  /** Implicit conversion of RealMatrix to RichMatrix */
+  implicit def toRichMatrix(m: RealMatrix) = new RichMatrix(m)
 
   /** Create an n-vector of coordinates filled with a constant value */
   def vector(n: Int, value: Double): Coordinates = (1 to n).map(i => value)

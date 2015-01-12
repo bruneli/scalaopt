@@ -16,6 +16,7 @@
 
 package org.scalaopt.algos
 
+import org.apache.commons.math3.linear.{Array2DRowRealMatrix, MatrixUtils}
 import org.scalatest._
 import org.scalatest.Matchers._
 
@@ -23,7 +24,6 @@ import org.scalatest.Matchers._
  * @author bruneli
  */
 class RichCoordinatesSpec extends FlatSpec with Matchers {
-  import org.jblas.DoubleMatrix
 
   "Vector(3, 2) + Vector(2, 1)" should "be Vector(5, 3)" in {
     (Vector(3.0, 2.0) + Vector(2.0, 1.0)) should be (Vector(5.0, 3.0))
@@ -64,17 +64,9 @@ class RichCoordinatesSpec extends FlatSpec with Matchers {
   "norm of Vector(3, 4)" should "be 5" in {
     (Vector(3.0, 4.0).norm) should be (5.0)
   }
-
-  "Vector(1, 2).toMatrix" should "be DoubleMatrix(Array(1, 2))" in {
-    (Vector(1.0, 2.0).toMatrix) should be (new DoubleMatrix(Array(1.0, 2.0)))
-  }
-  
-  "Vector(1, 2).t" should "be DoubleMatrix(1, 2, 1.0, 2.0)" in {
-    (Vector(1.0, 2.0).t) should be (new DoubleMatrix(1, 2, 1.0, 2.0))
-  }
   
   "Vector(1, 2) outer Vector(1, 3)" should "be ((1, 3),(2, 6))" in {
-    val m = new DoubleMatrix(2, 2, 1.0, 2.0, 3.0, 6.0)
+    val m = new Array2DRowRealMatrix(Array(Array(1.0, 3.0), Array(2.0, 6.0)))
     (Vector(1.0, 2.0) outer Vector(1.0, 3.0)) should be (m)
   }
 

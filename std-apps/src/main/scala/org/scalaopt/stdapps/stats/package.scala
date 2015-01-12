@@ -32,15 +32,15 @@ package object stats {
    *
    * @param fit     results from a least squares or maximum likelihood fit
    * @param newData new data points X
-   * @param keepX   do we return only y values or joints (X,y) points
-   * @return set of predicted y-values
+   * @return set of points (X, y) with y being estimated from fit
    */
-  def predict(fit: FitResults, newData: DataSet[Seq[Double]], keepX: Boolean = false) =
-    if (keepX) {
-      newData.map(x => (x, fit.predict(x)))
-    } else {
-      newData.map(fit.predict(_))
-    }
+  def predict(fit: FitResults, newData: DataSet[Seq[Double]]) = {
+    newData.map(x => (x, fit.predict(x)))
+  }
+
+  def predict(fit: FitResults, newData: Seq[Double]) = {
+    newData.map(x => (x, fit.predict(x)))
+  }
 
   /**
    * Fit a function with p parameters to data points (X, y) using the least squares method.
@@ -97,7 +97,8 @@ package object stats {
     pdf: ObjFunWithData,
     data: DataSet[Seq[Double]])(
     p: Coordinates): Double = {
-    data.aggregate(0.0)((sum, x) => sum - 2.0 * Math.log(pdf(p, x)), _ + _)
+    val value = data.aggregate(0.0)((sum, x) => sum - 2.0 * Math.log(pdf(p, x)), _ + _)
+    value
   }
 
 }

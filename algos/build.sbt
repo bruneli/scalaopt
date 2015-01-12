@@ -8,4 +8,4 @@ crossScalaVersions := Seq("2.11.1", "2.11.2")
 
 libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.2.1" % "test"
 
-libraryDependencies += "org.jblas" % "jblas" % "1.2.3"
+libraryDependencies += "org.apache.commons" % "commons-math3" % "3.0"

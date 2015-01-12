@@ -16,10 +16,10 @@
 
 package org.scalaopt.algos.gradient
 
+import org.apache.commons.math3.linear.{RealMatrix, MatrixUtils}
 import org.scalaopt.algos._
 import org.scalaopt.algos.linesearch.StrongWolfe.{StrongWolfeConfig, findStepLength}
 import scala.util.{Try, Success, Failure}
-import org.jblas.DoubleMatrix
 
 /**
  * Implements the quasi-Newton BFGS method.
@@ -61,15 +61,15 @@ object BFGS extends GradientMethod[BFGSConfig] {
     val n = x0.length
     
     // Identity matrix (used multiple times)
-    val identity = DoubleMatrix.eye(n)
+    val identity = MatrixUtils.createRealIdentityMatrix(n)
 
     // Update the inverse Hessian matrix by applying the BFGS formula
     def updateHessian(
-      iHk : DoubleMatrix,
+      iHk : RealMatrix,
       xk: Coordinates,
       dfk: Coordinates,
       xkpp: Coordinates,
-      dfkpp: Coordinates): DoubleMatrix = {
+      dfkpp: Coordinates): RealMatrix = {
       val sk = xkpp - xk
       val yk = df(xkpp) - dfk
       val yDots = yk dot sk
@@ -83,7 +83,7 @@ object BFGS extends GradientMethod[BFGSConfig] {
     def iterate(
       k:   Int,
       xk:  Coordinates,
-      iHk: DoubleMatrix): Try[Coordinates] = {
+      iHk: RealMatrix): Try[Coordinates] = {
       if (k >= pars.maxIter)
         Failure(throw new MaxIterException(
         		"Maximum number of iterations reached."))

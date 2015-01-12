@@ -16,7 +16,7 @@
 
 package org.scalaopt.algos
 
-import org.jblas.DoubleMatrix
+import org.apache.commons.math3.linear.{RealMatrix, MatrixUtils}
 
 /**
  * Enrich Seq[Double] with mathematical operations
@@ -69,13 +69,13 @@ class RichCoordinates(v: Coordinates) {
   def norm2: Double = this.v.map(x => x * x).sum
   
   /** Conversion to a column matrix */
-  def toMatrix: DoubleMatrix = new DoubleMatrix(v.toArray)
+  def toMatrix: RealMatrix = MatrixUtils.createColumnRealMatrix(v.toArray)
   
   /** Transpose, conversion to a row matrix */
-  def t: DoubleMatrix = this.toMatrix.transpose()
+  def t: RealMatrix = this.toMatrix.transpose()
 
   /** Outer product of two vectors */
-  def outer(that: RichCoordinates): DoubleMatrix =
+  def outer(that: RichCoordinates): RealMatrix =
     this.toMatrix * that.t
 
 }
