@@ -19,6 +19,8 @@ package org.scalaopt.stdapps.learning.nnet
 import org.scalaopt.algos._
 
 /**
+ * Defines an artificial network neuron
+ *
  * @author bruneli
  */
 case class Neuron(
