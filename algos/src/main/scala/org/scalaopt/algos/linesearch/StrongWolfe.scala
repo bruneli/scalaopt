@@ -54,7 +54,7 @@ object StrongWolfe {
     new StrongWolfeConfig
 
   /**
-   * Try to find an acceptable step length along a line 
+   * Try to find an acceptable step length along a line
    * satisfying the strong Wolfe conditions.
    *
    * @param f  scalar real-valued objective function
@@ -67,53 +67,72 @@ object StrongWolfe {
     df: Double => Double)(
     implicit pars: StrongWolfeConfig): Try[Double] = {
 
-    val f0 = f(0.0)
-    val df0 = df(0.0)
+    def fVec(x: Coordinates) = f(x(0))
+    def dfVec(x: Coordinates) = Seq(df(x(0)))
+
+    stepLength(Point(Seq(0.0), fVec, dfVec), Seq(1.0)).map(pt => pt.x(0))
+  }
+
+  /**
+   * Try to find an acceptable next point along the line defined
+   * by pk that satisfies the strong Wolfe conditions.
+   *
+   * @param ptInit initial point
+   * @param pk     line search direction
+   * @param pars   algorithm configuration parameters
+   * @return final point or a Failure
+   */
+  def stepLength(ptInit: Point, pk: Coordinates)(
+    implicit pars: StrongWolfeConfig): Try[Point] = {
+
+    val fInit = ptInit.fx
+    val dfInit = ptInit.dfx
     
-    def iterate(
-      iter: Int,
-      a0: Double, fa0: Double, dfa0: Double,
-      a1: Double): Try[Double] = {
+    def iterate(iter: Int, pt0: Point, a0: Double, a1: Double): Try[Point] = {
+      val pt1 = pt0.copy(x = ptInit.x + pk * a1)
+      val (f1, df1) = (pt1.fx, pt1.dfx dot pk)
       if (iter >= pars.line.maxIter)
         Failure(throw new MaxIterException(
         		"Maximum number of iterations reached."))
-      val fa1 = f(a1)
-      val dfa1 = df(a1)
       // Test the sufficient decrease condition.
       // If it fails, zoom within that interval
-      if ((fa1 > f0 + pars.c1 * a1 * df0) ||
-          ((iter > 0) && (fa1 > fa0)))
-        zoomStepLength(f, df, a0, a1)(pars)
+      else if ((f1 > fInit + pars.c1 * a1 * df1) ||
+          ((iter > 0) && (pt1.fx > pt0.fx)))
+        zoomStepLength(a0, pt0, a1, pt1, ptInit, pk)(pars)
       // Test the curvature condition
-      else if (Math.abs(dfa1) <= -(pars.c2) * df0) Success(a1)
+      else if (Math.abs(df1) <= -pars.c2 * (pt0.dfx dot pk)) Success(pt1)
       // Check if high value has a positive derivative.
       // If so, zoom within that interval.
-      else if (dfa1 >= 0.0) 
-        zoomStepLength(f, df, a0, a1)(pars)
+      else if (df1 >= 0.0)
+        zoomStepLength(a0, pt0, a1, pt0, ptInit, pk)(pars)
       // If none of the conditions are satisfied, try a new range
-      else iterate(iter + 1, a1, fa1, dfa1, pars.c3 * a1)
+      else iterate(iter + 1, pt1, a1, pars.c3 * a1)
     }
     
-    iterate(0, 0.0, f0, df0, 1.0)
+    iterate(0, ptInit, 0.0, 1.0)
   }
   
   /**
    * Try to find an acceptable step length within an interval
    * satisfying the strong Wolfe conditions.
    *
-   * @param f  scalar real-valued objective function
-   * @param df derivative of the scalar objective function
-   * @param a  interval lower bound
-   * @param b  interval upper bound
-   * @param pars algorithm configuration parameters
+   * @param a      interval lower bound
+   * @param pta    lower point
+   * @param b      interval upper bound
+   * @param ptb    upper point
+   * @param ptInit initial point
+   * @param pk     line search direction
+   * @param pars   algorithm configuration parameters
    * @return step length alphaStar
    */
   def zoomStepLength(
-    f:  Double => Double,
-    df: Double => Double,
     a:  Double,
-    b:  Double)(
-    implicit pars: StrongWolfeConfig): Try[Double] = {
+    pta: Point,
+    b:  Double,
+    ptb: Point,
+    ptInit: Point,
+    pk: Coordinates)(
+    implicit pars: StrongWolfeConfig): Try[Point] = {
 
     // Find minimum of a third order polynomial via 3 points
     def pol3Min(a: Double, fa: Double, dfa: Double,
@@ -157,14 +176,14 @@ object StrongWolfe {
       else a - c1 / (2.0 * c2) // x_min = a - c1 / (2 * c2)
     }
 
-    val f0 = f(0.0)
-    val df0 = df(0.0)
+    val f0 = ptInit.fx
+    val df0 = ptInit.dfx dot pk
     
     def iterate(
       iter: Int,
       a1: Double, f1: Double, df1: Double,
       a2: Double, f2: Double,
-      a3: Double, f3: Double): Try[Double] = {
+      a3: Double, f3: Double): Try[Point] = {
       if (iter >= pars.zoom.maxIter)
         Failure(throw new MaxIterException(
         		"Maximum number of iterations reached."))
@@ -189,20 +208,21 @@ object StrongWolfe {
         case _ => 0.5 * (a2 - a1)
       }
       
-      val astar  = findAlphaMin(3, 0.0)
-      val fstar  = f(astar)
-      val dfstar = df(astar)
+      val aStar  = findAlphaMin(3, 0.0)
+      val ptStar = ptInit.copy(x = ptInit.x + pk * aStar)
+      val fStar  = ptStar.fx
+      val dfStar = ptStar.dfx dot pk
       // Test strong Wolfe conditions
-      if ((fstar <= f0 + pars.c1 * astar * df0) &&
-          (Math.abs(dfstar) <= -(pars.c2) * df0)) Success(astar)
-      else if ((fstar > f0 + (pars.c1) * astar * df0) ||
-               (fstar > f1) ||
-               (dfstar * (a2 - a1) >= 0.0))
-        iterate(iter + 1, a1, f1, df1, astar, fstar, a2, f2)
+      if ((fStar <= f0 + pars.c1 * aStar * df0) &&
+          (Math.abs(dfStar) <= -(pars.c2) * df0)) Success(ptStar)
+      else if ((fStar > f0 + (pars.c1) * aStar * df0) ||
+               (fStar > f1) ||
+               (dfStar * (a2 - a1) >= 0.0))
+        iterate(iter + 1, a1, f1, df1, aStar, fStar, a2, f2)
       else
-        iterate(iter + 1, astar, fstar, dfstar, a2, f2, a1, f1)
+        iterate(iter + 1, aStar, fStar, dfStar, a2, f2, a1, f1)
     }
     
-    iterate(0, a, f(a), df(a), b, f(b), 0.0, 0.0)
+    iterate(0, a, pta.fx, pta.dfx dot pk, b, ptb.fx, 0.0, 0.0)
   }
 }

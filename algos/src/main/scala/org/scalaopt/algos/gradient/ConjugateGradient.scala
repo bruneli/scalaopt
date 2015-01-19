@@ -17,7 +17,7 @@
 package org.scalaopt.algos.gradient
 
 import org.scalaopt.algos._
-import org.scalaopt.algos.linesearch.StrongWolfe.{StrongWolfeConfig, findStepLength}
+import org.scalaopt.algos.linesearch.StrongWolfe.{StrongWolfeConfig, stepLength}
 import scala.util.{Try, Success, Failure}
 
 /**
@@ -59,7 +59,7 @@ object ConjugateGradient extends GradientMethod[CGConfig] {
     // Iterate until the gradient is lower than tol
     def iterate(
       k:  Int,
-      xk: Coordinates,
+      ptk: Point,
       pk: Coordinates): Try[Coordinates] = {
       if (k >= pars.maxIter)
         Failure(throw new MaxIterException(
@@ -67,27 +67,25 @@ object ConjugateGradient extends GradientMethod[CGConfig] {
       
       // Try to find an approximate step length satisfying the strong
       // Wolfe conditions
-      def fLine(s: Double)  = f(xk + pk * s)
-      def dfLine(s: Double) = df(xk + pk * s) dot pk
-      findStepLength(fLine, dfLine)(pars.strongWolfe) match {
-        case Success(ak) => {
+      stepLength(ptk, pk)(pars.strongWolfe) match {
+        case Success(ptkpp) => {
           // Gradient evaluated in xk
-          val dfk = df(xk)
+          val dfk = ptk.dfx
 
           // Coordinates, gradient and search direction at step k+1
-          val xkpp = xk + pk * ak
-          val dfkpp = df(xkpp)
+          val xkpp = ptkpp.x
+          val dfkpp = ptkpp.dfx
           val pkpp = -dfkpp + pk * beta(dfk, dfkpp, pars.method)
 
           // Check stopping rule, if not satisfied iterate
           if (dfkpp.norm < pars.tol) Success(xkpp)
-          else iterate(k + 1, xkpp, pkpp)
+          else iterate(k + 1, ptkpp, pkpp)
         }
         case Failure(e) => Failure(e)
       }
     }
     
-    iterate(0, x0, -df(x0))
+    iterate(0, Point(x0, f, df), -df(x0))
   }
 
   def beta(

@@ -16,8 +16,8 @@
 
 package org.scalaopt.algos.linesearch
 
-import org.scalaopt.algos.MaxIterException
-import scala.util.{Try, Success, Failure}
+import org.scalaopt.algos._
+import scala.util.{Success, Failure}
 import org.scalatest._
 import org.scalatest.Matchers._
 
@@ -25,36 +25,54 @@ class StrongWolfeSpec extends FlatSpec with Matchers {
   import StrongWolfe._
 
   "zoomStepLength" should "converge to minimum of 2d order polynomial" in {
-    val tol: Double = 1.0e-9
-    val x0: Double = 0.3
-    def f(x: Double) = (x - x0) * (x - x0)
-    def df(x: Double) = 2.0 * (x - x0)
-    zoomStepLength(f, df, 0.0, 1.0) match {
-      case Success(xmin) => {
-        math.abs(xmin - x0) should be < tol
-        f(xmin) should be < f(x0 + tol)
+    val tol = Seq(1.0e-9)
+    val x0 = Seq(0.3)
+    val pk = Seq(1.0)
+    def f(x: Coordinates) = (x - x0) dot (x - x0)
+    def df(x: Coordinates) = (x - x0) * 2.0
+    val pt0 = Point(Seq(0.0), f, df)
+    val pt1 = pt0.copy(x = Seq(1.0))
+    zoomStepLength(0.0, pt0, 1.0, pt1, pt0, pk) match {
+      case Success(ptmin) => {
+        (ptmin.x - x0).norm should be < tol.norm
+        ptmin.fx should be < f(x0 + tol)
       }
       case Failure(e) => assert(false)
     }
   }
 
   it should "converge to minimum of 3rd order polynomial" in {
-    val tol: Double = 1.0e-9
-    val x0: Double = 0.5
-    def f(x: Double) = (x - x0) * (x - x0) + (x - x0) * (x - x0) * (x - x0)
-    def df(x: Double) = 2.0 * (x - x0) + 3.0 * (x - x0) * (x - x0)
-    zoomStepLength(f, df, 0.0, 1.0) match {
-      case Success(xmin) => {
-        math.abs(xmin - x0) should be < tol
-        f(xmin) should be < f(x0 + tol)
+    val tol = Seq(1.0e-9)
+    val x0 = Seq(0.5)
+    val pk = Seq(1.0)
+    def f(x: Coordinates) = {
+      val dx = (x - x0).norm
+      dx * dx + Math.pow(dx, 3.0)
+    }
+    def df(x: Coordinates) = {
+      val dx = (x - x0).norm
+      (x - x0) * 2.0 + pk * (3.0 * dx * dx)
+    }
+    val pt0 = Point(Seq(0.0), f, df)
+    val pt1 = pt0.copy(x = Seq(1.0))
+    zoomStepLength(0.0, pt0, 1.0, pt1, pt0, pk) match {
+      case Success(ptmin) => {
+        (ptmin.x - x0).norm should be < tol.norm
+        ptmin.fx should be < f(x0 + tol)
       }
       case Failure(e) => assert(false)
     }
   }
   
   it should "throw a MaxIterException if failing to converge" in {
+    val x0 = Seq(0.3)
+    val pk = Seq(1.0)
+    def f(x: Coordinates) = (x - x0).norm
+    def df(x: Coordinates) = pk
+    val pt0 = Point(Seq(0.0), f, df)
+    val pt1 = pt0.copy(x = Seq(1.0))
     a [MaxIterException] should be thrownBy {
-      zoomStepLength(x => x, x => 1.0, 0.0, 1.0)
+      zoomStepLength(0.0, pt0, 1.0, pt1, pt0, pk)
     }
   }
 }

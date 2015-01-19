@@ -18,7 +18,7 @@ package org.scalaopt.algos.gradient
 
 import org.apache.commons.math3.linear.{RealMatrix, MatrixUtils}
 import org.scalaopt.algos._
-import org.scalaopt.algos.linesearch.StrongWolfe.{StrongWolfeConfig, findStepLength}
+import org.scalaopt.algos.linesearch.StrongWolfe.{StrongWolfeConfig, stepLength}
 import scala.util.{Try, Success, Failure}
 
 /**
@@ -82,31 +82,26 @@ object BFGS extends GradientMethod[BFGSConfig] {
     // Iterate until the gradient is lower than tol
     def iterate(
       k:   Int,
-      xk:  Coordinates,
+      ptk: Point,
       iHk: RealMatrix): Try[Coordinates] = {
       if (k >= pars.maxIter)
         Failure(throw new MaxIterException(
         		"Maximum number of iterations reached."))
-      
-      // Gradient evaluated in xk
-      val dfk = df(xk)
 
       // Quasi-Newton search direction
-      val pk = iHk * dfk * -1.0
+      val pk = iHk * ptk.dfx * -1.0
 
       // Try to get an approximate step length satisfying the strong
       // Wolfe conditions
-      def fLine(s: Double)  = f(xk + pk * s)
-      def dfLine(s: Double) = df(xk + pk * s) dot pk
-      findStepLength(fLine, dfLine)(pars.strongWolfe) match {
-        case Success(ak) => {
+      stepLength(ptk, pk)(pars.strongWolfe) match {
+        case Success(ptkpp) => {
           // Evaluate new coordinates and gradient at step k+1
-          val xkpp = xk + pk * ak
-          val dfkpp = df(xkpp)
+          val xkpp = ptkpp.x
+          val dfkpp = ptkpp.dfx
           if (dfkpp.norm < pars.tol) {
             Success(xkpp)
           } else { 
-            iterate(k + 1, xkpp, updateHessian(iHk, xk, dfk, xkpp, dfkpp))
+            iterate(k + 1, ptkpp, updateHessian(iHk, ptk.x, ptk.dfx, xkpp, dfkpp))
           }
         }
         case Failure(e) => Failure(e)
@@ -114,7 +109,7 @@ object BFGS extends GradientMethod[BFGSConfig] {
     }
     
     // Initialize the inverse Hessian with an identity matrix
-    iterate(0, x0, identity)
+    iterate(0, Point(x0, f, df), identity)
   }
 }
 
