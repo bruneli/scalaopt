@@ -17,6 +17,7 @@
 package org.scalaopt.stdapps.learning.nnet
 
 import org.scalaopt.algos._
+import org.scalaopt.stdapps.learning.nnet.activation._
 
 /**
  * Feed-forward neural network.
@@ -27,11 +28,68 @@ import org.scalaopt.algos._
  *
  * @author bruneli
  */
-class FeedforwardNeuralNetwork(layers: Vector[Int], decay: Double, rang: Double) {
+class FeedforwardNeuralNetwork(
+  layers: Vector[Int],
+  decay: Double,
+  rang: Double,
+  innerFunction: ActivationFunction = LogisticFunction,
+  outputFunction: ActivationFunction = LinearFunction) {
+
+  require(layers.size > 0, "Neural network must have a least one layer.")
+
+  private var network = initialNetwork
 
   def loss(weights: Coordinates): Double = 1.0
 
   def gradient(weights: Coordinates): Coordinates = Seq()
 
-  private case class Network(neurons: List[List[Neuron]])
+  private def initialNetwork: Network = Network(Vector.empty[List[Neuron]])
+
+  private case class Network(layers: Vector[List[Neuron]]) {
+
+    def forward(inputs: List[Double]): Network = {
+      val activatedLayers = layers
+        .zipWithIndex
+        .tail
+        .scanLeft(activateLayer(layers.head, inputs, layers.size == 1)) {
+        case (previousLayer, currentLayerWithIndex) => {
+          val (currentLayer, index) = currentLayerWithIndex
+          val currentLayerInputs = previousLayer.map(_.output)
+          activateLayer(currentLayer, currentLayerInputs, index == layers.size - 1)
+        }
+      }
+      Network(activatedLayers)
+    }
+
+    def backward(targets: List[Double]): Network = {
+      val errorPropagatedLayers = layers
+        .init
+        .scanRight(propagateErrorsOuterLayer(layers.last, targets))(
+          propagateErrorsInnerLayer)
+      Network(errorPropagatedLayers)
+    }
+
+    private def activateLayer(
+      neurons: List[Neuron],
+      inputs: List[Double],
+      isOutputLayer: Boolean): List[Neuron] = {
+      val activationFunction = if (isOutputLayer) outputFunction else innerFunction
+      neurons.map(_.activate(inputs, activationFunction))
+    }
+
+    private def propagateErrorsOuterLayer(
+      neurons: List[Neuron],
+      targets: List[Double]): List[Neuron] = {
+      neurons.zip(targets).map {
+        case (neuron, target) => neuron.propagateError(target, outputFunction)
+      }
+    }
+
+    private def propagateErrorsInnerLayer(
+      neurons: List[Neuron],
+      nextLayer: List[Neuron]): List[Neuron] = {
+      neurons.map(_.propagateError(nextLayer, innerFunction))
+    }
+
+  }
 }

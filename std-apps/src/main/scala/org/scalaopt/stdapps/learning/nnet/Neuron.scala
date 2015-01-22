@@ -17,6 +17,7 @@
 package org.scalaopt.stdapps.learning.nnet
 
 import org.scalaopt.algos._
+import org.scalaopt.stdapps.learning.nnet.activation.ActivationFunction
 
 /**
  * Defines an artificial network neuron
@@ -32,7 +33,7 @@ case class Neuron(
   output: Double = Double.NaN,
   error: Double = Double.NaN) {
 
-  def activate(inputs: List[Double], activationFunction: Double => Double): Neuron = {
+  def activate(inputs: List[Double], activationFunction: ActivationFunction): Neuron = {
     val excitation =
       if (weights.size == inputs.size + 1) {
         weights.head + (inputs dot weights.tail)
@@ -43,17 +44,17 @@ case class Neuron(
     this.copy(inputs = inputs, excitation = excitation, output = activationFunction(excitation))
   }
 
-  def propagateError(target: Double): Neuron = {
-    val activationFunctionDerivative = 1.0 //output * (1 - output)
-    val lossDerivative = (target - output)
-    val error = lossDerivative * activationFunctionDerivative
+  def propagateError(target: Double, activationFunction: ActivationFunction): Neuron = {
+    val activationDerivative = activationFunction.derivative(output)
+    val lossDerivative = target - output
+    val error = lossDerivative * activationDerivative
     this.copy(error = error)
   }
 
-  def propagateError(neurons: List[Neuron]): Neuron = {
-    val activationFunctionDerivative = output * (1 - output)
+  def propagateError(neurons: List[Neuron], activationFunction: ActivationFunction): Neuron = {
+    val activationDerivative = activationFunction.derivative(output)
     val lossDerivative = neurons map (neuron => neuron.error * neuron.weights(index)) sum
-    val error = lossDerivative * activationFunctionDerivative
+    val error = lossDerivative * activationDerivative
     this.copy(error = error)
   }
 
