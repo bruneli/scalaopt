@@ -38,7 +38,7 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object BFGS extends GradientMethod[BFGSConfig] {
+object BFGS extends Optimizer[BFGSConfig] {
 
   implicit val defaultConfig: BFGSConfig = new BFGSConfig
 
@@ -46,16 +46,14 @@ object BFGS extends GradientMethod[BFGSConfig] {
    * Minimize an objective function acting on a vector of real values.
    * 
    * @param f    real-valued objective function
-   * @param df   gradient of the real-valued objective function
-   * @param x0   initial coordinates
+   * @param x0   initial Variables
    * @param pars algorithm configuration parameters
-   * @return coordinates at a local minimum
+   * @return Variables at a local minimum
    */
-  override def minimizeWithGradient(
-    f:  ObjectiveFunction,
-    df: Coordinates => Coordinates,
-    x0: Coordinates)(
-    implicit pars: BFGSConfig): Try[Coordinates] = {
+  def minimize[T <: ObjectiveFunction](
+    f:  T,
+    x0: Variables)(
+    implicit pars: BFGSConfig): Try[Variables] = {
 
     // Number of dimensions
     val n = x0.length
@@ -66,12 +64,12 @@ object BFGS extends GradientMethod[BFGSConfig] {
     // Update the inverse Hessian matrix by applying the BFGS formula
     def updateHessian(
       iHk : RealMatrix,
-      xk: Coordinates,
-      dfk: Coordinates,
-      xkpp: Coordinates,
-      dfkpp: Coordinates): RealMatrix = {
+      xk: Variables,
+      dfk: Variables,
+      xkpp: Variables,
+      dfkpp: Variables): RealMatrix = {
       val sk = xkpp - xk
-      val yk = df(xkpp) - dfk
+      val yk = f.gradient(xkpp) - dfk
       val yDots = yk dot sk
       val rhok = if (yDots != 0.0) 1.0 / yDots else 1000.0
       val m1 = identity - (sk outer yk * rhok)
@@ -82,26 +80,26 @@ object BFGS extends GradientMethod[BFGSConfig] {
     // Iterate until the gradient is lower than tol
     def iterate(
       k:   Int,
-      ptk: Point,
-      iHk: RealMatrix): Try[Coordinates] = {
+      ptk: LineSearchPoint,
+      iHk: RealMatrix): Try[Variables] = {
       if (k >= pars.maxIter)
         Failure(throw new MaxIterException(
         		"Maximum number of iterations reached."))
 
       // Quasi-Newton search direction
-      val pk = iHk * ptk.dfx * -1.0
+      val pk = iHk * ptk.grad * -1.0
 
       // Try to get an approximate step length satisfying the strong
       // Wolfe conditions
       stepLength(ptk, pk)(pars.strongWolfe) match {
         case Success(ptkpp) => {
-          // Evaluate new coordinates and gradient at step k+1
+          // Evaluate new Variables and gradient at step k+1
           val xkpp = ptkpp.x
-          val dfkpp = ptkpp.dfx
+          val dfkpp = ptkpp.grad
           if (dfkpp.norm < pars.tol) {
             Success(xkpp)
           } else { 
-            iterate(k + 1, ptkpp, updateHessian(iHk, ptk.x, ptk.dfx, xkpp, dfkpp))
+            iterate(k + 1, ptkpp, updateHessian(iHk, ptk.x, ptk.grad, xkpp, dfkpp))
           }
         }
         case Failure(e) => Failure(e)
@@ -109,7 +107,7 @@ object BFGS extends GradientMethod[BFGSConfig] {
     }
     
     // Initialize the inverse Hessian with an identity matrix
-    iterate(0, Point(x0, f, df), identity)
+    iterate(0, LineSearchPoint(x0, f), identity)
   }
 }
 

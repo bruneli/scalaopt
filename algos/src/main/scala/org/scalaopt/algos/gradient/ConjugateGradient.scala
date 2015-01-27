@@ -59,7 +59,7 @@ object ConjugateGradient extends GradientMethod[CGConfig] {
     // Iterate until the gradient is lower than tol
     def iterate(
       k:  Int,
-      ptk: Point,
+      ptk: LineSearchPoint,
       pk: Coordinates): Try[Coordinates] = {
       if (k >= pars.maxIter)
         Failure(throw new MaxIterException(
@@ -85,7 +85,7 @@ object ConjugateGradient extends GradientMethod[CGConfig] {
       }
     }
     
-    iterate(0, Point(x0, f, df), -df(x0))
+    iterate(0, LineSearchPoint(x0, f, df), -df(x0))
   }
 
   def beta(

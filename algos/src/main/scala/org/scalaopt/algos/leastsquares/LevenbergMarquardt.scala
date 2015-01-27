@@ -17,8 +17,8 @@
 package org.scalaopt.algos.leastsquares
 
 import org.scalaopt.algos._
-import org.scalaopt.algos.linalg.{AugmentedRow, QR}
-import scala.util.{Try, Success, Failure}
+import org.scalaopt.algos.linalg.QR
+import scala.util.{Try, Success}
 
 /**
  * Least squares solution of a non-linear problem with the Levenberg-Marquardt method.
@@ -38,7 +38,7 @@ import scala.util.{Try, Success, Failure}
  *      |   val y = 2.0 * Math.exp(0.5 * x) + 0.1 * random.nextGaussian()
  *      |   (Seq(x), y)
  *      | }
- * scala> minimize((p: Coordinates, x: Seq[Double]) => p(0) * Math.exp(p(1) * x(0)), data, Vector(1.0, 1.0))
+ * scala> minimize((p: Variables, x: Seq[Double]) => p(0) * Math.exp(p(1) * x(0)), data, Vector(1.0, 1.0))
  * }}}
  *
  * Although modified, the code implemented below has been inspired from
@@ -98,36 +98,24 @@ import scala.util.{Try, Success, Failure}
  *
  * @author bruneli
  */
-object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
+object LevenbergMarquardt extends Optimizer[LevenbergMarquardtConfig] {
 
   implicit val defaultConfig: LevenbergMarquardtConfig = new LevenbergMarquardtConfig
 
-  /**
-   * Minimize an objective function acting on a vector of real values
-   * and on a set of data points in the form (X, y)
-   *
-   * @param f    real-valued objective function acting on a vector on
-   *             real-valued coordinates and real-valued observations X
-   * @param data a set of points in the form (X, y)
-   * @param x0   initial coordinates
-   * @param pars algorithm configuration parameters
-   * @return
-   */
-  override def minimize(
-    f: ObjFunWithData,
-    data: DataSet[Xy],
-    x0: Coordinates)(
-    implicit pars: LevenbergMarquardtConfig): Try[Coordinates] = {
+  def minimize[T <: MSEFunction](
+    f: T,
+    x0: Variables)(
+    implicit pars: LevenbergMarquardtConfig): Try[Variables] = {
 
     val n = x0.length
-    
+
     def iterate(
         outer: Int, 
-        x0: Coordinates,
-        diag0: Coordinates,
+        x0: Variables,
+        diag0: Variables,
         xNorm0: Double,
-        delta0: Double): Coordinates = {
-      val qr = QR(jacobianMatrix(x0, f, data, pars.eps), x0.length, pars.usePivoting)
+        delta0: Double): Variables = {
+      val qr = QR(f.jacobianAndResidualsMatrix(x0), x0.length, pars.usePivoting)
       val fNorm0 = qr.bNorm
       val (diag, xNorm, delta1) =
         updateDiagNormDelta(outer, x0, diag0, xNorm0, delta0, qr, pars.stepBound)
@@ -157,24 +145,20 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
 
     def innerLoop(
       inner: Int,
-      x0: Coordinates,
+      x0: Variables,
       qr: QR,
-      diag: Coordinates,
+      diag: Variables,
       delta0: Double,
       par0: Double,
-      fNorm0: Double): (Coordinates, Double, Double, Boolean) = {
+      fNorm0: Double): (Variables, Double, Double, Boolean) = {
       val (par, pk, xDiag) = lmPar(qr, diag, delta0, par0, pars.maxStepLengthIter)
       val xDiagNorm = xDiag.norm
       val x = x0 - pk
       val xNorm = x.norm
-      def residualSquareSum(rss: Double, xy: Xy) = {
-        val r = residual(x, xy, f)
-        rss + r * r
-      }
-      val fNorm = Math.sqrt(data.aggregate(0.0)(residualSquareSum, _ + _))
-      
+      val fNorm = Math.sqrt(f(x))
+
       // Scaled predicted reduction and scaled directional derivative
-      def multiply(predicted0: Coordinates, j: Int): Coordinates = {
+      def multiply(predicted0: Variables, j: Int): Variables = {
         if (j == predicted0.length) {
           predicted0
         } else {
@@ -235,61 +219,10 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
     Success(iterate(0, x0, Vector(), 0.0, 0.0))
   }
   
-  /**
-   * Compute the residual r = f(p, x) - y
-   *
-   * @param p  coordinates
-   * @param xy vector of double X and expected result y
-   * @param f  objective function
-   * @return residual
-   */
-  def residual(
-    p: Coordinates,
-    xy: Xy,
-    f: ObjFunWithData): Double = {
-    val (x, y) = xy
-    f(p, x) - y
-  }
-
-  /**
-   * Evaluate the jacobian & residual of f in p0 for each data
-   *
-   * @param p0   coordinates wrt which derivatives are computed
-   * @param f    objective function
-   * @param data a list of points (X, y)
-   * @return the jacobian & residual of f in p0
-   */
-  def jacobianMatrix(
-    p0: Coordinates,
-    f: ObjFunWithData,
-    data: DataSet[Xy],
-    eps: Double): DataSet[AugmentedRow] = {
-    val n = p0.length
-
-    // For each data row:
-    //  - compute the residual f(p0, x) - y
-    //  - compute the jacobian via finite difference.
-    data.zipWithIndex map {
-      case (xy, i) => {
-        val r0 = residual(p0, xy, f)
-        val jacobian =
-          for (j <- 0 until p0.length) yield {
-            // Shift coordinate of jth-column by eps
-            val p = p0.updated(j, p0(j) + eps)
-            val r = residual(p, xy, f)
-            (r - r0) / eps
-          }
-        // Keep only track of indices for the first n rows
-        val rowIndex = Math.min(i, n)
-        AugmentedRow(jacobian, r0, rowIndex)
-      }
-    }
-  }
-  
   private def updateDiagNormDelta(
       iteration: Int, 
-      x: Coordinates, 
-      diag0: Coordinates, 
+      x: Variables, 
+      diag0: Variables, 
       xNorm0: Double,
       delta0: Double,
       qr: QR,
@@ -309,14 +242,14 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
   // Determine the Levenberg-Marquardt parameter
   def lmPar(
       qr: QR,
-      diag: Coordinates, 
+      diag: Variables, 
       delta: Double,
       par0: Double,
-      maxStepLengthIter: Int): (Double, Coordinates, Coordinates) = {
+      maxStepLengthIter: Int): (Double, Variables, Variables) = {
     val n = diag.length
     val p1 = 0.1
     
-    def gaussNewtonDirection(qtb0: Coordinates) = {
+    def gaussNewtonDirection(qtb0: Variables) = {
       // Take QtB values till first null R diagonal element
       val firstIdxZero = qr.rDiag.indexWhere(_ == 0.0)
       val nsing = if (firstIdxZero == -1) qr.rDiag.length - 1 else firstIdxZero - 1
@@ -324,7 +257,7 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
         case (value, col) => if (col <= nsing) value else 0.0
       }
       
-      def qtbMinusR(x: Coordinates, j: Int): Coordinates =
+      def qtbMinusR(x: Variables, j: Int): Variables =
         if (j == -1 || x(j) == 0.0) {
           x
         } else {
@@ -353,7 +286,7 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
             val j = qr.ipvt(i)
             diag(j) * xdi(j) / dxNorm
           }
-          def mul(aux: Coordinates, j: Int): Seq[Double] = {
+          def mul(aux: Variables, j: Int): Seq[Double] = {
             if (j == n) {
               aux
             } else {
@@ -378,7 +311,7 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
           iter: Int, 
           par0: (Double, Double, Double), 
           fp0: Double,
-          maxStepLengthIter: Int): (Double, Coordinates, Coordinates) = {
+          maxStepLengthIter: Int): (Double, Variables, Variables) = {
         val aux = diag * Math.sqrt(par0._2)
         val (x, sDiag) = qrSolve(qr, diag)
         val xDiag = x.zip(sDiag).map { case (x, diag) => x * diag }
@@ -392,7 +325,7 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
           val aux0 = for (i <- 0 until n) yield {
             diag(qr.ipvt(i)) * xDiag(qr.ipvt(i)) / dxNorm
           }
-          def multiply(j: Int, aux: Coordinates): Coordinates =
+          def multiply(j: Int, aux: Variables): Variables =
             if (j == n) {
               aux
             } else {
@@ -449,11 +382,11 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
    */  
   def qrSolve(
       qr: QR,
-      diag: Coordinates): (Coordinates, Coordinates) = {
+      diag: Variables): (Variables, Variables) = {
     val n = diag.length
     
     def diagonalElimination(
-        previous: (IndexedSeq[Coordinates], Coordinates, Coordinates),
+        previous: (IndexedSeq[Variables], Variables, Variables),
         j: Int) = {
       val (s0, sDiag0, qtb0) = previous
       val jpvt = qr.ipvt(j)
@@ -470,8 +403,8 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
     }
     
     def rotation(
-        previous: (Coordinates, Coordinates, Coordinates, Double), 
-        k: Int): (Coordinates, Coordinates, Coordinates, Double) = {
+        previous: (Variables, Variables, Variables, Double), 
+        k: Int): (Variables, Variables, Variables, Double) = {
       val (sk0, sDiag0, qtb0, qtbpj0) = previous
       if (sDiag0(k) == 0.0) {
         previous
@@ -501,7 +434,7 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
     // Eliminate the row of p^T*d*p*z = 0 with rotations
     // While doing it, update accordingly the matrix R and vector QtB
     // Resulting version of R is stored in S and QtB
-    val s0: IndexedSeq[Coordinates] = for (j <- 0 until n) yield qr.R(j)
+    val s0: IndexedSeq[Variables] = for (j <- 0 until n) yield qr.R(j)
     val (s, sDiag, qtb) =
       (0 until n).foldLeft((s0, zeros(n), qr.qtb))(diagonalElimination)
 
@@ -512,7 +445,7 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
     val qtbSingular = qtb.zipWithIndex.map { 
       case (value, col) => if (col <= nsing) value else 0.0
     }
-    def solve(x0: Coordinates, j: Int): Coordinates = {
+    def solve(x0: Variables, j: Int): Variables = {
       if (j < 0) {
         x0
       } else {
@@ -526,7 +459,7 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] {
     (qr.permute(xUnpivoted), sDiag)
   }
 
-  def eNorm(v: Coordinates) = Math.sqrt(v map (x => x * x) sum)
+  def eNorm(v: Variables) = Math.sqrt(v map (x => x * x) sum)
 
 }
 

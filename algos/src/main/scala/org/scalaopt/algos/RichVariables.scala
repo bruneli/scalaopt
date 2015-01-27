@@ -22,36 +22,36 @@ import org.apache.commons.math3.linear.{RealMatrix, MatrixUtils}
  * Enrich Seq[Double] with mathematical operations
  * on vectors in the Euclidean space.
  * 
- * @param v a sequence of Double values treated as coordinates
+ * @param v a sequence of Double values treated as Variables
  * 
  * @author bruneli
  */
-class RichCoordinates(v: Coordinates) {
+class RichVariables(v: Variables) {
 
   /** Element wise addition */
-  def + (that: Coordinates): Coordinates =
+  def + (that: Variables): Variables =
     this.v.zip(that).map { case (x, y) => x + y }
   
   /** Element wise subtraction */
-  def - (that: Coordinates): Coordinates =
+  def - (that: Variables): Variables =
     this.v.zip(that).map { case (x, y) => x - y }
 
   /** Negative of a vector */
-  def unary_- : Coordinates = this.v.map(-1.0 * _)
+  def unary_- : Variables = this.v.map(-1.0 * _)
   
   /** Multiplication by scalar */
-  def * (scalar: Double): Coordinates =
+  def * (scalar: Double): Variables =
     this.v.map(_ * scalar)
   
   /** Division by scalar */
-  def / (scalar: Double): Coordinates =
+  def / (scalar: Double): Variables =
     if (scalar == 0.0)
       throw new IllegalArgumentException("scalar should be != 0.0")
     else
       this.v.map(_ / scalar)
   
   /** Inner product of two vectors */
-  def inner(that: Coordinates): Double =
+  def inner(that: Variables): Double =
     if (that.length == this.v.length) {
       this.v.zip(that).foldLeft(0.0) { case (r, c) => r + c._1 * c._2 }
     } else {
@@ -60,7 +60,7 @@ class RichCoordinates(v: Coordinates) {
     }
       
   /** Dot product of two vectors */
-  def dot(that: Coordinates): Double = this inner that
+  def dot(that: Variables): Double = this inner that
 
   /** L2 norm */
   def norm: Double = math.sqrt(norm2)
@@ -75,7 +75,7 @@ class RichCoordinates(v: Coordinates) {
   def t: RealMatrix = this.toMatrix.transpose()
 
   /** Outer product of two vectors */
-  def outer(that: RichCoordinates): RealMatrix =
+  def outer(that: RichVariables): RealMatrix =
     this.toMatrix * that.t
 
 }

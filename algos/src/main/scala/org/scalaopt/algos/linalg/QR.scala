@@ -33,11 +33,11 @@ import org.scalaopt.algos._
  * @author bruneli
  */
 class QR(
-    r: Seq[Coordinates],
-    val rDiag: Coordinates,
-    val qtb: Coordinates, 
+    r: Seq[Variables],
+    val rDiag: Variables,
+    val qtb: Variables, 
     val ipvt: Vector[Int],
-    val acNorms: Coordinates,
+    val acNorms: Variables,
     val bNorm: Double) {
   
   /** Number of columns or rows in R */
@@ -72,7 +72,7 @@ class QR(
    * @param j column index
    * @return an n-vector with content of column j
    */
-  def R(j: Int): Coordinates =
+  def R(j: Int): Variables =
     if (j < 0 || j >= n) {
       throw new IllegalArgumentException(s"Column $j is out of (0, $n) bounds")
     } else {
@@ -92,13 +92,13 @@ class QR(
    * Return the solution of the linear equation system
    * decomposed to R and QtB.
    */
-  lazy val solution: Coordinates = {
+  lazy val solution: Variables = {
     val firstIdxZero = rDiag.indexWhere(_ == 0.0)
     val nsing = if (firstIdxZero == -1) n - 1 else firstIdxZero
     val qtbSingular = qtb.zipWithIndex.map { 
       case (value, col) => if (col <= nsing) value else 0.0
     }
-    def solve(x0: Coordinates, j: Int): Coordinates = {
+    def solve(x0: Variables, j: Int): Variables = {
       if (j < 0) {
         x0
       } else {
@@ -114,7 +114,7 @@ class QR(
   /**
    * Permute the solution of a linear system back to its initial order
    */
-  def permute(xUnpivoted: Coordinates): Coordinates = {
+  def permute(xUnpivoted: Variables): Variables = {
     var x = new Array[Double](n)
     for (j <- 0 until n) x(ipvt(j)) = xUnpivoted(j)
     x.toSeq    
@@ -123,7 +123,7 @@ class QR(
   /**
    * Permute the solution of a linear system to its QR system
    */
-  def unpermute(x: Coordinates) = for (j <- 0 until n) x(ipvt(j))
+  def unpermute(x: Variables) = for (j <- 0 until n) x(ipvt(j))
   
 }
 
@@ -169,7 +169,7 @@ object QR {
    * @param n  the number of columns
    * @return the solution of the linear system in a least squares sense
    */
-  def solve(ab: DataSet[AugmentedRow], n: Int): Coordinates = {
+  def solve(ab: DataSet[AugmentedRow], n: Int): Variables = {
     val qr = QR(ab, n)
     qr.solution
   }
@@ -235,7 +235,7 @@ object QR {
       }
 
     // Update the diagonal index of R for a given column
-    def rDiagUpdate(ajUpdatedRow: Coordinates)(
+    def rDiagUpdate(ajUpdatedRow: Variables)(
         rk: (Double, Int)): Double = {
       val (r, k) = rk
       if (k > j) {
@@ -270,8 +270,8 @@ object QR {
    * @return an updated sum including row information
    */
   private def columnsNorm(
-      sum: Coordinates, 
-      row: AugmentedRow): Coordinates = {
+      sum: Variables, 
+      row: AugmentedRow): Variables = {
     sum + ((row.a map (x => x * x)) :+ row.b * row.b)
   }
 
@@ -337,7 +337,7 @@ object QR {
    * @param ipvt  pivot matrix
    */
   private case class QRObject(
-    rDiag: Coordinates,
+    rDiag: Variables,
     ab: DataSet[AugmentedRow],
     ipvt: Vector[Int])
 

@@ -71,7 +71,7 @@ class RichMatrix(m: RealMatrix) {
     }
 
   /** Matrix-Vector multiplication */
-  def * (that: Coordinates): Coordinates =
+  def * (that: Variables): Variables =
     if (m.getColumnDimension == that.length) {
       m.operate(that.toArray)
     } else {

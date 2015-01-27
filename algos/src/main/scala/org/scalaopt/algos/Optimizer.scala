@@ -16,8 +16,6 @@
 
 package org.scalaopt.algos
 
-import org.scalaopt.algos._
-
 import scala.util.Try
 
 /**
@@ -34,31 +32,15 @@ trait Optimizer[C <: ConfigPars] {
    * Minimize an objective function acting on a vector of real values.
    *
    * @param f    real-valued objective function
-   * @param x0   initial coordinates
+   * @param x0   initial Variables
    * @param pars algorithm configuration parameters
-   * @return coordinates at a local minimum or failure
+   * @tparam T   objective function type
+   * @return Variables at a local minimum or failure
    */
-  def minimize(
-    f:  ObjectiveFunction,
-    x0: Coordinates)(
-    implicit pars: C): Try[Coordinates]
-
-  /**
-   * Minimize an objective function acting on a vector of real values
-   * and on a set of data points in the form (X, y)
-   *
-   * @param f    real-valued objective function acting on a vector on
-   *             real-valued coordinates and real-valued observations X
-   * @param data a set of points in the form (X, y)
-   * @param x0   initial coordinates
-   * @param pars algorithm configuration parameters
-   * @return
-   */
-  def minimize(
-    f: ObjFunWithData,
-    data: DataSet[Xy],
-    x0: Coordinates)(
-    implicit pars: C): Try[Coordinates]
+  def minimize[T <: ObjectiveFunction](
+    f:  T,
+    x0: Variables)(
+    implicit pars: C): Try[Variables]
 
 }
 

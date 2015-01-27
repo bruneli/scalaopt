@@ -17,20 +17,31 @@
 package org.scalaopt.algos
 
 /**
- * Define a point with coordinates and an associated derivable function.
+ * Data point representation
  *
- * @param x  coordinates of the point
- * @param f  real-valued function acting on coordinates
- * @param df gradient of f
+ * @param x independent variables X
+ * @param y dependent variables Y
+ */
+case class DataPoint(x: Variables, y: Variables)
+
+/**
+ * Define a point with a direction used in searches along a line.
+ *
+ * @param x coordinates of the point
+ * @param f real-valued function acting on coordinates
+ * @param d line search direction
  *
  * @author bruneli
  */
-case class Point(x: Coordinates, f: ObjectiveFunction, df: Coordinates => Coordinates) {
+case class LineSearchPoint(x: Variables, f: ObjectiveFunction, d: Variables) {
 
   /** real-valued function f evaluated at x */
   lazy val fx = f(x)
 
-  /** gradient function df evaluated at x */
-  lazy val dfx = df(x)
+  /** directional derivative at x along d */
+  lazy val dfx = f.dirder(x, d)
+
+  /** gradient df evaluated at x */
+  lazy val grad = f.gradient(x)
 
 }

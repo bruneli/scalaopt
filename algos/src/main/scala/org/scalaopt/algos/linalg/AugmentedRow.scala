@@ -28,7 +28,7 @@ import org.scalaopt.algos._
  *
  * @author bruneli
  */
-case class AugmentedRow(a: Coordinates, b: Double, i: Long) {
+case class AugmentedRow(a: Variables, b: Double, i: Long) {
 
   def +(that: AugmentedRow): AugmentedRow =
     AugmentedRow(that.a + this.a, that.b + this.b, i)
@@ -38,6 +38,9 @@ case class AugmentedRow(a: Coordinates, b: Double, i: Long) {
 }
 
 object AugmentedRow {
+
+  def apply(ab: (Variables, Double), i: Long) =
+    AugmentedRow(ab._1, ab._2, i)
 
   def zeros(n: Int): AugmentedRow =
     AugmentedRow(algos.zeros(n), 0.0, 0)

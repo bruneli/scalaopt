@@ -30,7 +30,7 @@ class StrongWolfeSpec extends FlatSpec with Matchers {
     val pk = Seq(1.0)
     def f(x: Coordinates) = (x - x0) dot (x - x0)
     def df(x: Coordinates) = (x - x0) * 2.0
-    val pt0 = Point(Seq(0.0), f, df)
+    val pt0 = LineSearchPoint(Seq(0.0), f, df)
     val pt1 = pt0.copy(x = Seq(1.0))
     zoomStepLength(0.0, pt0, 1.0, pt1, pt0, pk) match {
       case Success(ptmin) => {
@@ -53,7 +53,7 @@ class StrongWolfeSpec extends FlatSpec with Matchers {
       val dx = (x - x0).norm
       (x - x0) * 2.0 + pk * (3.0 * dx * dx)
     }
-    val pt0 = Point(Seq(0.0), f, df)
+    val pt0 = LineSearchPoint(Seq(0.0), f, df)
     val pt1 = pt0.copy(x = Seq(1.0))
     zoomStepLength(0.0, pt0, 1.0, pt1, pt0, pk) match {
       case Success(ptmin) => {
@@ -69,7 +69,7 @@ class StrongWolfeSpec extends FlatSpec with Matchers {
     val pk = Seq(1.0)
     def f(x: Coordinates) = (x - x0).norm
     def df(x: Coordinates) = pk
-    val pt0 = Point(Seq(0.0), f, df)
+    val pt0 = LineSearchPoint(Seq(0.0), f, df)
     val pt1 = pt0.copy(x = Seq(1.0))
     a [MaxIterException] should be thrownBy {
       zoomStepLength(0.0, pt0, 1.0, pt1, pt0, pk)

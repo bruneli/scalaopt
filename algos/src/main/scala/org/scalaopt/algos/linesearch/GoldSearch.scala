@@ -56,8 +56,6 @@ object GoldSearch {
    * @param f  scalar real-valued objective function
    * @param x1 starting value
    * @param pars configuration parameters
-   * @param h  starting step length
-   * @param maxIter maximum number of iterations
    * @return tuple2 with lower, upper bounds (if succeeding)
    */
   def bracket(
