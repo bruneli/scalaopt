@@ -98,12 +98,12 @@ import scala.util.{Try, Success}
  *
  * @author bruneli
  */
-object LevenbergMarquardt extends Optimizer[LevenbergMarquardtConfig] {
+object LevenbergMarquardt { //extends Optimizer[LevenbergMarquardtConfig] {
 
   implicit val defaultConfig: LevenbergMarquardtConfig = new LevenbergMarquardtConfig
 
-  def minimize[T <: MSEFunction](
-    f: T,
+  def minimize(
+    f: MSEFunction,
     x0: Variables)(
     implicit pars: LevenbergMarquardtConfig): Try[Variables] = {
 

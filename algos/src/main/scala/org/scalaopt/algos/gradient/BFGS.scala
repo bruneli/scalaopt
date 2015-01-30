@@ -50,8 +50,8 @@ object BFGS extends Optimizer[BFGSConfig] {
    * @param pars algorithm configuration parameters
    * @return Variables at a local minimum
    */
-  def minimize[T <: ObjectiveFunction](
-    f:  T,
+  def minimize(
+    f:  ObjectiveFunction,
     x0: Variables)(
     implicit pars: BFGSConfig): Try[Variables] = {
 

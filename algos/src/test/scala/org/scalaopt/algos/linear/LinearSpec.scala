@@ -16,6 +16,7 @@
 
 package org.scalaopt.algos.linear
 
+import org.scalaopt.algos._
 import org.scalaopt.algos.SeqDataSetConverter
 import org.scalatest.{Matchers, FlatSpec}
 
@@ -38,7 +39,7 @@ class LinearSpec extends FlatSpec with Matchers {
     val data = for (i <- 0 until m) yield {
       val x = randomVec(n, random)
       val y = par0 + x.zip(pars).map { case (x, p) => x*p }.sum + random.nextGaussian()
-      (x, y)
+      DataPoint(x, Seq(y))
     }
     lm(data) match {
       case Success(solution) => {

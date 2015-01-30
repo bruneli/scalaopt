@@ -25,15 +25,13 @@ class ConjugateGradientSpec extends FlatSpec with Matchers {
   import ConjugateGradient._
   
   val x0 = Vector(0.5, 2.0)
-  def fQuad(x: Coordinates): Double =
-    (x - x0) dot (x - x0)
-  def dfQuad(x: Coordinates): Coordinates =
-    (x - x0) * 2.0
+  val fQuad = (x: Variables) => (x - x0) dot (x - x0)
+  val dfQuad = (x: Variables) => (x - x0) * 2.0
 
   val config = new CGConfig(tol = 1.0e-6)
     
   "CG method" should "converge with fQuad and exact derivatives" in {
-    val d = minimizeWithGradient(fQuad, dfQuad, Vector(0.0, 0.0)) match {
+    val d = minimize((fQuad, dfQuad), Vector(0.0, 0.0)) match {
       case Success(xmin) => xmin - x0
       case Failure(e) => x0
     }
@@ -50,7 +48,7 @@ class ConjugateGradientSpec extends FlatSpec with Matchers {
   
   it should "throw an exception when reaching max number of iterations" in {
     a [MaxIterException] should be thrownBy {
-      minimize(x => x(0) + x(1), Vector(0.0, 0.0))
+      minimize((x: Variables) => x(0) + x(1), Vector(0.0, 0.0))
     }
   }
 

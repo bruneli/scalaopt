@@ -34,11 +34,10 @@ trait Optimizer[C <: ConfigPars] {
    * @param f    real-valued objective function
    * @param x0   initial Variables
    * @param pars algorithm configuration parameters
-   * @tparam T   objective function type
    * @return Variables at a local minimum or failure
    */
-  def minimize[T <: ObjectiveFunction](
-    f:  T,
+  def minimize(
+    f:  ObjectiveFunction,
     x0: Variables)(
     implicit pars: C): Try[Variables]
 

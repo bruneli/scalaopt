@@ -51,6 +51,10 @@ package object algos {
   /** Implicit conversion of RealMatrix to RichMatrix */
   implicit def toRichMatrix(m: RealMatrix) = new RichMatrix(m)
 
+  /** Implicit conversion of a tuple (x, y) to a DataPoint */
+  implicit def toDataPointYVector(xy: (Variables, Variables)) = DataPoint(xy._1, xy._2)
+  implicit def toDataPointYScalar(xy: (Variables, Double)) = DataPoint(xy._1, Vector(xy._2))
+
   /** Create an n-vector of Variables filled with a constant value */
   def vector(n: Int, value: Double): Variables = (1 to n).map(i => value)
   

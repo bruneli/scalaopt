@@ -39,7 +39,7 @@ case class AugmentedRow(a: Variables, b: Double, i: Long) {
 
 object AugmentedRow {
 
-  def apply(ab: (Variables, Double), i: Long) =
+  def apply(ab: (Variables, Double), i: Long): AugmentedRow =
     AugmentedRow(ab._1, ab._2, i)
 
   def zeros(n: Int): AugmentedRow =

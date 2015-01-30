@@ -37,14 +37,9 @@ trait ObjectiveFunction {
    * By default, the gradient is estimated with finite differences.
    *
    * @param x vector of variables
-   * @param pars configuration parameters
-   * @tparam C configuration parameters type
    * @return gradient of f in x
    */
-  def gradient[C <: ConfigPars](x: Variables)(implicit pars: C): Variables = {
-    val fx: Double = this(x)
-    for (i <- 0 until x.length) yield (this(x.updated(i, x(i) + pars.eps)) - fx) / pars.eps
-  }
+  def gradient(x: Variables): Variables = ???
 
   /**
    * Evaluate the directional derivative of f in x
@@ -53,31 +48,39 @@ trait ObjectiveFunction {
    *
    * @param x vector of variables
    * @param d directional vector
-   * @param pars configuration parameters
-   * @tparam C configuration parameters type
    * @return directional derivative of f along d in x
    */
-  def dirder[C <: ConfigPars](x: Variables, d: Variables)(implicit pars: C): Double = {
-    (this(x + d * pars.eps) - this(x)) / pars.eps
-  }
+  def dirder(x: Variables, d: Variables): Double = ???
 
 }
 
-class SimpleFunctionWithGradient(f: (Variables => Double, Variables => Variables)) extends ObjectiveFunction {
+class SimpleFunctionWithGradient(
+  f: (Variables => Double, Variables => Variables)) extends ObjectiveFunction {
 
   def apply(x: Variables) = f._1(x)
 
-  override def gradient[C <: ConfigPars](x: Variables)(implicit pars: C) = f._2(x)
+  override def gradient(x: Variables) = f._2(x)
 
-  override def dirder[C <: ConfigPars](x: Variables, d: Variables)(implicit pars: C): Double = {
+  override def dirder(x: Variables, d: Variables): Double = {
     gradient(x) dot d
   }
 
 }
 
-class SimpleFunctionFiniteDiffGradient(f: Variables => Double) extends ObjectiveFunction {
+class SimpleFunctionFiniteDiffGradient(
+  f: Variables => Double,
+  implicit val pars: ConfigPars = new ConfigPars()) extends ObjectiveFunction {
 
   def apply(x: Variables) = f(x)
+
+  override def gradient(x: Variables): Variables = {
+    val fx: Double = this(x)
+    for (i <- 0 until x.length) yield (this(x.updated(i, x(i) + pars.eps)) - fx) / pars.eps
+  }
+
+  override def dirder(x: Variables, d: Variables): Double = {
+    (this(x + d * pars.eps) - this(x)) / pars.eps
+  }
 
 }
 

@@ -14,7 +14,8 @@ import org.scalaopt.algos.linalg.AugmentedRow
  */
 case class MSEFunction(
   f: (Variables, Variables) => Variables,
-  data: DataSet[DataPoint]) extends RegressionFunction {
+  data: DataSet[DataPoint],
+  val eps: Double = 1.0e-8) extends RegressionFunction {
 
   /**
    * Function to regress
@@ -48,20 +49,17 @@ case class MSEFunction(
    *
    * @param x0 vector of unknown variables
    * @param xy data point
-   * @param pars configuration parameters
-   * @tparam C configuration parameters type
    * @return tuple of jacobian and residual
    */
-  def jacobianAndResidual[C <: ConfigPars](
+  def jacobianAndResidual(
     x0: Variables,
-    xy: DataPoint)(
-    implicit pars: C): (Variables, Double) = {
+    xy: DataPoint): (Variables, Double) = {
     val residual0 = residual(x0, xy)
     val jacobian =
       for (j <- 0 until x0.length) yield {
         // Shift coordinate of jth-column by eps
-        val x = x0.updated(j, x0(j) + pars.eps)
-        (residual(x, xy) - residual0) / pars.eps
+        val x = x0.updated(j, x0(j) + eps)
+        (residual(x, xy) - residual0) / eps
       }
     (jacobian, residual0)
   }
@@ -72,8 +70,7 @@ case class MSEFunction(
    * @param x0   vector of unknown variables wrt which derivatives are computed
    * @return the jacobian & residual of f in p0
    */
-  def jacobianAndResidualsMatrix[C <: ConfigPars](x0: Variables)(
-    implicit pars: C): DataSet[AugmentedRow] = {
+  def jacobianAndResidualsMatrix(x0: Variables): DataSet[AugmentedRow] = {
     data.zipWithIndex map {
       case (xy, i) => AugmentedRow(jacobianAndResidual(x0, xy), i)
     }
@@ -82,7 +79,10 @@ case class MSEFunction(
 
 object MSEFunction {
 
-  implicit def apply(fAndData: ((Variables, Variables) => Variables, DataSet[DataPoint])) =
-    MSEFunction(fAndData._1, fAndData._2)
+  implicit def apply(fAndData: ((Variables, Variables) => Variables, IndexedSeq[DataPoint])): MSEFunction =
+    MSEFunction(fAndData._1, SeqDataSetConverter.SeqDataSet(fAndData._2))
+
+  //implicit def apply(fAndData: ((Variables, Variables) => Variables, DataSet[DataPoint])): MSEFunction =
+  //  MSEFunction(fAndData._1, fAndData._2)
 
 }

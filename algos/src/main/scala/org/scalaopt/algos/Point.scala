@@ -33,7 +33,10 @@ case class DataPoint(x: Variables, y: Variables)
  *
  * @author bruneli
  */
-case class LineSearchPoint(x: Variables, f: ObjectiveFunction, d: Variables) {
+case class LineSearchPoint(
+  x: Variables,
+  f: ObjectiveFunction,
+  d: Variables) {
 
   /** real-valued function f evaluated at x */
   lazy val fx = f(x)

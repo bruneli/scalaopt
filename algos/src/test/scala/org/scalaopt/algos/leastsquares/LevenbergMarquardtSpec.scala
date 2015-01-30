@@ -27,25 +27,27 @@ import scala.util.Random
 class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
   import SeqDataSetConverter._
   import LevenbergMarquardt._
+  import MSEFunction._
 
   val random = new Random(12345)
 
   "minimize" should "converge to its solution for a linear system" in {
     /** Linear objective function */
-    def linear(p: Coordinates, x: Seq[Double]): Double = p.head + p.tail.zip(x).map { case (p, x) => p * x }.sum[Double]
+    val linear = (p: Variables, x: Variables) => Seq(p.head + p.tail.zip(x).map { case (p, x) => p * x }.sum[Double])
 
     val tol = 0.5
     val n = 10
     val m = 1000
     val p0 = 80.0 +: (0 until n).map(_.toDouble)
 
-    val data = for (i <- 0 until m) yield {
-      val x = randomVec(n, random)
-      val y = linear(p0, x) + random.nextGaussian()
-      (x, y)
-    }
+    val data =
+      for (i <- 0 until m) yield {
+        val x = randomVec(n, random)
+        val y = linear(p0, x) + Seq(random.nextGaussian())
+        DataPoint(x, y)
+      }
 
-    val popt = minimize(linear, data, p0)
+    val popt = minimize((linear, data), p0)
     popt should be a 'success
     popt.get.size should be (n + 1)
     for ((estimated, expected) <- popt.get.zip(p0)) estimated shouldBe expected +- tol
@@ -53,7 +55,7 @@ class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
 
   it should "converge to its solution for a non-linear objective function" in {
     /** Exponential objective function */
-    def exponential(x: Coordinates, t: Seq[Double]): Double = x(0) * Math.exp(x(1) * t(0))
+    val exponential = (x: Variables, t: Variables) => Seq(x(0) * Math.exp(x(1) * t(0)))
 
     val tol = 0.2
     val n = 10
@@ -62,11 +64,11 @@ class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
 
     val data = for (i <- 0 until n) yield {
       val t = Seq(i.toDouble / n)
-      val y = exponential(x0, t) + sigma * random.nextGaussian()
-      (t, y)
+      val y = exponential(x0, t) + Seq(sigma * random.nextGaussian())
+      DataPoint(t, y)
     }
 
-    val solution = minimize(exponential, data, Vector(4.0, 0.5))
+    val solution = minimize((exponential, data), Vector(4.0, 0.5))
     solution should be a 'success
     solution.get(0) shouldBe x0(0) +- tol
     solution.get(1) shouldBe x0(1) +- tol

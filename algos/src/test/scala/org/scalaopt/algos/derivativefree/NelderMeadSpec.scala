@@ -25,7 +25,7 @@ class NelderMeadSpec extends FlatSpec with Matchers {
   import NelderMead._
 
   val x0 = Vector(0.5, 2.0)
-  def fQuad(x: Coordinates): Double = (x - x0) dot (x - x0)
+  val fQuad = (x: Variables) => (x - x0) dot (x - x0)
 
   val x1 = Vector(1.0, -1.0)
   val v1 = Vertex(x1, fQuad)
@@ -58,7 +58,7 @@ class NelderMeadSpec extends FlatSpec with Matchers {
   
   it should "throw a MaxIterException when max number of iterations is reached" in {
     a [MaxIterException] should be thrownBy {
-      minimize(x => x(0) + x(1), x1)
+      minimize((x: Variables) => x(0) + x(1), x1)
     }
   }
 

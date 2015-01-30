@@ -25,8 +25,7 @@ class PowellSpec extends FlatSpec with Matchers {
   import Powell._
   
   val x0 = Vector(0.5, 2.0)
-  def fQuad(x: Coordinates): Double =
-    (x - x0) dot (x - x0)
+  val fQuad = (x: Variables) => (x - x0) dot (x - x0)
 
   val config = new PowellConfig(tol = 1.0e-6)
     
@@ -40,7 +39,7 @@ class PowellSpec extends FlatSpec with Matchers {
 
   it should "throw an error if reaching max number of iterations" in {
     a [MaxIterException] should be thrownBy {
-      minimize(x => x(0) + x(1), Vector(0.0, 0.0))
+      minimize((x: Variables) => x(0) + x(1), Vector(0.0, 0.0))
     }
   }
 

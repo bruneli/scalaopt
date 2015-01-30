@@ -46,8 +46,8 @@ object ConjugateGradient extends Optimizer[CGConfig] {
    * @param pars algorithm configuration parameters
    * @return Variables at a local minimum
    */
-  override def minimize[T <: ObjectiveFunction](
-    f:  T,
+  override def minimize(
+    f:  ObjectiveFunction,
     x0: Variables)(
     implicit pars: CGConfig): Try[Variables] = {
 

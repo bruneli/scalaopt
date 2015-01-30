@@ -43,7 +43,7 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object Powell extends DerivativeFreeMethod[PowellConfig] {
+object Powell extends Optimizer[PowellConfig] {
 
   implicit val defaultConfig: PowellConfig = new PowellConfig
   
@@ -56,15 +56,16 @@ object Powell extends DerivativeFreeMethod[PowellConfig] {
    * @return coordinates at a local minimum
    */
   override def minimize(
-      f:  ObjectiveFunction,
-      x0: Coordinates)(
-      implicit pars: PowellConfig): Try[Coordinates] = {
+    f:  ObjectiveFunction,
+    x0: Variables)(
+    implicit pars: PowellConfig): Try[Variables] = {
+
     val n = x0.length // Store number of dimensions
     
     def stoppingRule(
       iter: Int,
-      xnpp: Coordinates,
-      x0: Coordinates): Boolean = {
+      xnpp: Variables,
+      x0: Variables): Boolean = {
       val d = xnpp - x0
       (d dot d) < pars.tol * pars.tol
     }
@@ -72,12 +73,12 @@ object Powell extends DerivativeFreeMethod[PowellConfig] {
     // Cycle till the stopping rule is reached
     def iterate(
       iter: Int, 
-      xOld: Coordinates,
-      vOld: Vector[Coordinates]): Try[Coordinates] = {
+      xOld: Variables,
+      vOld: Vector[Variables]): Try[Variables] = {
       
       def lineSearch(
-        xi: Coordinates, 
-        vi: Coordinates): Try[(Coordinates, Double)] = {
+        xi: Variables, 
+        vi: Variables): Try[(Variables, Double)] = {
         def fLine(s: Double): Double = f(xi + vi * s)
         GoldSearch.bracket(fLine, 0.0)(pars.goldSearch) match {
           case Success((a, b)) => {
@@ -92,8 +93,8 @@ object Powell extends DerivativeFreeMethod[PowellConfig] {
         i: Int, 
         iMaxOld: Int, 
         dfOld: Double,
-        xi: Coordinates
-        ): Try[(Coordinates, Vector[Coordinates])] = {
+        xi: Variables
+        ): Try[(Variables, Vector[Variables])] = {
         // At the last iteration, try new direction v(n) = x(n-1) - x(0)
         val vi = if (i < n) vOld(i) else (xi - xOld)
         lineSearch(xi, vi) match {
@@ -127,8 +128,8 @@ object Powell extends DerivativeFreeMethod[PowellConfig] {
       }
     }
     
-    def unitVectors: Vector[Coordinates] = {
-      def unitVector(i: Int): Coordinates = {
+    def unitVectors: Vector[Variables] = {
+      def unitVector(i: Int): Variables = {
         for (j <- 0 until n)
           yield (if (i == j) 1.0 else 0.0)
       }.toVector
