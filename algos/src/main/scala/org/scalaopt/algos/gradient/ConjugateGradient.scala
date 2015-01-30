@@ -34,7 +34,7 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object ConjugateGradient extends GradientMethod[CGConfig] {
+object ConjugateGradient extends Optimizer[CGConfig] {
 
   implicit val defaultConfig: CGConfig = new CGConfig
 
@@ -42,16 +42,14 @@ object ConjugateGradient extends GradientMethod[CGConfig] {
    * Minimize an objective function acting on a vector of real values.
    * 
    * @param f    real-valued objective function
-   * @param df   gradient of the real-valued objective function
-   * @param x0   initial coordinates
+   * @param x0   initial Variables
    * @param pars algorithm configuration parameters
-   * @return coordinates at a local minimum
+   * @return Variables at a local minimum
    */
-  override def minimizeWithGradient(
-    f:  ObjectiveFunction,
-    df: Coordinates => Coordinates,
-    x0: Coordinates)(
-    implicit pars: CGConfig): Try[Coordinates] = {
+  override def minimize[T <: ObjectiveFunction](
+    f:  T,
+    x0: Variables)(
+    implicit pars: CGConfig): Try[Variables] = {
 
     // Number of dimensions
     val n = x0.length
@@ -59,38 +57,37 @@ object ConjugateGradient extends GradientMethod[CGConfig] {
     // Iterate until the gradient is lower than tol
     def iterate(
       k:  Int,
-      ptk: LineSearchPoint,
-      pk: Coordinates): Try[Coordinates] = {
+      ptk: LineSearchPoint): Try[Variables] = {
       if (k >= pars.maxIter)
         Failure(throw new MaxIterException(
         		"Maximum number of iterations reached."))
       
       // Try to find an approximate step length satisfying the strong
       // Wolfe conditions
-      stepLength(ptk, pk)(pars.strongWolfe) match {
+      stepLength(ptk)(pars.strongWolfe) match {
         case Success(ptkpp) => {
           // Gradient evaluated in xk
-          val dfk = ptk.dfx
+          val dfk = ptk.grad
 
-          // Coordinates, gradient and search direction at step k+1
+          // Variables, gradient and search direction at step k+1
           val xkpp = ptkpp.x
-          val dfkpp = ptkpp.dfx
-          val pkpp = -dfkpp + pk * beta(dfk, dfkpp, pars.method)
+          val dfkpp = ptkpp.grad
+          val pkpp = -dfkpp + ptk.d * beta(dfk, dfkpp, pars.method)
 
           // Check stopping rule, if not satisfied iterate
           if (dfkpp.norm < pars.tol) Success(xkpp)
-          else iterate(k + 1, ptkpp, pkpp)
+          else iterate(k + 1, ptkpp.copy(d = pkpp))
         }
         case Failure(e) => Failure(e)
       }
     }
     
-    iterate(0, LineSearchPoint(x0, f, df), -df(x0))
+    iterate(0, LineSearchPoint(x0, f, -f.gradient(x0)))
   }
 
   def beta(
-    dfk: Coordinates,
-    dfkpp: Coordinates,
+    dfk: Variables,
+    dfkpp: Variables,
     method: String): Double = {
     val norm2dfk = dfk dot dfk
     method match {

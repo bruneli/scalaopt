@@ -64,12 +64,10 @@ object BFGS extends Optimizer[BFGSConfig] {
     // Update the inverse Hessian matrix by applying the BFGS formula
     def updateHessian(
       iHk : RealMatrix,
-      xk: Variables,
-      dfk: Variables,
-      xkpp: Variables,
-      dfkpp: Variables): RealMatrix = {
-      val sk = xkpp - xk
-      val yk = f.gradient(xkpp) - dfk
+      ptk: LineSearchPoint,
+      ptkpp: LineSearchPoint): RealMatrix = {
+      val sk = ptkpp.x - ptk.x
+      val yk = ptkpp.grad - ptk.grad
       val yDots = yk dot sk
       val rhok = if (yDots != 0.0) 1.0 / yDots else 1000.0
       val m1 = identity - (sk outer yk * rhok)
@@ -86,20 +84,17 @@ object BFGS extends Optimizer[BFGSConfig] {
         Failure(throw new MaxIterException(
         		"Maximum number of iterations reached."))
 
-      // Quasi-Newton search direction
-      val pk = iHk * ptk.grad * -1.0
-
       // Try to get an approximate step length satisfying the strong
       // Wolfe conditions
-      stepLength(ptk, pk)(pars.strongWolfe) match {
+      stepLength(ptk)(pars.strongWolfe) match {
         case Success(ptkpp) => {
-          // Evaluate new Variables and gradient at step k+1
-          val xkpp = ptkpp.x
-          val dfkpp = ptkpp.grad
-          if (dfkpp.norm < pars.tol) {
-            Success(xkpp)
-          } else { 
-            iterate(k + 1, ptkpp, updateHessian(iHk, ptk.x, ptk.grad, xkpp, dfkpp))
+          if (ptkpp.grad.norm < pars.tol) {
+            Success(ptkpp.x)
+          } else {
+            // Update the Hessian and the search direction
+            val iHkpp = updateHessian(iHk, ptk, ptkpp)
+            val d = iHkpp * ptkpp.grad * -1.0
+            iterate(k + 1, ptkpp.copy(d = d), iHkpp)
           }
         }
         case Failure(e) => Failure(e)
@@ -107,7 +102,7 @@ object BFGS extends Optimizer[BFGSConfig] {
     }
     
     // Initialize the inverse Hessian with an identity matrix
-    iterate(0, LineSearchPoint(x0, f), identity)
+    iterate(0, LineSearchPoint(x0, f, -f.gradient(x0)), identity)
   }
 }
 
