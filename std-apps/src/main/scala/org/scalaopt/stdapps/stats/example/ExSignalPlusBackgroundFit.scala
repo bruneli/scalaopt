@@ -72,7 +72,7 @@ object ExSignalPlusBackgroundFit extends App {
   /**
    * The objective function is the joint pdf of signal plus background with a normalization factor
    */
-  def pdf(pars: Coordinates, x: Seq[Double]) =
+  def pdf(pars: Variables, x: Variables) =
     if (pars.size != 4) {
       throw new IllegalArgumentException(
         s"pars=($pars) should be a vector of size 5 representing (norm,fSig,mu,sigma,lambda)")
@@ -80,13 +80,13 @@ object ExSignalPlusBackgroundFit extends App {
       val fSig = pars(0)
       val signalPars = pars.drop(1).take(2)
       val bkgPars = pars.takeRight(1)
-      fSig * pdfSignal(signalPars, x) + (1.0 - fSig) * pdfBkg(bkgPars, x)
+      pdfSignal(signalPars, x) * fSig + pdfBkg(bkgPars, x) * (1.0 - fSig)
     }
 
   /**
    * Signal pdf is a Normal distribution
    */
-  def pdfSignal(pars: Coordinates, x: Seq[Double]) =
+  def pdfSignal(pars: Variables, x: Variables) =
     if (x.size != 1) {
       throw new IllegalArgumentException(s"x=($x) should be a vector of size 1")
     } else if (pars.size != 2) {
@@ -95,19 +95,19 @@ object ExSignalPlusBackgroundFit extends App {
       throw new IllegalArgumentException(s"sigma=${pars(1)} should be != 0")
     } else {
       val z = (x(0) - pars(0)) / pars(1)
-      Math.exp(-z * z / 2.0) / Math.sqrt(2.0 * Math.PI) / pars(1)
+      Seq(Math.exp(-z * z / 2.0) / Math.sqrt(2.0 * Math.PI) / pars(1))
     }
 
   /**
    * Background pdf is an Exponential distribution
    */
-  def pdfBkg(pars: Coordinates, x: Seq[Double]) =
+  def pdfBkg(pars: Variables, x: Variables) =
     if (x.size != 1) {
       throw new IllegalArgumentException(s"x=($x) should be a vector of size 1")
     } else if (pars.size != 1) {
       throw new IllegalArgumentException(s"pars=($pars) should be a vector of size 1 representing lambda")
     } else {
-      pars(0) * Math.exp(-pars(0) * (x(0) - xMin))
+      Seq(pars(0) * Math.exp(-pars(0) * (x(0) - xMin)))
     }
 
 }

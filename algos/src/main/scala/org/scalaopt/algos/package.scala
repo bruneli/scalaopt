@@ -38,12 +38,20 @@ package object algos {
   /** Define the vector of variables as a sequence of Double values */
   type Variables = Seq[Double]
 
+  /** Function taking as input p unknown parameters and x observed values to give estimates of y dependent variables */
+  type RegressionFunction = (Variables, Variables) => Variables
+
   /** Implicit conversion of a (function, gradient) tuple to an objective function */
   implicit def toFunctionWithGradient(f: (Variables => Double, Variables => Variables)) =
     new SimpleFunctionWithGradient(f)
 
   /** Implicit conversion of a function to an objective function with finite differences derivatives */
   implicit def toFunctionWoGradient(f: Variables => Double) = new SimpleFunctionFiniteDiffGradient(f)
+
+  /** Implicit conversion of a regression function with set of data points to an MSE objective function */
+  implicit def toMSEFunctionWoGradient(funcAndData: (RegressionFunction, DataSet[DataPoint])) = {
+    new SimpleMSEFunction(funcAndData._1, funcAndData._2)
+  }
 
   /** Implicit conversion of Seq[Double] to RichVariables */
   implicit def toRichVariables(v: Variables) = new RichVariables(v)

@@ -27,13 +27,13 @@ import org.scalaopt.stdapps.learning.nnet.activation.ActivationFunction
 case class Neuron(
   layer: Int,
   index: Int,
-  weights: List[Double],
-  inputs: List[Double] = Nil,
+  weights: Variables,
+  inputs: Variables = Nil,
   excitation: Double = Double.NaN,
   output: Double = Double.NaN,
   error: Double = Double.NaN) {
 
-  def activate(inputs: List[Double], activationFunction: ActivationFunction): Neuron = {
+  def activate(inputs: Variables, activationFunction: ActivationFunction): Neuron = {
     val excitation =
       if (weights.size == inputs.size + 1) {
         weights.head + (inputs dot weights.tail)
@@ -51,13 +51,13 @@ case class Neuron(
     this.copy(error = error)
   }
 
-  def propagateError(neurons: List[Neuron], activationFunction: ActivationFunction): Neuron = {
+  def propagateError(neurons: Vector[Neuron], activationFunction: ActivationFunction): Neuron = {
     val activationDerivative = activationFunction.derivative(output)
     val lossDerivative = neurons map (neuron => neuron.error * neuron.weights(index)) sum
     val error = lossDerivative * activationDerivative
     this.copy(error = error)
   }
 
-  def gradient: Coordinates = (1.0 :: inputs) * error
+  def gradient: Variables = (1.0 +: inputs) * error
 
 }

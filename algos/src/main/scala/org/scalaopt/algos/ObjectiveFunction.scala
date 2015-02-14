@@ -87,7 +87,7 @@ class SimpleFunctionFiniteDiffGradient(
 /**
  * An objective function dedicated to regression techniques
  */
-trait RegressionFunction extends ObjectiveFunction {
+trait ObjectiveFunctionForRegression extends ObjectiveFunction {
 
   /** Set of data points */
   val data: DataSet[DataPoint]

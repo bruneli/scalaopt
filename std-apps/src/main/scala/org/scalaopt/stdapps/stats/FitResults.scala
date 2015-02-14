@@ -16,7 +16,7 @@
 
 package org.scalaopt.stdapps.stats
 
-import org.scalaopt.algos.{ObjFunWithData, Coordinates}
+import org.scalaopt.algos._
 
 /**
  * Store results from a fit
@@ -25,22 +25,22 @@ import org.scalaopt.algos.{ObjFunWithData, Coordinates}
  * @param fObj objective function applying on data
  * @author bruneli
  */
-class FitResults(pOpt: Coordinates, fObj: ObjFunWithData) {
+class FitResults(pOpt: Variables, fObj: RegressionFunction) {
 
   /**
    * Predict the value of the objective function for new data x
    *
-   * @param x vector of values
-   * @return objective function evaluated at x with parameters obtained from the fit
+   * @param x vector of observed values
+   * @return regression function evaluated at x with parameters obtained from the fit
    */
-  def predict(x: Seq[Double]): Double = fObj(pOpt, x)
+  def predict(x: Variables): Variables = fObj(pOpt, x)
 
   /**
    * Predict the value of the objective function at x
    *
    * @param x double value
-   * @return objective function evaluated at x with parameters obtained from the fit
+   * @return regression function evaluated at x with parameters obtained from the fit
    */
-  def predict(x: Double): Double = fObj(pOpt, Seq(x))
+  def predict(x: Double): Double = fObj(pOpt, Seq(x))(0)
 
 }

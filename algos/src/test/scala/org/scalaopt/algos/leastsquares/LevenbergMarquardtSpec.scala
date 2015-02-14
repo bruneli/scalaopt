@@ -27,7 +27,6 @@ import scala.util.Random
 class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
   import SeqDataSetConverter._
   import LevenbergMarquardt._
-  import MSEFunction._
 
   val random = new Random(12345)
 
@@ -40,7 +39,7 @@ class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
     val m = 1000
     val p0 = 80.0 +: (0 until n).map(_.toDouble)
 
-    val data =
+    val data: DataSet[DataPoint] =
       for (i <- 0 until m) yield {
         val x = randomVec(n, random)
         val y = linear(p0, x) + Seq(random.nextGaussian())
@@ -62,7 +61,7 @@ class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
     val x0 = Vector(2.0, 1.0)
     val sigma = 0.1
 
-    val data = for (i <- 0 until n) yield {
+    val data: DataSet[DataPoint] = for (i <- 0 until n) yield {
       val t = Seq(i.toDouble / n)
       val y = exponential(x0, t) + Seq(sigma * random.nextGaussian())
       DataPoint(t, y)
