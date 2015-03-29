@@ -19,12 +19,12 @@ package org.scalaopt.stdapps.learning.nnet.activation
 /**
  * @author bruneli
  */
-abstract class ActivationFunction {
+case object SoftMaxFunction extends ActivationFunction {
 
-  def apply(x: Double): Double
+  def apply(x: Double) = x
 
-  def apply(x: Double, y: Double): Double = ???
+  def derivative(y: Double) = 1.0
 
-  def derivative(y: Double): Double
+  override def apply(x: Double, xMax: Double) = Math.exp(x - xMax)
 
 }

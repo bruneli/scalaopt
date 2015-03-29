@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Renaud Bruneliere
+ * Copyright 2014 Renaud Bruneliere
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,20 @@
 
 package org.scalaopt.stdapps.learning.nnet.activation
 
+import org.scalatest.{Matchers, FlatSpec}
+
 /**
  * @author bruneli
  */
-abstract class ActivationFunction {
+class SoftMaxFunctionSpec extends FlatSpec with Matchers {
 
-  def apply(x: Double): Double
-
-  def apply(x: Double, y: Double): Double = ???
-
-  def derivative(y: Double): Double
+  "soft max function" should "give probabilities" in {
+    val inputs = List(2.0, 3.0, 1.5, 4.5)
+    inputs
+      .map(input => (input, SoftMaxFunction.apply(input, inputs.max)))
+      .foreach {
+      case (input, output) => output shouldBe Math.exp(input - inputs.max) +- 0.001
+    }
+  }
 
 }

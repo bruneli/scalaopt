@@ -34,8 +34,9 @@ import scala.util.Random
 case class FeedForwardNeuralNetwork(
   data: DataSet[DataPoint],
   layers: Vector[Int],
-  decay: Double,
-  rang: Double,
+  decay: Double = 0.0,
+  rang: Double = 0.7,
+  lossType: LossType.Value = LossType.MeanSquaredError,
   innerFunction: ActivationFunction = LogisticFunction,
   outputFunction: ActivationFunction = LinearFunction,
   xTol: Double = 1.0e-6,
@@ -80,6 +81,11 @@ case class FeedForwardNeuralNetwork(
 
   def jacobianAndResidualsMatrix(p: Variables) = data.zipWithIndex.map(backpropagateRow)
 
+  def randomWeights: Variables = {
+    val numberOfWeights = Network.countWeights(layers).sum[Int]
+    Network.randomWeights(numberOfWeights, rang)
+  }
+
   private def initialNetwork: Network = Network(layers, rang)
 
   private def backpropagate(
@@ -116,7 +122,28 @@ case class FeedForwardNeuralNetwork(
 
     def gradient: Variables = layers.flatMap(_.flatMap(_.gradient))
 
-    def loss: Double = layers.last.map(_.error).norm2
+    def loss: Double = lossType match {
+      case LossType.MeanSquaredError => layers.last.map(_.error).norm2
+      case LossType.CrossEntropy =>
+        if (layers.last.size == 1) {
+          val target = layers.last.head.target
+          val output = layers.last.head.output
+          val entropy1 = if (target > 0.0) -target * Math.log(output / target) else 0.0
+          val entropy0 = if (target < 1.0) -(1.0 - target) * Math.log((1.0 - output) / (1.0 - target)) else 0.0
+          entropy0 + entropy1
+        } else {
+          val outputSum = layers.last.map(_.output).sum
+          if (outputSum > 0.0) {
+            layers.last.foldLeft(0.0) {
+              case (entropy, neuron) =>
+                if (neuron.output > 0.0) entropy - neuron.target * Math.log(neuron.output / outputSum) else 0.0
+            }
+          } else {
+            0.0
+          }
+        }
+      case _ => throw new IllegalArgumentException(s"$lossType is not supported.")
+    }
 
     def residual: Double = layers.last.map(_.error).norm
 
@@ -147,14 +174,38 @@ case class FeedForwardNeuralNetwork(
       inputs: Variables,
       isOutputLayer: Boolean): Vector[Neuron] = {
       val activationFunction = if (isOutputLayer) outputFunction else innerFunction
-      neurons.map(_.activate(inputs, activationFunction))
+      if (isOutputLayer && neurons.size > 1) {
+        lossType match {
+          case LossType.CrossEntropy =>
+            val excitedNeurons = neurons.map(_.activate(inputs, activationFunction))
+            val maxExcitation = excitedNeurons.map(_.excitation).max
+            val probs = neurons.map(neuron => activationFunction(neuron.excitation, maxExcitation))
+            val sumProbs = probs.sum[Double]
+            neurons.zip(probs).map {
+              case (neuron, prob) => neuron.copy(output = prob / sumProbs)
+            }
+        }
+      } else {
+        neurons.map(_.activate(inputs, activationFunction))
+      }
     }
 
     private def propagateErrorsOuterLayer(
       neurons: Vector[Neuron],
       targets: Variables): Vector[Neuron] = {
-      neurons.zip(targets).map {
-        case (neuron, target) => neuron.propagateError(target, outputFunction)
+      if (targets.size > 1) {
+        lossType match {
+          case LossType.CrossEntropy =>
+            val targetsSum = targets.sum[Double]
+            neurons.zip(targets).map {
+              case (neuron, target) => neuron.copy(error = targetsSum * neuron.output - target)
+            }
+          case _ => ???
+        }
+      } else {
+        neurons.zip(targets).map {
+          case (neuron, target) => neuron.propagateError(target, outputFunction)
+        }
       }
     }
 
@@ -224,4 +275,8 @@ case class FeedForwardNeuralNetwork(
     }
   }
 
+}
+
+object LossType extends Enumeration {
+  val MeanSquaredError, CrossEntropy = Value
 }

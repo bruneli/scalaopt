@@ -31,6 +31,7 @@ case class Neuron(
   inputs: Variables = Nil,
   excitation: Double = Double.NaN,
   output: Double = Double.NaN,
+  target: Double = Double.NaN,
   error: Double = Double.NaN) {
 
   def activate(inputs: Variables, activationFunction: ActivationFunction): Neuron = {
@@ -48,7 +49,7 @@ case class Neuron(
     val activationDerivative = activationFunction.derivative(output)
     val lossDerivative = target - output
     val error = lossDerivative * activationDerivative
-    this.copy(error = error)
+    this.copy(error = error, target = target)
   }
 
   def propagateError(neurons: Vector[Neuron], activationFunction: ActivationFunction): Neuron = {

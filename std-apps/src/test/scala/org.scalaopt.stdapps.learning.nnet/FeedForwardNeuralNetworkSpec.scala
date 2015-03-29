@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Renaud Bruneliere
+ * Copyright 2014 Renaud Bruneliere
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,25 @@
  * limitations under the License.
  */
 
-package org.scalaopt.stdapps.learning.nnet.activation
+package org.scalaopt.stdapps.learning.nnet
+
+import org.scalaopt.algos.leastsquares.LevenbergMarquardt
+import org.scalaopt.stdapps.learning.data.Iris
+import org.scalatest._
+import org.scalatest.Matchers._
 
 /**
  * @author bruneli
  */
-abstract class ActivationFunction {
+class FeedForwardNeuralNetworkSpec extends FlatSpec with Matchers {
 
-  def apply(x: Double): Double
+  "neural network" should "train a XOR" in {
 
-  def apply(x: Double, y: Double): Double = ???
+    val neuralNetwork = FeedForwardNeuralNetwork(Iris.data, Vector(Iris.nInputs, 5, Iris.nClasses))
 
-  def derivative(y: Double): Double
+    val optimalWeights = LevenbergMarquardt.minimize(neuralNetwork, neuralNetwork.randomWeights)
+
+    1 shouldBe 1
+  }
 
 }
