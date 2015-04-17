@@ -44,16 +44,16 @@ case class FeedForwardNeuralNetwork(
 
   require(layers.size > 1, "Neural network must have a least two layers.")
 
-  private var network = initialNetwork
+  var network = initialNetwork
 
   override def apply(weights: Variables) = {
     if (!isWeightsVectorUnchanged(weights)) network = Network(layers, weights)
-    data.aggregate(0.0)(loss, _ + _)
+    data.aggregate(weights.norm2 * decay)(loss, _ + _)
   }
 
   override def gradient(weights: Variables): Variables = {
     if (!isWeightsVectorUnchanged(weights)) network = Network(layers, weights)
-    data.aggregate((zeros(weights.size), 0.0))(backpropagate, sumJacobianResidual)._1
+    data.aggregate((weights * 2.0 * decay, 0.0))(backpropagate, sumJacobianResidual)._1
   }
 
   def apply(weights: Variables, x: Variables): Variables = {
@@ -114,7 +114,7 @@ case class FeedForwardNeuralNetwork(
     (weights - network.weights).norm2 < xTol * xTol
   }
 
-  private case class Network(layers: Vector[Vector[Neuron]]) {
+  case class Network(layers: Vector[Vector[Neuron]]) {
 
     def outputs: Variables = layers.last.map(_.output)
 
@@ -179,9 +179,9 @@ case class FeedForwardNeuralNetwork(
           case LossType.CrossEntropy =>
             val excitedNeurons = neurons.map(_.activate(inputs, activationFunction))
             val maxExcitation = excitedNeurons.map(_.excitation).max
-            val probs = neurons.map(neuron => activationFunction(neuron.excitation, maxExcitation))
+            val probs = excitedNeurons.map(neuron => activationFunction(neuron.excitation, maxExcitation))
             val sumProbs = probs.sum[Double]
-            neurons.zip(probs).map {
+            excitedNeurons.zip(probs).map {
               case (neuron, prob) => neuron.copy(output = prob / sumProbs)
             }
         }
@@ -198,7 +198,8 @@ case class FeedForwardNeuralNetwork(
           case LossType.CrossEntropy =>
             val targetsSum = targets.sum[Double]
             neurons.zip(targets).map {
-              case (neuron, target) => neuron.copy(error = targetsSum * neuron.output - target)
+              case (neuron, target) =>
+                neuron.copy(error = targetsSum * neuron.output - target, target = target)
             }
           case _ => ???
         }
@@ -231,7 +232,7 @@ case class FeedForwardNeuralNetwork(
         s"Number of weights provided ${weights.size} != ${nWeightsPerLayer.sum} required")
       val neurons = splitWeights(nWeightsPerLayer, weights).zipWithIndex.map {
         case (weights, layer) =>
-          splitWeights(layers(layer), weights).zipWithIndex.map {
+          splitWeights(layers(layer) + 1, weights).zipWithIndex.map {
             case (weights, index) => Neuron(layer, index, weights)
           }
       }
@@ -241,7 +242,7 @@ case class FeedForwardNeuralNetwork(
     def generateLayer(rang: Double)(previous: (Vector[Vector[Neuron]], Int), currentLayer: Int) = {
       val (previousNeurons, previousLayer) = previous
       val newNeurons = previousNeurons :+ Range(0, layers(currentLayer)).toVector.map {
-        index: Int => Neuron(currentLayer, index, randomWeights(previousLayer + 1, rang))
+        index: Int => Neuron(currentLayer, index, randomWeights(layers(previousLayer) + 1, rang))
       }
       (newNeurons, currentLayer)
     }

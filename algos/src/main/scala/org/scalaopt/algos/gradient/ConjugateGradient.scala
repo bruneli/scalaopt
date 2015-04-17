@@ -34,7 +34,7 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object ConjugateGradient extends Optimizer[CGConfig] {
+object ConjugateGradient extends Optimizer[ObjectiveFunction, CGConfig] {
 
   implicit val defaultConfig: CGConfig = new CGConfig
 

@@ -29,10 +29,9 @@ package object linear {
     Try {
       val n = if (addOrigin) data.head.x.size + 1 else data.head.x.size
       val ab = data.zipWithIndex.map {
-        case (row, index) => {
+        case (row, index) =>
           val a = if (addOrigin) 1.0 +: row.x else row.x
-          AugmentedRow(a, row.y(0), index)
-        }
+          AugmentedRow(a, row.y.head, index)
       }
       QR(ab, n).solution
     }

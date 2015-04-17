@@ -18,6 +18,7 @@ package org.scalaopt.sparkapps
 
 import org.apache.spark.rdd.RDD
 import org.scalaopt.algos.DataSet
+import org.scalaopt.algos.SeqDataSetConverter.SeqDataSet
 
 import scala.reflect.ClassTag
 
@@ -26,7 +27,15 @@ import scala.reflect.ClassTag
  */
 object SparkDataSetConverter {
 
-  implicit class SparkDataSet[+A](rdd: RDD[A]) extends DataSet[A] {
+  implicit class SparkDataSet[A : ClassTag](val rdd: RDD[A]) extends DataSet[A] {
+
+    override def ++(that: DataSet[A]) = {
+      val thatRDD = that match {
+        case other: SparkDataSet[A] => other.rdd
+        case _ => rdd.sparkContext.parallelize(that.collect())
+      }
+      new SparkDataSet(thatRDD.union(this.rdd))
+    }
 
     override def aggregate[B: ClassTag](z: => B)(
       seqop: (B, A) => B, combop: (B, B) => B): B = {

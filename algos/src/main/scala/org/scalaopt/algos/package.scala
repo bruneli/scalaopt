@@ -20,7 +20,7 @@ import org.apache.commons.math3.linear.RealMatrix
 
 /**
  * Numerical Optimization Algorithms written in Scala.
- * 
+ *
  * All optimization algorithms contain a static method named minimize.
  * minimize takes as input a real objective function acting on variables.
  * Variables are represented by any scala collection of Double deriving from
@@ -30,7 +30,7 @@ import org.apache.commons.math3.linear.RealMatrix
  * The minimize function returns as output a Try[Variables] rather than
  * directly Variables to explicit the fact that all optimization algorithms
  * can fail to find a feasible solution.
- * 
+ *
  * @author bruneli
  */
 package object algos {
@@ -42,33 +42,35 @@ package object algos {
   type RegressionFunction = (Variables, Variables) => Variables
 
   /** Implicit conversion of a (function, gradient) tuple to an objective function */
-  implicit def toFunctionWithGradient(f: (Variables => Double, Variables => Variables)) =
+  implicit def toFunctionWithGradient(f: (Variables => Double, Variables => Variables)): ObjectiveFunction = {
     new SimpleFunctionWithGradient(f)
+  }
 
   /** Implicit conversion of a function to an objective function with finite differences derivatives */
-  implicit def toFunctionWoGradient(f: Variables => Double) = new SimpleFunctionFiniteDiffGradient(f)
+  implicit def toFunctionWoGradient(f: Variables => Double): ObjectiveFunction = new SimpleFunctionFiniteDiffGradient(f)
 
   /** Implicit conversion of a regression function with set of data points to an MSE objective function */
-  implicit def toMSEFunctionWoGradient(funcAndData: (RegressionFunction, DataSet[DataPoint])) = {
+  implicit def toMSEFunctionWoGradient(funcAndData: (RegressionFunction, DataSet[DataPoint])): MSEFunction = {
     new SimpleMSEFunction(funcAndData._1, funcAndData._2)
   }
 
   /** Implicit conversion of Seq[Double] to RichVariables */
-  implicit def toRichVariables(v: Variables) = new RichVariables(v)
+  implicit def toRichVariables(v: Variables): RichVariables = new RichVariables(v)
 
   /** Implicit conversion of RealMatrix to RichMatrix */
-  implicit def toRichMatrix(m: RealMatrix) = new RichMatrix(m)
+  implicit def toRichMatrix(m: RealMatrix): RichMatrix = new RichMatrix(m)
 
   /** Implicit conversion of a tuple (x, y) to a DataPoint */
-  implicit def toDataPointYVector(xy: (Variables, Variables)) = DataPoint(xy._1, xy._2)
-  implicit def toDataPointYScalar(xy: (Variables, Double)) = DataPoint(xy._1, Vector(xy._2))
+  implicit def toDataPointYVector(xy: (Variables, Variables)): DataPoint = DataPoint(xy._1, xy._2)
+
+  implicit def toDataPointYScalar(xy: (Variables, Double)): DataPoint = DataPoint(xy._1, Vector(xy._2))
 
   /** Create an n-vector of Variables filled with a constant value */
   def vector(n: Int, value: Double): Variables = (1 to n).map(i => value)
-  
+
   /** Create a n-vector of Variables filled with zeros */
   def zeros(n: Int): Variables = vector(n, 0.0)
-  
+
   /** Create an n-vector of Variables filled with ones */
   def ones(n: Int): Variables = vector(n, 1.0)
 

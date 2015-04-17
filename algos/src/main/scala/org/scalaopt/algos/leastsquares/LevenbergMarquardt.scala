@@ -98,7 +98,7 @@ import scala.util.{Try, Success}
  *
  * @author bruneli
  */
-object LevenbergMarquardt { //extends Optimizer[LevenbergMarquardtConfig] {
+object LevenbergMarquardt extends Optimizer[MSEFunction, LevenbergMarquardtConfig] {
 
   implicit val defaultConfig: LevenbergMarquardtConfig = new LevenbergMarquardtConfig
 
@@ -329,11 +329,16 @@ object LevenbergMarquardt { //extends Optimizer[LevenbergMarquardtConfig] {
             if (j == n) {
               aux
             } else {
-              val (auxLower, auxUpper) = aux.splitAt(j + 1)
-              val auxj = auxLower(j) / sDiag(j)
-              multiply(
-                  j + 1, auxLower.updated(j, auxj) ++ 
-                  (auxUpper - qr.R(j).drop(j + 1) / auxj))
+              val (auxLower0, auxUpper0) = aux.splitAt(j + 1)
+              val auxj = auxLower0(j) / sDiag(j)
+              val rUpper = qr.R(j).drop(j + 1)
+              val auxUpper =
+                if (rUpper.norm2 == 0.0) {
+                  auxUpper0
+                } else {
+                  auxUpper0 - rUpper / auxj
+                }
+              multiply(j + 1, auxLower0.updated(j, auxj) ++ auxUpper)
             }
           val aux = multiply(0, aux0)
           val parc = fp / delta / (aux inner aux)

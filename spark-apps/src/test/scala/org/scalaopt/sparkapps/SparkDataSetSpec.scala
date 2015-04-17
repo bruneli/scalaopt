@@ -16,7 +16,7 @@
 
 package org.scalaopt.sparkapps
 
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.SparkContext
 import org.scalaopt.algos.linalg.{QR, AugmentedRow}
 import org.scalatest.{BeforeAndAfter, Matchers, FlatSpec}
 
@@ -50,7 +50,13 @@ class SparkDataSetSpec extends FlatSpec with Matchers with BeforeAndAfter {
     System.clearProperty("spark.driver.port")
     System.clearProperty("spark.hostPort")
 
-    sc = new SparkContext("local[4]", "SparkDataSetSpec")
+    sc = new SparkContext("local[2]", "SparkDataSetSpec")
+  }
+
+  "++" should "perform the union of two data sets" in {
+    val data1: SparkDataSet[Double] = sc.parallelize(List(1.0, 10.0, 5.0, 3.0))
+    val data2: SparkDataSet[Double] = sc.parallelize(List(-20.0, 1.0))
+    (data1 ++ data2).aggregate(0.0)(_ + _, _ + _) shouldBe 0.0 +- 1.0e-8
   }
 
   "spark data set" should "invert a matrix via QR decomposition" in {
@@ -65,7 +71,7 @@ class SparkDataSetSpec extends FlatSpec with Matchers with BeforeAndAfter {
     val qtb = List(-0.8232319, -1.5138969, 1.5101011)
 
     // Check pivoting
-    List(3, 2, 1).zip(qr.ipvt).map {
+    List(3, 2, 1).zip(qr.ipvt).foreach {
       case (i, j) => (i - 1) shouldBe j
     }
 
@@ -77,12 +83,12 @@ class SparkDataSetSpec extends FlatSpec with Matchers with BeforeAndAfter {
     }
 
     // Check qtb is same (up to a sign)
-    qtb.zip(qr.qtb).map {
+    qtb.zip(qr.qtb).foreach {
       case (x, y) => x shouldBe y +- tol
     }
 
     // Check solution is same
-    sol.zip(qr.solution).map {
+    sol.zip(qr.solution).foreach {
       case (x, y) => x shouldBe y +- tol
     }
   }

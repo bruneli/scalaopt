@@ -25,7 +25,9 @@ object SeqDataSetConverter {
    *
    * @author bruneli
    */
-  implicit class SeqDataSet[+A](v: Seq[A]) extends DataSet[A] {
+  implicit class SeqDataSet[A](v: Seq[A]) extends DataSet[A] {
+
+    override def ++(that: DataSet[A]) = new SeqDataSet(this.v ++ that.collect())
 
     override def aggregate[B: ClassTag](z: => B)(
       seqop: (B, A) => B, combop: (B, B) => B): B = {
@@ -38,7 +40,7 @@ object SeqDataSetConverter {
 
     override def foreach(f: (A) => Unit): Unit = v foreach f
 
-    override def head: A = v head
+    override def head = v head
     
     override def map[B: ClassTag](f: (A) => B): DataSet[B] = v map f
 

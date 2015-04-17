@@ -18,7 +18,7 @@ package org.scalaopt.stdapps
 
 import org.scalaopt.algos._
 import org.scalaopt.algos.derivativefree.NelderMead
-import org.scalaopt.algos.leastsquares.LevenbergMarquardt
+import org.scalaopt.algos.leastsquares.{LevenbergMarquardtConfig, LevenbergMarquardt}
 
 /**
  * Statistics package using optimization algorithms to fit and predict set of data.
@@ -50,13 +50,13 @@ package object stats {
    * @param config optimization method configuration parameters
    * @return fit results
    */
-  def leastSquaresFit[C <: ConfigPars](
+  def leastSquaresFit[C <: LevenbergMarquardtConfig](
     func: MSEFunction,
     p0: Variables,
     config: Option[C] = None): FitResults = {
     implicit val pars = config.getOrElse(LevenbergMarquardt.defaultConfig)
-    val pOpt= LevenbergMarquardt.minimize(func, p0).get
-    new FitResults(pOpt, func)
+    val pOpt = LevenbergMarquardt.minimize(func, p0).get
+    new FitResults(pOpt, func.apply)
   }
 
   /**
@@ -69,15 +69,18 @@ package object stats {
    * @param config optimization method configuration parameters
    * @return fit results
    */
-  def maxLikelihoodFit[C <: ConfigPars](
+  def maxLikelihoodFit[A <: ObjectiveFunction, B <: ConfigPars](
     pdf: RegressionFunction,
     data: DataSet[Variables],
     p0: Variables,
-    method: Optimizer[C] = NelderMead,
-    config: Option[C] = None): FitResults = {
+    method: Optimizer[A, B] = NelderMead,
+    config: Option[B] = None): FitResults = {
     implicit val pars = config.getOrElse(method.defaultConfig)
-
-    val pOpt= method.minimize(negLogLikelihood(pdf, data), p0).get
+    val nllf = negLogLikelihood(pdf, data)_ match {
+      case f: A => f
+      case _ => throw new ClassCastException("Incorrect type of negative log-likelihood function")
+    }
+    val pOpt = method.minimize(nllf, p0).get
     new FitResults(pOpt, pdf)
   }
 

@@ -24,7 +24,16 @@ import scala.reflect.ClassTag
  *
  * @author bruneli
  */
-trait DataSet[+A] {
+trait DataSet[A] {
+
+  /**
+   * Returns a data set containing the elements from the left hand operand followed by the elements from the right
+   * hand operand.
+   *
+   * @param that an other data set
+   * @return the union of the two data sets
+   */
+  def ++(that: DataSet[A]): DataSet[A]
 
   /**
    * Aggregates the results of applying an operator to subsequent elements.

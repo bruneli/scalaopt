@@ -18,6 +18,7 @@ package org.scalaopt.stdapps.learning.nnet
 
 import org.scalaopt.algos.leastsquares.LevenbergMarquardt
 import org.scalaopt.stdapps.learning.data.Iris
+import org.scalaopt.stdapps.learning.nnet.activation.SoftMaxFunction
 import org.scalatest._
 import org.scalatest.Matchers._
 
@@ -26,11 +27,16 @@ import org.scalatest.Matchers._
  */
 class FeedForwardNeuralNetworkSpec extends FlatSpec with Matchers {
 
-  "neural network" should "train a XOR" in {
+  "neural network" should "train on the Iris data" in {
+    import LevenbergMarquardt._
 
-    val neuralNetwork = FeedForwardNeuralNetwork(Iris.data, Vector(Iris.nInputs, 5, Iris.nClasses))
-
-    val optimalWeights = LevenbergMarquardt.minimize(neuralNetwork, neuralNetwork.randomWeights)
+    val neuralNetwork = FeedForwardNeuralNetwork(
+      Iris.data,
+      Vector(Iris.nInputs, 5, Iris.nClasses),
+      lossType = LossType.CrossEntropy,
+      outputFunction = SoftMaxFunction)
+    val w0 = neuralNetwork.network.weights
+    val optimalWeights = LevenbergMarquardt.minimize(neuralNetwork, w0)
 
     1 shouldBe 1
   }

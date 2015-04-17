@@ -43,7 +43,7 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object Powell extends Optimizer[PowellConfig] {
+object Powell extends Optimizer[ObjectiveFunction, PowellConfig] {
 
   implicit val defaultConfig: PowellConfig = new PowellConfig
   

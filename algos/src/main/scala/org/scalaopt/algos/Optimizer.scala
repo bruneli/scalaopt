@@ -21,12 +21,13 @@ import scala.util.Try
 /**
  * An optimizer should implement at least one minimize method.
  *
- * @tparam C configuration parameters type
+ * @tparam A objective function type
+ * @tparam B configuration parameters type
  * @author bruneli
  */
-trait Optimizer[C <: ConfigPars] {
+trait Optimizer[A <: ObjectiveFunction, B <: ConfigPars] {
 
-  val defaultConfig: C
+  val defaultConfig: B
 
   /**
    * Minimize an objective function acting on a vector of real values.
@@ -36,10 +37,7 @@ trait Optimizer[C <: ConfigPars] {
    * @param pars algorithm configuration parameters
    * @return Variables at a local minimum or failure
    */
-  def minimize(
-    f:  ObjectiveFunction,
-    x0: Variables)(
-    implicit pars: C): Try[Variables]
+  def minimize(f: A, x0: Variables)(implicit pars: B): Try[Variables]
 
 }
 

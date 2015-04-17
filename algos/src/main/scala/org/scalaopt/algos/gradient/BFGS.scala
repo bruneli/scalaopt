@@ -38,7 +38,7 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object BFGS extends Optimizer[BFGSConfig] {
+object BFGS extends Optimizer[ObjectiveFunction, BFGSConfig] {
 
   implicit val defaultConfig: BFGSConfig = new BFGSConfig
 

@@ -34,7 +34,7 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object NelderMead extends Optimizer[NelderMeadConfig] {
+object NelderMead extends Optimizer[ObjectiveFunction, NelderMeadConfig] {
 
   implicit val defaultConfig: NelderMeadConfig = new NelderMeadConfig
 
