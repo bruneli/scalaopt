@@ -71,6 +71,8 @@ trait DataSet[A] {
    */
   def map[B: ClassTag](f: (A) => B): DataSet[B]
 
+  def size: Long
+
   /**
    * Zips this sequence with its indices.
    *

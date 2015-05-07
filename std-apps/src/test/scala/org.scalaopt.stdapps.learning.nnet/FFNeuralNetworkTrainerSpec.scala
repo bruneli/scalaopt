@@ -16,6 +16,7 @@
 
 package org.scalaopt.stdapps.learning.nnet
 
+import org.scalaopt.algos.gradient.BFGS
 import org.scalaopt.algos.leastsquares.LevenbergMarquardt
 import org.scalaopt.stdapps.learning.data.Iris
 import org.scalaopt.stdapps.learning.nnet.activation.SoftMaxFunction
@@ -25,20 +26,43 @@ import org.scalatest.Matchers._
 /**
  * @author bruneli
  */
-class FeedForwardNeuralNetworkSpec extends FlatSpec with Matchers {
+class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
-  "neural network" should "train on the Iris data" in {
+  "neural network" should "train on artificial data mimicing a network" in {
+    import BFGS._
+
+    //val network = FFNeuralNetwork(Vector(3, 1), Vector(0.5, 0.7, 0.4, 1.0))
+  }
+
+  "neural network" should "train on the Iris data with the Levenberg-Marquardt method" in {
     import LevenbergMarquardt._
 
-    val neuralNetwork = FeedForwardNeuralNetwork(
+    val neuralNetwork = FFNeuralNetworkTrainer(
       Iris.data,
       Vector(Iris.nInputs, 5, Iris.nClasses),
       lossType = LossType.CrossEntropy,
-      outputFunction = SoftMaxFunction)
+      outputFunction = SoftMaxFunction,
+      decay = 0.01)
     val w0 = neuralNetwork.network.weights
     val optimalWeights = LevenbergMarquardt.minimize(neuralNetwork, w0)
 
     1 shouldBe 1
+  }
+
+  it should "train on the Iris data with the BFGS method" in {
+    import BFGS._
+
+    val neuralNetwork = FFNeuralNetworkTrainer(
+      Iris.data,
+      Vector(Iris.nInputs, 5, Iris.nClasses),
+      lossType = LossType.CrossEntropy,
+      outputFunction = SoftMaxFunction,
+      decay = 0.01)
+    val w0 = neuralNetwork.network.weights
+    val optimalWeights = BFGS.minimize(neuralNetwork, w0)
+
+    optimalWeights shouldBe Succeeded
+    //optimalWeights.size shouldBe (5 * 6 + Iris.nClasses * 6)
   }
 
 }
