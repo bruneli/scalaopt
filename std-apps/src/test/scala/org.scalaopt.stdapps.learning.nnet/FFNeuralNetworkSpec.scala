@@ -16,8 +16,11 @@
 
 package org.scalaopt.stdapps.learning.nnet
 
+import org.scalaopt.algos._
+import activation.{LinearFunction, LogisticFunction}
 import org.scalatest._
 import org.scalatest.Matchers._
+import LossType._
 
 /**
  * @author bruneli
@@ -46,6 +49,34 @@ class FFNeuralNetworkSpec extends FlatSpec with Matchers {
     weightsPerNeuron should have size 4
     for ((weights, index) <- weightsPerNeuron.zipWithIndex) {
       weights shouldBe (1 to 10).map(i => index.toDouble).toVector
+    }
+  }
+
+  "forward" should "propagate inputs up to the output layer" in {
+    val neuronsPerLayer = Vector(3, 5, 1)
+    val network = FFNeuralNetwork(neuronsPerLayer, 0.5, MeanSquaredError, LogisticFunction, LinearFunction)
+    val weightsPerLayer = FFNeuralNetwork.countWeights(neuronsPerLayer)
+    val weights = FFNeuralNetwork.splitWeights(weightsPerLayer, network.weights)
+      .zipWithIndex
+      .map { case (w, i) => FFNeuralNetwork.splitWeights(neuronsPerLayer(i) + 1, w) }
+    val inputs = Vector(1.0, 0.5, 1.5)
+    val activatedNetwork = network.forward(inputs)
+    // Hidden layer
+    val weights1 = weights(0)
+    val outputs1 =
+      for ((neuron, i) <- activatedNetwork.layers(0).zipWithIndex) yield {
+      val excitation = weights1(i).head + (inputs dot weights1(i).tail)
+      val output = LogisticFunction(excitation)
+      neuron.excitation shouldBe excitation
+      neuron.output shouldBe output
+      (excitation, output)
+    }
+    val weights2 = weights(1)
+    for ((neuron, i) <- activatedNetwork.layers(1).zipWithIndex) {
+      val excitation = weights2(i).head + (outputs1.map(_._2) dot weights2(i).tail)
+      val output = LinearFunction(excitation)
+      neuron.excitation shouldBe excitation
+      neuron.output shouldBe output
     }
   }
 
