@@ -61,22 +61,62 @@ class FFNeuralNetworkSpec extends FlatSpec with Matchers {
       .map { case (w, i) => FFNeuralNetwork.splitWeights(neuronsPerLayer(i) + 1, w) }
     val inputs = Vector(1.0, 0.5, 1.5)
     val activatedNetwork = network.forward(inputs)
-    // Hidden layer
+    // Hidden layer with sigmoid response
     val weights1 = weights(0)
     val outputs1 =
       for ((neuron, i) <- activatedNetwork.layers(0).zipWithIndex) yield {
       val excitation = weights1(i).head + (inputs dot weights1(i).tail)
       val output = LogisticFunction(excitation)
-      neuron.excitation shouldBe excitation
-      neuron.output shouldBe output
+      neuron.excitation shouldBe excitation +- 1.0e-8
+      neuron.output shouldBe output +- 1.0e-8
       (excitation, output)
     }
+    // Output layer with linear response
     val weights2 = weights(1)
     for ((neuron, i) <- activatedNetwork.layers(1).zipWithIndex) {
       val excitation = weights2(i).head + (outputs1.map(_._2) dot weights2(i).tail)
       val output = LinearFunction(excitation)
-      neuron.excitation shouldBe excitation
-      neuron.output shouldBe output
+      neuron.excitation shouldBe excitation +- 1.0e-8
+      neuron.output shouldBe output +- 1.0e-8
+    }
+  }
+
+  "backward" should "propagate target responses down to the inner layer" in {
+    val neuronsPerLayer = Vector(3, 5, 1)
+    val network = FFNeuralNetwork(neuronsPerLayer, 0.5, MeanSquaredError, LogisticFunction, LinearFunction)
+    val weightsPerLayer = FFNeuralNetwork.countWeights(neuronsPerLayer)
+    val weights = FFNeuralNetwork.splitWeights(weightsPerLayer, network.weights)
+      .zipWithIndex
+      .map { case (w, i) => FFNeuralNetwork.splitWeights(neuronsPerLayer(i) + 1, w) }
+    val inputs = Vector(1.0, 0.5, 1.5)
+    val targets = Vector(1.0)
+    val finalNetwork = network.forward(inputs).backward(targets)
+    // Propagate inputs in hidden layer
+    val weights1 = weights(0)
+    val outputs1 =
+      for ((neuron, i) <- finalNetwork.layers(0).zipWithIndex) yield {
+        val excitation = weights1(i).head + (inputs dot weights1(i).tail)
+        LogisticFunction(excitation)
+      }
+    // Check gradient in output layer
+    val weights2 = weights(1)
+    val deltas = for ((neuron, i) <- finalNetwork.layers(1).zipWithIndex) yield {
+      val excitation = weights2(i).head + (outputs1 dot weights2(i).tail)
+      val output = LinearFunction(excitation)
+      val delta = targets(0) - output
+      for ((derivative, j) <- neuron.gradient.zipWithIndex) {
+        val expDerivative = if (j == 0) delta else outputs1(j - 1) * delta
+        derivative shouldBe expDerivative +- 1.0e-8
+      }
+      delta
+    }
+    // Propagate errors to the inner layer and check gradient
+    for ((neuron, i) <- finalNetwork.layers(0).zipWithIndex) yield {
+      val error = deltas(0) * weights2(0)(i + 1) * LogisticFunction.derivative(neuron.output)
+      for ((derivative, j) <- neuron.gradient.zipWithIndex) {
+        val expDerivative = if (j == 0) error else inputs(j - 1) * error
+        derivative shouldBe expDerivative +- 1.0e-8
+      }
     }
   }
 

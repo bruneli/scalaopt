@@ -54,7 +54,7 @@ case class Neuron(
 
   def propagateError(neurons: Vector[Neuron], activationFunction: ActivationFunction): Neuron = {
     val activationDerivative = activationFunction.derivative(output)
-    val lossDerivative = neurons map (neuron => neuron.error * neuron.weights(index)) sum
+    val lossDerivative = neurons map (neuron => neuron.error * neuron.weights(index + 1)) sum
     val error = lossDerivative * activationDerivative
     this.copy(error = error)
   }
