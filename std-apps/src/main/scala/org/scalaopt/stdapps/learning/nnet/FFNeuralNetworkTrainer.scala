@@ -21,58 +21,54 @@ import org.scalaopt.algos.linalg.AugmentedRow
 import org.scalaopt.stdapps.learning.nnet.activation._
 import org.scalaopt.algos.SeqDataSetConverter._
 
-import scala.util.Random
+import scala.util.{Try, Random}
 
 /**
  * Feed-forward neural network.
  *
- * @param layers number of neurons per layer (from input to output included)
- * @param decay  parameter for weight decay
- * @param rang   initial random weights on [-rang, rang]
+ * @param initialNetwork initial neural network
+ * @param decay          parameter for weight decay
  *
  * @author bruneli
  */
 case class FFNeuralNetworkTrainer(
+  initialNetwork: FFNeuralNetwork,
   data: DataSet[DataPoint],
-  layers: Vector[Int],
   decay: Double = 0.0,
-  rang: Double = 0.7,
-  lossType: LossType.Value = LossType.MeanSquaredError,
-  innerFunction: ActivationFunction = LogisticFunction,
-  outputFunction: ActivationFunction = LinearFunction,
   xTol: Double = 1.0e-6,
   random: Random = new Random(12345)) extends MSEFunction {
 
-  require(layers.size > 1, "Neural network must have a least two layers.")
-
   var network = initialNetwork
 
-  override def apply(weights: Variables) = {
-    if (!isWeightsVectorUnchanged(weights)) {
-      network = FFNeuralNetwork(layers, weights, lossType, innerFunction, outputFunction)
+  def withMethod[A <: ObjectiveFunction, B <: ConfigPars](
+    method: Optimizer[A, B],
+    config: Option[B] = None): Try[FFNeuralNetwork] = {
+    implicit val pars = config.getOrElse(method.defaultConfig)
+    val objectiveFunction = this match {
+      case f: A => f
+      case _ => throw new ClassCastException("Incorrect type of objective function")
     }
+    method.minimize(objectiveFunction, this.network.weights).map(network.withWeights)
+  }
+
+  override def apply(weights: Variables) = {
+    if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
     data.aggregate(weights.norm2 * decay)(loss, _ + _)
   }
 
   override def gradient(weights: Variables): Variables = {
-    if (!isWeightsVectorUnchanged(weights)) {
-      network = FFNeuralNetwork(layers, weights, lossType, innerFunction, outputFunction)
-    }
+    if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
     data.aggregate((weights * 2.0 * decay, 0.0))(backpropagate, sumJacobianResidual)._1
   }
 
   override def dirder(weights: Variables, d: Variables): Double = {
     // TODO use backpropagation to compute the directional derivative
-    if (!isWeightsVectorUnchanged(weights)) {
-      network = FFNeuralNetwork(layers, weights, lossType, innerFunction, outputFunction)
-    }
+    if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
     gradient(weights) dot d
   }
 
   def apply(weights: Variables, x: Variables): Variables = {
-    if (!isWeightsVectorUnchanged(weights)) {
-      network = FFNeuralNetwork(layers, weights, lossType, innerFunction, outputFunction)
-    }
+    if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
     network.outputs
   }
 
@@ -81,7 +77,7 @@ case class FFNeuralNetworkTrainer(
       val activatedNetwork = network.forward(point.x).backward(point.y)
       activatedNetwork.residual
     } else {
-      network = FFNeuralNetwork(layers, p, lossType, innerFunction, outputFunction)
+      network = network.withWeights(p)
         .forward(point.x)
         .backward(point.y)
       network.residual
@@ -92,25 +88,19 @@ case class FFNeuralNetworkTrainer(
       val activatedNetwork = network.forward(point.x).backward(point.y)
       (activatedNetwork.gradient, activatedNetwork.residual)
     } else {
-      network = FFNeuralNetwork(layers, p, lossType, innerFunction, outputFunction)
+      network = network.withWeights(p)
         .forward(point.x)
         .backward(point.y)
       (network.gradient, network.residual)
     }
 
   def jacobianAndResidualsMatrix(p: Variables) = {
-    if (!isWeightsVectorUnchanged(p)) {
-      network = FFNeuralNetwork(layers, p, lossType, innerFunction, outputFunction)
-    }
+    if (!isWeightsVectorUnchanged(p)) network = network.withWeights(p)
     if (decay > 0.0) {
       data.zipWithIndex.map(backpropagateRow) ++ penaltyMatrix(p)
     } else {
       data.zipWithIndex.map(backpropagateRow)
     }
-  }
-
-  private def initialNetwork: FFNeuralNetwork = {
-    FFNeuralNetwork(layers, rang, lossType, innerFunction, outputFunction)
   }
 
   private def backpropagate(

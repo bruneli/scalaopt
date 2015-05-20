@@ -37,6 +37,23 @@ case class FFNeuralNetwork(
   innerFunction: ActivationFunction,
   outputFunction: ActivationFunction) {
 
+  def withWeights(weights: Variables): FFNeuralNetwork = {
+    val nWeightsPerLayer = for (layer <- layers) yield layer.map(_.weights.size).sum[Int]
+    require(nWeightsPerLayer.sum == weights.size,
+      s"Number of weights provided ${weights.size} != ${nWeightsPerLayer.sum} required")
+    val neurons = FFNeuralNetwork.splitWeights(nWeightsPerLayer, weights).zipWithIndex.map {
+      case (weights, layer) =>
+        FFNeuralNetwork.splitWeights(layers(layer).size + 1, weights).zipWithIndex.map {
+          case (weights, index) => Neuron(layer, index, weights)
+        }
+    }
+    FFNeuralNetwork(neurons, lossType, innerFunction, outputFunction)
+  }
+
+  def trainOn(data: DataSet[DataPoint]): FFNeuralNetworkTrainer = {
+    new FFNeuralNetworkTrainer(this, data)
+  }
+
   def outputs: Variables = layers.last.map(_.output)
 
   def weights: Variables = layers.flatMap(_.flatMap(_.weights))
