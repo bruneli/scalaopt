@@ -112,7 +112,7 @@ object ConjugateGradient extends Optimizer[ObjectiveFunction, CGConfig] {
  * @param c3 parameter to extend the search interval
  * @param method method name FR, PR, PR+ (default)
  */
-class CGConfig(
+case class CGConfig(
   override val tol: Double = 1.0e-5,
   override val maxIter: Int = 200,
   override val eps: Double = 1.0e-8,

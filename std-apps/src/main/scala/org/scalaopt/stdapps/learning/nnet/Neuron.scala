@@ -32,6 +32,7 @@ case class Neuron(
   excitation: Double = Double.NaN,
   output: Double = Double.NaN,
   target: Double = Double.NaN,
+  residual: Double = Double.NaN,
   error: Double = Double.NaN) {
 
   def activate(inputs: Variables, activationFunction: ActivationFunction): Neuron = {
@@ -47,18 +48,25 @@ case class Neuron(
 
   def propagateError(target: Double, activationFunction: ActivationFunction): Neuron = {
     val activationDerivative = activationFunction.derivative(output)
-    val lossDerivative = target - output
+    val lossDerivative = output - target
     val error = lossDerivative * activationDerivative
-    this.copy(error = error, target = target)
+    this.copy(error = error, target = target, residual = lossDerivative)
   }
 
   def propagateError(neurons: Vector[Neuron], activationFunction: ActivationFunction): Neuron = {
     val activationDerivative = activationFunction.derivative(output)
     val lossDerivative = neurons map (neuron => neuron.error * neuron.weights(index + 1)) sum
     val error = lossDerivative * activationDerivative
-    this.copy(error = error)
+    this.copy(error = error, residual = neurons.head.residual)
   }
 
   def gradient: Variables = (1.0 +: inputs) * error
+
+  def jacobian: Variables =
+    if (residual.isNaN || residual == 0.0) {
+      (1.0 +: inputs) * error
+    } else {
+      (1.0 +: inputs) * error / residual
+    }
 
 }

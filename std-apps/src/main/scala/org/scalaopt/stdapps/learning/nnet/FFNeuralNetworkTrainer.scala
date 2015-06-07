@@ -17,6 +17,7 @@
 package org.scalaopt.stdapps.learning.nnet
 
 import org.scalaopt.algos._
+import org.scalaopt.algos.gradient.BFGSConfig
 import org.scalaopt.algos.linalg.AugmentedRow
 import org.scalaopt.stdapps.learning.nnet.activation._
 import org.scalaopt.algos.SeqDataSetConverter._
@@ -53,12 +54,12 @@ case class FFNeuralNetworkTrainer(
 
   override def apply(weights: Variables) = {
     if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
-    data.aggregate(weights.norm2 * decay)(loss, _ + _)
+    data.aggregate(weights.norm2 * decay)(loss, _ + _) / data.size
   }
 
   override def gradient(weights: Variables): Variables = {
     if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
-    data.aggregate((weights * 2.0 * decay, 0.0))(backpropagate, sumJacobianResidual)._1
+    data.aggregate((weights * 2.0 * decay, 0.0))(backpropagate, sumJacobianResidual)._1 / data.size
   }
 
   override def dirder(weights: Variables, d: Variables): Double = {
@@ -107,14 +108,14 @@ case class FFNeuralNetworkTrainer(
     previous: (Variables, Double),
     point: DataPoint): (Variables, Double) = {
     val activatedNetwork = network.forward(point.x).backward(point.y)
-    (previous._1 + activatedNetwork.gradient,
+    (previous._1 + activatedNetwork.jacobian,
       previous._2 + activatedNetwork.residual)
   }
 
   private def backpropagateRow(pointWithIndex: (DataPoint, Long)): AugmentedRow = {
     val (point, index) = pointWithIndex
     val activatedNetwork = network.forward(point.x).backward(point.y)
-    AugmentedRow(activatedNetwork.gradient, activatedNetwork.residual, index)
+    AugmentedRow(activatedNetwork.jacobian, activatedNetwork.residual, index)
   }
 
   private def loss(zero: Double, point: DataPoint) = {
@@ -133,6 +134,14 @@ case class FFNeuralNetworkTrainer(
     val penalty = Math.sqrt(decay)
     for (i <- 0 until p.size) yield {
       AugmentedRow(zeros(p.size).updated(i, penalty), 0.0, data.size + i)
+    }
+  }
+
+  private def getDefaultConfig[A <: ObjectiveFunction, B <: ConfigPars](
+    method: Optimizer[A, B]): B = {
+    method.defaultConfig match {
+      case bfgs: BFGSConfig => bfgs.copy(maxIterFirstTime = Some(bfgs.maxIterZoom * 10)).asInstanceOf[B]
+      case _ => method.defaultConfig
     }
   }
 

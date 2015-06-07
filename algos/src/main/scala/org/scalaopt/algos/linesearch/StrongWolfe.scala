@@ -210,8 +210,8 @@ object StrongWolfe {
       val dfStar = ptStar.dfx
       // Test strong Wolfe conditions
       if ((fStar <= f0 + pars.c1 * aStar * df0) &&
-          (Math.abs(dfStar) <= -(pars.c2) * df0)) Success(ptStar)
-      else if ((fStar > f0 + (pars.c1) * aStar * df0) ||
+          (Math.abs(dfStar) <= -pars.c2 * df0)) Success(ptStar)
+      else if ((fStar > f0 + pars.c1 * aStar * df0) ||
                (fStar > f1) ||
                (dfStar * (a2 - a1) >= 0.0))
         iterate(iter + 1, a1, f1, df1, aStar, fStar, a2, f2)

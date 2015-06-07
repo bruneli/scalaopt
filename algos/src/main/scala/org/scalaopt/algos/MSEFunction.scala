@@ -83,7 +83,7 @@ trait MSEFunction extends ObjectiveFunction {
 case class SimpleMSEFunction(
   f: (Variables, Variables) => Variables,
   data: DataSet[DataPoint],
-  val eps: Double = 1.0e-8) extends MSEFunction {
+  eps: Double = 1.0e-8) extends MSEFunction {
 
   /**
    * Evaluate the regression function
@@ -134,4 +134,14 @@ case class SimpleMSEFunction(
       case (xy, i) => AugmentedRow(jacobianAndResidual(p, xy), i)
     }
   }
+
+  override def gradient(x: Variables): Variables = {
+    val fx: Double = this(x)
+    for (i <- 0 until x.length) yield (this(x.updated(i, x(i) + eps)) - fx) / eps
+  }
+
+  override def dirder(x: Variables, d: Variables): Double = {
+    (this(x + d * eps) - this(x)) / eps
+  }
+
 }

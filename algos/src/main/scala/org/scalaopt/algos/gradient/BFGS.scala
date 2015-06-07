@@ -86,7 +86,7 @@ object BFGS extends Optimizer[ObjectiveFunction, BFGSConfig] {
 
       // Try to get an approximate step length satisfying the strong
       // Wolfe conditions
-      stepLength(ptk)(pars.strongWolfe) match {
+      stepLength(ptk)(pars.getStrongWolfe(k)) match {
         case Success(ptkpp) => {
           if (ptkpp.grad.norm < pars.tol) {
             Success(ptkpp.x)
@@ -118,15 +118,25 @@ object BFGS extends Optimizer[ObjectiveFunction, BFGSConfig] {
  * @param c2 curvature condition parameter
  * @param c3 parameter to extend the search interval
  */
-class BFGSConfig(
+case class BFGSConfig(
   override val tol: Double = 1.0e-5,
   override val maxIter: Int = 200,
   override val eps: Double = 1.0e-8,
   maxIterLine: Int = 10,
   maxIterZoom: Int = 10,
+  maxIterFirstTime: Option[Int] = None,
   c1: Double = 1.0e-4,
   c2: Double = 0.9,
   c3: Double = 2.0) extends ConfigPars(tol, maxIter, eps) {
+
   val strongWolfe: StrongWolfeConfig =
     new StrongWolfeConfig(maxIterLine, maxIterZoom, c1, c2, c3)
+
+  def getStrongWolfe(it: Int) =
+    if (it == 0 && maxIterFirstTime.isDefined) {
+      new StrongWolfeConfig(maxIterLine, maxIterFirstTime.get, c1, c2, c3)
+    } else {
+      strongWolfe
+    }
+
 }

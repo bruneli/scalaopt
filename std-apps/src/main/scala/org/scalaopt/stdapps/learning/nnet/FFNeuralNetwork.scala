@@ -43,7 +43,7 @@ case class FFNeuralNetwork(
       s"Number of weights provided ${weights.size} != ${nWeightsPerLayer.sum} required")
     val neurons = FFNeuralNetwork.splitWeights(nWeightsPerLayer, weights).zipWithIndex.map {
       case (weights, layer) =>
-        FFNeuralNetwork.splitWeights(layers(layer).size + 1, weights).zipWithIndex.map {
+        FFNeuralNetwork.splitWeights(weights.size / layers(layer).size, weights).zipWithIndex.map {
           case (weights, index) => Neuron(layer, index, weights)
         }
     }
@@ -59,6 +59,8 @@ case class FFNeuralNetwork(
   def weights: Variables = layers.flatMap(_.flatMap(_.weights))
 
   def gradient: Variables = layers.flatMap(_.flatMap(_.gradient))
+
+  def jacobian: Variables = layers.flatMap(_.flatMap(_.jacobian))
 
   def loss: Double = lossType match {
     case LossType.MeanSquaredError => layers.last.map(_.error).norm2
@@ -91,7 +93,12 @@ case class FFNeuralNetwork(
     case _ => throw new IllegalArgumentException(s"$lossType is not supported.")
   }
 
-  def residual: Double = layers.last.map(_.error).norm
+  def residual: Double =
+    if (layers.last.size == 1) {
+      layers.last.head.residual
+    } else {
+      layers.last.map(_.residual).norm
+    }
 
   def forward(inputs: Variables): FFNeuralNetwork = {
     val activatedLayers = layers

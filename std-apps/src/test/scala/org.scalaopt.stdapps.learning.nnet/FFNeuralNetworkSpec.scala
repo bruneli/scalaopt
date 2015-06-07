@@ -103,7 +103,7 @@ class FFNeuralNetworkSpec extends FlatSpec with Matchers {
     val deltas = for ((neuron, i) <- finalNetwork.layers(1).zipWithIndex) yield {
       val excitation = weights2(i).head + (outputs1 dot weights2(i).tail)
       val output = LinearFunction(excitation)
-      val delta = targets(0) - output
+      val delta = output - targets(0)
       for ((derivative, j) <- neuron.gradient.zipWithIndex) {
         val expDerivative = if (j == 0) delta else outputs1(j - 1) * delta
         derivative shouldBe expDerivative +- 1.0e-8
