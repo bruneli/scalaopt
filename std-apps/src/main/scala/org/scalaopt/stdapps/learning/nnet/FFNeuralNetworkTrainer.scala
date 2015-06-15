@@ -54,12 +54,12 @@ case class FFNeuralNetworkTrainer(
 
   override def apply(weights: Variables) = {
     if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
-    data.aggregate(weights.norm2 * decay)(loss, _ + _) / data.size
+    data.aggregate(weights.norm2 / 2.0 * decay)(loss, _ + _) / data.size
   }
 
   override def gradient(weights: Variables): Variables = {
     if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
-    data.aggregate((weights * 2.0 * decay, 0.0))(backpropagate, sumJacobianResidual)._1 / data.size
+    data.aggregate((weights * decay, 0.0))(backpropagate, sumGradientResidual)._1 / data.size
   }
 
   override def dirder(weights: Variables, d: Variables): Double = {
@@ -108,7 +108,7 @@ case class FFNeuralNetworkTrainer(
     previous: (Variables, Double),
     point: DataPoint): (Variables, Double) = {
     val activatedNetwork = network.forward(point.x).backward(point.y)
-    (previous._1 + activatedNetwork.jacobian,
+    (previous._1 + activatedNetwork.gradient,
       previous._2 + activatedNetwork.residual)
   }
 
@@ -119,10 +119,10 @@ case class FFNeuralNetworkTrainer(
   }
 
   private def loss(zero: Double, point: DataPoint) = {
-    network.forward(point.x).backward(point.y).loss
+    zero + network.forward(point.x).backward(point.y).loss
   }
 
-  private def sumJacobianResidual(left: (Variables, Double), right: (Variables, Double)) = {
+  private def sumGradientResidual(left: (Variables, Double), right: (Variables, Double)) = {
     (left._1 + right._1, left._2 + right._2)
   }
 

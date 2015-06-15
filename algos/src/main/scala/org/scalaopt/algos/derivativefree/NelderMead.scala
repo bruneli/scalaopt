@@ -294,7 +294,7 @@ object NelderMead extends Optimizer[ObjectiveFunction, NelderMeadConfig] {
  * @param relDelta     relative distance used to generate a new vertex
  * @param absDelta     absolute distance used to generate a new vertex
  */
-class NelderMeadConfig(
+case class NelderMeadConfig(
   override val tol: Double = 1.0e-5,
   override val maxIter: Int = 200,
   val cReflection: Double = 2.0,

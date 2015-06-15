@@ -19,6 +19,7 @@ package org.scalaopt.stdapps.learning.nnet
 import org.scalaopt.algos._
 import org.scalaopt.algos.gradient.{ConjugateGradient, BFGS}
 import org.scalaopt.algos.leastsquares.LevenbergMarquardt
+import org.scalaopt.algos.derivativefree.NelderMead
 import org.scalaopt.stdapps.learning.data.Iris
 import org.scalaopt.stdapps.learning.nnet.activation._
 import LossType._
@@ -32,7 +33,89 @@ import scala.util.Random
  */
 class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
-  "jacobianAndResidualsMatrix" should "lead to same results as a SimpleMSEFunction" in {
+  "gradient" should "be same as a SimpleMSEFunction for an MSE loss" in {
+    import SeqDataSetConverter._
+
+    val random = new Random(12345)
+
+    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
+    val network = FFNeuralNetwork(
+      Vector(2, 2, 1),
+      trueWeights,
+      MeanSquaredError,
+      LogisticFunction,
+      LinearFunction)
+
+    val regressionFunc: (Variables, Variables) => Variables = {
+      (weights, inputs) => network.withWeights(weights).forward(inputs).outputs
+    }
+
+    val data: DataSet[DataPoint] = for (i <- 1 to 10) yield {
+      val x = for (j <- 1 to 2) yield random.nextGaussian()
+      val y = network.forward(x).outputs
+      DataPoint(x, y)
+    }
+
+    val w0 = Vector(-0.1, 0.6, -0.3, 0.6, -0.8, -0.7, +0.3, -0.1, 0.35)
+    val trainer = network withWeights w0 trainOn data
+    val mseFunction = SimpleMSEFunction(regressionFunc, data)
+
+    val gradient1 = trainer.gradient(w0)
+    val gradient2 = mseFunction.gradient(w0)
+
+    for ((ele1, ele2) <- gradient1.zip(gradient2)) {
+      ele1 shouldBe ele2 +- 1.0e-5
+    }
+
+  }
+
+  it should "be same as a SimpleFunctionFiniteDiffGradient for a cross-entropy loss" in {
+    import SeqDataSetConverter._
+
+    val random = new Random(12345)
+
+    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
+    val network = FFNeuralNetwork(
+      Vector(2, 2, 1),
+      trueWeights,
+      CrossEntropy,
+      LogisticFunction,
+      LogisticFunction)
+
+    val data: DataSet[DataPoint] = for (i <- 1 to 10) yield {
+      val x = for (j <- 1 to 2) yield random.nextGaussian()
+      val y = network.forward(x).outputs
+      val target = if (y.norm >= 0.5) 1.0 else 0.0
+      DataPoint(x, Seq(target))
+    }
+
+    val objectiveFunc: Variables => Double = {
+      weights => {
+        val trainedNetwork = network.withWeights(weights)
+        def loss(sum: Double, point: DataPoint) = {
+          sum + trainedNetwork.forward(point.x).backward(point.y).loss
+        }
+        data.aggregate(0.0)(loss, _ + _) / data.size
+      }
+    }
+
+    val w0 = Vector(-0.1, 0.6, -0.3, 0.6, -0.8, -0.7, +0.3, -0.1, 0.35)
+    val trainer = network withWeights w0 trainOn data
+    val objFunction = new SimpleFunctionFiniteDiffGradient(objectiveFunc, BFGS.defaultConfig)
+
+    val loss1 = trainer(w0)
+    val loss2 = objFunction(w0)
+    loss1 shouldBe loss2 +- 1.0e-5
+    val gradient1 = trainer.gradient(w0)
+    val gradient2 = objFunction.gradient(w0)
+
+    for ((ele1, ele2) <- gradient1.zip(gradient2)) {
+      ele1 shouldBe ele2 +- 1.0e-5
+    }
+
+  }
+
+  "jacobianAndResidualsMatrix" should "gives same results as a SimpleMSEFunction for a linear function" in {
     import SeqDataSetConverter._
 
     val random = new Random(12345)
@@ -70,13 +153,12 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
     }
   }
 
-  "neural network" should "train on data that mimics a network with BFGS" in {
+  "neural network" should "retrieve an initial regression network with BFGS" in {
     import SeqDataSetConverter._
 
     val random = new Random(12345)
 
     val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
-    //val trueWeights = Vector(0.1, 0.5, 0.7, 0.4)
     val network = FFNeuralNetwork(
       Vector(2, 2, 1),
       trueWeights,
@@ -89,12 +171,55 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       val y = network.forward(x).outputs
       DataPoint(x, y)
     }
-    val w0 = Vector(-0.1, 0.6, -0.3, 0.6, -0.8, -0.7, +0.3, -0.1, 0.35)
-    //val w0 = Vector(-0.1, 0.6, -0.3, 0.6)
-    val trainedNetwork = network withWeights w0 trainOn data withMethod BFGS
+    val w0 = Vector(-0.1, 0.6, 0.5, 0.6, -0.6, 0.5, 0.0, 0.3, 0.25)
+    val trainedNetwork = network
+      .withWeights(w0)
+      .trainOn(data)
+      .withMethod(BFGS, Some(BFGS.defaultConfig.copy(tol = 1.0e-6)))
 
     trainedNetwork should be a 'success
-    (trainedNetwork.get.weights - trueWeights).norm should be <= BFGS.defaultConfig.tol
+    val wOpt = trainedNetwork.get.weights
+    val distBeforeFit = (w0 - trueWeights).norm
+    val distAfterFit = (wOpt - trueWeights).norm
+    distBeforeFit / distAfterFit should be <= 0.1
+  }
+
+  "neural network" should "retrieve an initial classification network with BFGS" in {
+    import SeqDataSetConverter._
+
+    val random = new Random(12345)
+
+    val trueWeights = Vector(0.1, 1.5, 0.4) //, 0.8, -0.5) //, 0.77, -0.1, 0.2, 0.2)
+    val network = FFNeuralNetwork(
+      Vector(2, 1),
+      trueWeights,
+      CrossEntropy,
+      LogisticFunction,
+      LogisticFunction)
+
+    val data: DataSet[DataPoint] = for (i <- 1 to 10000) yield {
+      val x = for (j <- 1 to 2) yield random.nextGaussian()
+      val p = network.forward(x).outputs.head
+      val k = if (random.nextDouble() < p) 1.0 else 0.0
+      DataPoint(x, Seq(k))
+    }
+    val w0 = Vector(-0.5, 0.6, 0.6) //, -0.1, -0.6) //, 0.5, 0.0, 0.3, 0.25)
+    val trainedNetwork = network
+      .withWeights(w0)
+      .trainOn(data)
+      .withMethod(BFGS, Some(BFGS.defaultConfig.copy(tol = 1.0e-5)))
+
+    val trainer = network.withWeights(w0).trainOn(data)
+    trainedNetwork should be a 'success
+    val wOpt = trainedNetwork.get.weights
+
+    val loss1 = trainer(w0)
+    val loss2 = trainer(trueWeights)
+    val loss3 = trainer(wOpt)
+
+    val distBeforeFit = (w0 - trueWeights).norm
+    val distAfterFit = (wOpt - trueWeights).norm
+    distAfterFit / distBeforeFit should be <= 0.05
   }
 
   it should "train on data that mimics a network with CG" in {

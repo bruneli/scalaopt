@@ -30,11 +30,11 @@ trait MSEFunction extends ObjectiveFunction {
    */
   def apply(p: Variables) = {
     def lossSum(sum: Double, xy: DataPoint) = sum + loss(p, xy)
-    data.aggregate(0.0)(lossSum, _ + _)
+    data.aggregate(0.0)(lossSum, _ + _) / data.size
   }
 
   /**
-   * Evaluate the loss associated to a data point as (Y - f(p, X))**2
+   * Evaluate the loss associated to a data point as (Y - f(p, X))**2 / 2
    *
    * @param p  vector of unknown parameters
    * @param xy an observed data point in the form (X, Y)
@@ -42,7 +42,7 @@ trait MSEFunction extends ObjectiveFunction {
    */
   def loss(p: Variables, xy: DataPoint): Double = {
     val res = residual(p, xy)
-    res * res
+    res * res / 2
   }
 
   /**

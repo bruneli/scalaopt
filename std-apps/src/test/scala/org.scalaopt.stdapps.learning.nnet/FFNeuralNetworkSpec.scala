@@ -120,4 +120,48 @@ class FFNeuralNetworkSpec extends FlatSpec with Matchers {
     }
   }
 
+  "gradient" should "be output - target when working with cross-entropy" in {
+    val trueWeights = Vector(0.1, -0.25, 0.5)
+    val network = FFNeuralNetwork(
+      Vector(2, 1),
+      trueWeights,
+      CrossEntropy,
+      LogisticFunction,
+      LogisticFunction)
+    val inputs = Vector(0.5, 1.5)
+    val targets = Vector(1.0)
+    val eps = 1.0e-8
+    val finalNetwork = network.forward(inputs).backward(targets)
+
+    def output(x: Variables) = {
+      val net = (1.0 +: x) dot trueWeights
+      1.0 / (1.0 + Math.exp(-net))
+    }
+    def f(x: Variables, y: Double, weights: Variables = trueWeights) = {
+      val net = (1.0 +: x) dot weights
+      val output = 1.0 / (1.0 + Math.exp(-net))
+      val entropy0 = if (y > 0.0) -y * Math.log(output / y) else 0.0
+      val entropy1 = if (y < 1.0) (1.0 - y) * Math.log((1.0 - output) / (1.0 - y)) else 0.0
+      entropy0 + entropy1
+    }
+    def df(x: Variables, y: Double) = {
+      val error = output(x) - y
+      (1.0 +: x) * error
+    }
+    val gradient1 = finalNetwork.gradient
+    val gradient2 = df(inputs, targets.head)
+    val loss = f(inputs, targets.head)
+
+    finalNetwork.outputs.head shouldBe output(inputs) +- 1.0e-5
+    finalNetwork.loss shouldBe loss +- 1.0e-5
+    for {(dx, i) <- gradient1.zip(gradient2).zipWithIndex
+         (dx1, dx2) = dx} {
+      val dw = trueWeights.updated(i, trueWeights(i) + eps)
+      val dloss = f(inputs, targets.head, dw)
+      val dx3 = (dloss - loss) / eps
+      dx1 shouldBe dx2 +- 1.0e-5
+      dx1 shouldBe dx3 +- 1.0e-5
+    }
+  }
+
 }

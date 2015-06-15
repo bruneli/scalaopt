@@ -149,7 +149,7 @@ object Powell extends Optimizer[ObjectiveFunction, PowellConfig] {
  * @param tolLine tolerance error for a line search
  * @param maxIterLine maximum number of iterations to bracket a minimum
  */
-class PowellConfig(
+case class PowellConfig(
   override val tol: Double = 1.0e-6,
   override val maxIter: Int = 30,
   h: Double = 0.1,

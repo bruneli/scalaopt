@@ -37,6 +37,8 @@ case class FFNeuralNetwork(
   innerFunction: ActivationFunction,
   outputFunction: ActivationFunction) {
 
+  // TODO, with cross-entropy, outputFunction should be LogisticFunction
+
   def withWeights(weights: Variables): FFNeuralNetwork = {
     val nWeightsPerLayer = for (layer <- layers) yield layer.map(_.weights.size).sum[Int]
     require(nWeightsPerLayer.sum == weights.size,
@@ -63,17 +65,15 @@ case class FFNeuralNetwork(
   def jacobian: Variables = layers.flatMap(_.flatMap(_.jacobian))
 
   def loss: Double = lossType match {
-    case LossType.MeanSquaredError => layers.last.map(_.error).norm2
+    case LossType.MeanSquaredError => layers.last.map(_.residual).norm2
     case LossType.CrossEntropy =>
       if (layers.last.size == 1) {
         val target = layers.last.head.target
         val output = layers.last.head.output
-        val entropy1 = if (target > 0.0) -target * Math.log(output / target) else 0.0
-        val entropy0 = if (target < 1.0) {
-          -(1.0 - target) * Math.log((1.0 - output) / (1.0 - target))
-        } else {
-          0.0
-        }
+        val entropy1 =
+          if (target > 0.0) -target * Math.log(output / target) else 0.0
+        val entropy0 =
+          if (target < 1.0) -(1.0 - target) * Math.log((1.0 - output) / (1.0 - target)) else 0.0
         entropy0 + entropy1
       } else {
         val outputSum = layers.last.map(_.output).sum
@@ -146,20 +146,24 @@ case class FFNeuralNetwork(
   private def propagateErrorsOuterLayer(
     neurons: Vector[Neuron],
     targets: Variables): Vector[Neuron] = {
-    if (targets.size > 1) {
-      lossType match {
-        case LossType.CrossEntropy =>
+    lossType match {
+      case LossType.MeanSquaredError =>
+        neurons.zip(targets).map {
+          case (neuron, target) => neuron.propagateError(target, outputFunction)
+        }
+      case LossType.CrossEntropy =>
+        if (targets.size > 1) {
           val targetsSum = targets.sum[Double]
           neurons.zip(targets).map {
             case (neuron, target) =>
               neuron.copy(error = targetsSum * neuron.output - target, target = target)
           }
-        case _ => ???
-      }
-    } else {
-      neurons.zip(targets).map {
-        case (neuron, target) => neuron.propagateError(target, outputFunction)
-      }
+        } else {
+          neurons.zip(targets).map {
+            case (neuron, target) => neuron.copy(error = neuron.output - target, target = target)
+          }
+        }
+      case _ => ???
     }
   }
 
