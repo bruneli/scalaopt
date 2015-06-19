@@ -19,7 +19,6 @@ package org.scalaopt.stdapps.learning.nnet
 import org.scalaopt.algos._
 import org.scalaopt.algos.gradient.{ConjugateGradient, BFGS}
 import org.scalaopt.algos.leastsquares.LevenbergMarquardt
-import org.scalaopt.algos.derivativefree.NelderMead
 import org.scalaopt.stdapps.learning.data.Iris
 import org.scalaopt.stdapps.learning.nnet.activation._
 import LossType._
@@ -189,7 +188,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     val random = new Random(12345)
 
-    val trueWeights = Vector(0.1, 1.5, 0.4) //, 0.8, -0.5) //, 0.77, -0.1, 0.2, 0.2)
+    val trueWeights = Vector(0.1, 1.5, 0.4)
     val network = FFNeuralNetwork(
       Vector(2, 1),
       trueWeights,
@@ -203,7 +202,49 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       val k = if (random.nextDouble() < p) 1.0 else 0.0
       DataPoint(x, Seq(k))
     }
-    val w0 = Vector(-0.5, 0.6, 0.6) //, -0.1, -0.6) //, 0.5, 0.0, 0.3, 0.25)
+    val w0 = Vector(-0.5, 0.6, 0.6)
+    val trainedNetwork = network
+      .withWeights(w0)
+      .trainOn(data)
+      .withMethod(BFGS, Some(BFGS.defaultConfig.copy(tol = 1.0e-5)))
+
+    val trainer = network.withWeights(w0).trainOn(data)
+    trainedNetwork should be a 'success
+    val wOpt = trainedNetwork.get.weights
+
+    val loss1 = trainer(w0)
+    val loss2 = trainer(trueWeights)
+    val loss3 = trainer(wOpt)
+
+    val distBeforeFit = (w0 - trueWeights).norm
+    val distAfterFit = (wOpt - trueWeights).norm
+    distAfterFit / distBeforeFit should be <= 0.05
+  }
+
+  "neural network" should "retrieve an initial multi-classification network with BFGS" in {
+    import SeqDataSetConverter._
+
+    val random = new Random(12345)
+
+    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
+    val network = FFNeuralNetwork(
+      Vector(2, 3),
+      trueWeights,
+      CrossEntropy,
+      LogisticFunction,
+      SoftMaxFunction)
+
+    val data: DataSet[DataPoint] = for (i <- 1 to 10000) yield {
+      val x = for (j <- 1 to 2) yield random.nextGaussian()
+      val probs = network.forward(x).outputs
+      val boundaries = probs.tail.scanLeft((0.0, probs.head)) {
+        case (prev, prob) => (prev._2, prev._2 + prob)
+      }
+      val g = random.nextDouble()
+      val y = boundaries.map { case (low, high) => if (g >= low && g < high) 1.0 else 0.0 }
+      DataPoint(x, y)
+    }
+    val w0 = Vector(-0.1, 0.6, 0.5, 0.6, -0.6, 0.5, 0.0, 0.3, 0.25)
     val trainedNetwork = network
       .withWeights(w0)
       .trainOn(data)

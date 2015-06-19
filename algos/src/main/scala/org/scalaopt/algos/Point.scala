@@ -47,4 +47,7 @@ case class LineSearchPoint(
   /** gradient df evaluated at x */
   lazy val grad = f.gradient(x)
 
+  /** Hessian vector product with d */
+  lazy val d2fxd = f.dirHessian(x, d)
+
 }

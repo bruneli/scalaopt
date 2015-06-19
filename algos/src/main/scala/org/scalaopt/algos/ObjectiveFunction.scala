@@ -52,10 +52,19 @@ trait ObjectiveFunction {
    */
   def dirder(x: Variables, d: Variables): Double = ???
 
+  /**
+   * Evaluate the vector product of the Hessian evaluated at x and a direction d
+   *
+   * @param x vector of variables
+   * @param d directional vector
+   * @return product of the Hessian in x times d
+   */
+  def dirHessian(x: Variables, d: Variables): Variables = ???
 }
 
 class SimpleFunctionWithGradient(
-  f: (Variables => Double, Variables => Variables)) extends ObjectiveFunction {
+  f: (Variables => Double, Variables => Variables),
+  implicit val pars: ConfigPars = new ConfigPars()) extends ObjectiveFunction {
 
   def apply(x: Variables) = f._1(x)
 
@@ -63,6 +72,12 @@ class SimpleFunctionWithGradient(
 
   override def dirder(x: Variables, d: Variables): Double = {
     gradient(x) dot d
+  }
+
+  override def dirHessian(x: Variables, d: Variables): Variables = {
+    val gradx = gradient(x)
+    val gradxd = gradient(x + d * pars.eps)
+    (gradxd - gradx) / pars.eps
   }
 
 }
@@ -75,13 +90,18 @@ class SimpleFunctionFiniteDiffGradient(
 
   override def gradient(x: Variables): Variables = {
     val fx: Double = this(x)
-    for (i <- 0 until x.length) yield (this(x.updated(i, x(i) + pars.eps)) - fx) / pars.eps
+    for (i <- x.indices) yield (this(x.updated(i, x(i) + pars.eps)) - fx) / pars.eps
   }
 
   override def dirder(x: Variables, d: Variables): Double = {
     (this(x + d * pars.eps) - this(x)) / pars.eps
   }
 
+  override def dirHessian(x: Variables, d: Variables): Variables = {
+    val gradx = gradient(x)
+    val gradxd = gradient(x + d * pars.eps)
+    (gradxd - gradx) / pars.eps
+  }
 }
 
 /**

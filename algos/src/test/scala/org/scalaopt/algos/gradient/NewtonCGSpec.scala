@@ -17,34 +17,31 @@
 package org.scalaopt.algos.gradient
 
 import org.scalaopt.algos._
-import scala.util.{Success, Failure}
-import org.scalatest._
+import org.scalatest.{Matchers, FlatSpec}
 
-class ConjugateGradientSpec extends FlatSpec with Matchers {
-  import ConjugateGradient._
-  
+class NewtonCGSpec extends FlatSpec with Matchers {
+  import NewtonCG._
+
   val x0 = Vector(0.5, 2.0)
   val fQuad = (x: Variables) => (x - x0) dot (x - x0)
   val dfQuad = (x: Variables) => (x - x0) * 2.0
 
   val config = new CGConfig(tol = 1.0e-6)
-    
-  "CG method" should "converge with fQuad and exact derivatives" in {
-    val d = minimize((fQuad, dfQuad), Vector(0.0, 0.0)) match {
-      case Success(xmin) => xmin - x0
-      case Failure(e) => x0
-    }
+
+  "NewtonCG method" should "converge with fQuad and exact derivatives" in {
+    val xOpt = minimize((fQuad, dfQuad), Vector(0.0, 0.0))
+    xOpt shouldBe 'success
+    val d = xOpt.get - x0
     (d dot d) should be < (config.tol * config.tol)
   }
-  
+
   it should "converge with fQuad and approximate derivatives" in {
-    val d = minimize(fQuad, Vector(0.0, 0.0)) match {
-      case Success(xmin) => xmin - x0
-      case Failure(e) => x0
-    }
+    val xOpt = minimize(fQuad, Vector(0.0, 0.0))
+    xOpt shouldBe 'success
+    val d = xOpt.get - x0
     (d dot d) should be < (config.tol * config.tol)
   }
-  
+
   it should "throw an exception when reaching max number of iterations" in {
     a [MaxIterException] should be thrownBy {
       minimize((x: Variables) => x(0) + x(1), Vector(0.0, 0.0))

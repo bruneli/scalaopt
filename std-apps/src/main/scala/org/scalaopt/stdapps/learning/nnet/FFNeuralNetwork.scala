@@ -37,7 +37,7 @@ case class FFNeuralNetwork(
   innerFunction: ActivationFunction,
   outputFunction: ActivationFunction) {
 
-  // TODO, with cross-entropy, outputFunction should be LogisticFunction
+  // TODO, with cross-entropy, outputFunction should be LogisticFunction for 1 output and SoftMaxFunction when > 1
 
   def withWeights(weights: Variables): FFNeuralNetwork = {
     val nWeightsPerLayer = for (layer <- layers) yield layer.map(_.weights.size).sum[Int]
@@ -137,6 +137,7 @@ case class FFNeuralNetwork(
           excitedNeurons.zip(probs).map {
             case (neuron, prob) => neuron.copy(output = prob / sumProbs)
           }
+        case _ => ???
       }
     } else {
       neurons.map(_.activate(inputs, activationFunction))
