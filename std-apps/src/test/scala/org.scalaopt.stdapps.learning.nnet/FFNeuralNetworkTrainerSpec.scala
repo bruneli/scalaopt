@@ -183,7 +183,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
     distBeforeFit / distAfterFit should be <= 0.1
   }
 
-  "neural network" should "retrieve an initial classification network with BFGS" in {
+  it should "retrieve an initial classification network with BFGS" in {
     import SeqDataSetConverter._
 
     val random = new Random(12345)
@@ -208,20 +208,15 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       .trainOn(data)
       .withMethod(BFGS, Some(BFGS.defaultConfig.copy(tol = 1.0e-5)))
 
-    val trainer = network.withWeights(w0).trainOn(data)
     trainedNetwork should be a 'success
     val wOpt = trainedNetwork.get.weights
-
-    val loss1 = trainer(w0)
-    val loss2 = trainer(trueWeights)
-    val loss3 = trainer(wOpt)
 
     val distBeforeFit = (w0 - trueWeights).norm
     val distAfterFit = (wOpt - trueWeights).norm
     distAfterFit / distBeforeFit should be <= 0.05
   }
 
-  "neural network" should "retrieve an initial multi-classification network with BFGS" in {
+  it should "retrieve an initial multi-classification network with BFGS" in {
     import SeqDataSetConverter._
 
     val random = new Random(12345)
@@ -250,20 +245,15 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       .trainOn(data)
       .withMethod(BFGS, Some(BFGS.defaultConfig.copy(tol = 1.0e-5)))
 
-    val trainer = network.withWeights(w0).trainOn(data)
     trainedNetwork should be a 'success
     val wOpt = trainedNetwork.get.weights
-
-    val loss1 = trainer(w0)
-    val loss2 = trainer(trueWeights)
-    val loss3 = trainer(wOpt)
 
     val distBeforeFit = (w0 - trueWeights).norm
     val distAfterFit = (wOpt - trueWeights).norm
     distAfterFit / distBeforeFit should be <= 0.05
   }
 
-  it should "train on data that mimics a network with CG" in {
+  it should "train on data that mimics a regression network with CG" in {
     import SeqDataSetConverter._
 
     val random = new Random(12345)
@@ -292,7 +282,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
     (trainedNetwork.get.weights - trueWeights).norm should be <= cgConfig.tol
   }
 
-  it should "train on data that mimics a network with Levenberg-Marquardt" in {
+  it should "train on data that mimics a regression network with Levenberg-Marquardt" in {
     import SeqDataSetConverter._
 
     val random = new Random(12345)
@@ -322,6 +312,39 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     trainedNetwork should be a 'success
     (trainedNetwork.get.weights - trueWeights).norm should be <= LevenbergMarquardt.defaultConfig.tol
+  }
+
+  it should "retrieve an initial classification network with Levenberg-Marquardt" in {
+    import SeqDataSetConverter._
+
+    val random = new Random(12345)
+
+    val trueWeights = Vector(0.1, 1.5, 0.4)
+    val network = FFNeuralNetwork(
+      Vector(2, 1),
+      trueWeights,
+      CrossEntropy,
+      LogisticFunction,
+      LogisticFunction)
+
+    val data: DataSet[DataPoint] = for (i <- 1 to 1000) yield {
+      val x = for (j <- 1 to 2) yield random.nextGaussian()
+      val p = network.forward(x).outputs.head
+      val k = if (random.nextDouble() < p) 1.0 else 0.0
+      DataPoint(x, Seq(k))
+    }
+    val w0 = Vector(1.6, 1.6, 1.6)
+    val trainedNetwork = network
+      .withWeights(w0)
+      .trainOn(data)
+      .withMethod(LevenbergMarquardt)
+
+    trainedNetwork should be a 'success
+    val wOpt = trainedNetwork.get.weights
+
+    val distBeforeFit = (w0 - trueWeights).norm
+    val distAfterFit = (wOpt - trueWeights).norm
+    distAfterFit / distBeforeFit should be <= 0.25
   }
 
   it should "train on the Iris data with the Levenberg-Marquardt method" in {

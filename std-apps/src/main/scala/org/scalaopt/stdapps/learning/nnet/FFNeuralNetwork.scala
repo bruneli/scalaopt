@@ -157,11 +157,14 @@ case class FFNeuralNetwork(
           val targetsSum = targets.sum[Double]
           neurons.zip(targets).map {
             case (neuron, target) =>
-              neuron.copy(error = targetsSum * neuron.output - target, target = target)
+              val residual = targetsSum * neuron.output - target
+              neuron.copy(error = residual, target = target, residual = residual)
           }
         } else {
           neurons.zip(targets).map {
-            case (neuron, target) => neuron.copy(error = neuron.output - target, target = target)
+            case (neuron, target) =>
+              val residual = neuron.output - target
+              neuron.copy(error = residual, target = target, residual = residual)
           }
         }
       case _ => ???
@@ -198,7 +201,8 @@ object FFNeuralNetwork {
     outputFunction: ActivationFunction,
     random: Random = new Random(12345)): FFNeuralNetwork = {
     require(layers.size > 1, "Network must contain at least two layers (input + output)")
-    val neurons = Range(1, layers.size).foldLeft((Vector.empty[Vector[Neuron]], 0))(generateLayer(layers, rang, random))._1
+    val neurons = Range(1, layers.size)
+      .foldLeft((Vector.empty[Vector[Neuron]], 0))(generateLayer(layers, rang, random))._1
     FFNeuralNetwork(neurons, lossType, innerFunction, outputFunction)
   }
 
@@ -297,4 +301,3 @@ object FFNeuralNetwork {
   }
 
 }
-

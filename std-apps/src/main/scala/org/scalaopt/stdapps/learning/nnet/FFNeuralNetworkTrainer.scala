@@ -39,6 +39,7 @@ case class FFNeuralNetworkTrainer(
   xTol: Double = 1.0e-6,
   random: Random = new Random(12345)) extends MSEFunction {
 
+  val eps = 1.0e-8
   var network = initialNetwork
 
   def withMethod[A <: ObjectiveFunction, B <: ConfigPars](
@@ -52,6 +53,8 @@ case class FFNeuralNetworkTrainer(
     method.minimize(objectiveFunction, this.network.weights).map(network.withWeights)
   }
 
+  def withDecay(decay: Double) = this.copy(decay = decay)
+
   override def apply(weights: Variables) = {
     if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
     data.aggregate(weights.norm2 / 2.0 * decay)(loss, _ + _) / data.size
@@ -63,9 +66,15 @@ case class FFNeuralNetworkTrainer(
   }
 
   override def dirder(weights: Variables, d: Variables): Double = {
-    // TODO use backpropagation to compute the directional derivative
     if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
     gradient(weights) dot d
+  }
+
+  override def dirHessian(weights: Variables, d: Variables): Variables = {
+    // TODO use chain rules to compute the directional derivative of gradient
+    val gradx = gradient(weights)
+    val gradxd = gradient(weights + d * eps)
+    (gradxd - gradx) / eps
   }
 
   def apply(weights: Variables, x: Variables): Variables = {
@@ -132,16 +141,8 @@ case class FFNeuralNetworkTrainer(
 
   private def penaltyMatrix(p: Variables): DataSet[AugmentedRow] = {
     val penalty = Math.sqrt(decay)
-    for (i <- 0 until p.size) yield {
+    for (i <- p.indices) yield {
       AugmentedRow(zeros(p.size).updated(i, penalty), 0.0, data.size + i)
-    }
-  }
-
-  private def getDefaultConfig[A <: ObjectiveFunction, B <: ConfigPars](
-    method: Optimizer[A, B]): B = {
-    method.defaultConfig match {
-      case bfgs: BFGSConfig => bfgs.copy(maxIterFirstTime = Some(bfgs.maxIterZoom * 10)).asInstanceOf[B]
-      case _ => method.defaultConfig
     }
   }
 
