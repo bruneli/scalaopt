@@ -100,7 +100,7 @@ object ConjugateGradient extends Optimizer[ObjectiveFunction, CGConfig] {
 }
 
 /**
- * Configuration parameters for the BFGS algorithm.
+ * Configuration parameters for the conjugate gradient algorithm.
  *
  * @param tol tolerance error for convergence
  * @param maxIter maximum number of iterations
@@ -121,7 +121,7 @@ case class CGConfig(
   c1: Double = 1.0e-4,
   c2: Double = 0.4,
   c3: Double = 2.0,
-  val method: String = "PR+") extends ConfigPars(tol, maxIter, eps) {
+  method: String = "PR+") extends ConfigPars(tol, maxIter, eps) {
   val strongWolfe: StrongWolfeConfig =
     new StrongWolfeConfig(maxIterLine, maxIterZoom, c1, c2, c3)
 }

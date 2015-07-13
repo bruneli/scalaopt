@@ -27,9 +27,9 @@ import scala.util.{Success, Failure, Try}
  *
  * @author bruneli
  */
-object SteihaugCG extends Optimizer[ObjectiveFunction, CGConfig] {
+object SteihaugCG extends Optimizer[ObjectiveFunction, SteihaugCGConfig] {
 
-  implicit val defaultConfig: CGConfig = new CGConfig
+  implicit val defaultConfig: SteihaugCGConfig = new SteihaugCGConfig()
 
   /**
    * Minimize an objective function acting on a vector of real values.
@@ -39,9 +39,12 @@ object SteihaugCG extends Optimizer[ObjectiveFunction, CGConfig] {
    * @param pars algorithm configuration parameters
    * @return Variables at a local minimum or failure
    */
-  override def minimize(f: ObjectiveFunction, x0: Variables)(implicit pars: CGConfig): Try[Variables] = {
+  override def minimize(
+    f: ObjectiveFunction,
+    x0: Variables)(
+    implicit pars: SteihaugCGConfig): Try[Variables] = {
 
-    def iterate(k: Int, ptk: LineSearchPoint): Try[Variables] = {
+    def iterate(k: Int, deltak: Double, ptk: LineSearchPoint): Try[Variables] = {
       if (k >= pars.maxIter)
         Failure(throw new MaxIterException(
           "Maximum number of iterations reached."))
@@ -51,18 +54,31 @@ object SteihaugCG extends Optimizer[ObjectiveFunction, CGConfig] {
       val z0 = zeros(ptk.x.size)
       val r0 = ptk.grad
       val d0 = -r0
-      val ptkPrim = searchDirection(0, ptk.copy(d = d0), z0, r0, epsk)
-      // Try to find an approximate step length satisfying the strong
-      // Wolfe conditions
-      stepLength(ptkPrim)(pars.strongWolfe) match {
-        case Failure(e) => Failure(e)
-        case Success(ptkpp) =>
-          if (ptkpp.grad.norm < pars.tol) Success(ptkpp.x)
-          else iterate(k + 1, ptkpp)
+      val ptkpp = searchDirection(0, ptk.copy(d = d0), z0, r0, deltak, epsk)
+
+      val actualReduction = ptk.fx - ptkpp.fx
+      val predictedReduction = ptk.fx - ptkpp.md
+      val rhok = actualReduction / predictedReduction
+
+      val deltakpp =
+        if (rhok < 0.25) {
+          deltak / 4.0
+        } else {
+          if (rhok > 3.0 / 4.0 && Math.abs(ptkpp.d.norm - deltak) < pars.eps) {
+            Math.min(2.0 * deltak, pars.deltaMax)
+          } else {
+            deltak
+          }
+        }
+
+      if (ptkpp.grad.norm < pars.tol) {
+        Success(ptkpp.x)
+      } else {
+        iterate(k + 1, deltakpp, if (rhok > pars.eta) ptkpp else ptk)
       }
     }
 
-    iterate(0, LineSearchPoint(x0, f, zeros(x0.size)))
+    iterate(0, pars.delta0, LineSearchPoint(x0, f, zeros(x0.size)))
   }
 
   @tailrec
@@ -71,20 +87,64 @@ object SteihaugCG extends Optimizer[ObjectiveFunction, CGConfig] {
     ptk: LineSearchPoint,
     zj: Variables,
     rj: Variables,
+    deltak: Double,
     epsk: Double): LineSearchPoint = {
     if ((ptk.d dot ptk.d2fxd) <= 0.0) {
-      if (j == 0) ptk.copy(d = -ptk.grad) else ptk.copy(d = zj)
+      val tau = tauFromTrustRegionEdge(zj, ptk.d, deltak)
+      val pkpp = zj + ptk.d * tau
+      ptk.copy(x = ptk.x + pkpp, d = pkpp)
     } else {
       val alphaj = (rj dot rj) / (ptk.d dot ptk.d2fxd)
       val zjpp = zj + ptk.d * alphaj
-      val rjpp = rj + ptk.d2fxd * alphaj
-      if (rjpp.norm < epsk) {
-        ptk.copy(d = zjpp)
+      if (zjpp.norm > deltak) {
+        val tau = tauFromTrustRegionEdge(zj, ptk.d, deltak)
+        val pkpp = zj + ptk.d * tau
+        ptk.copy(x = ptk.x + pkpp, d = pkpp)
       } else {
-        val betajpp = (rjpp dot rjpp) / (rj dot rj)
-        val djpp = -rjpp + ptk.d * betajpp
-        searchDirection(j + 1, ptk.copy(d = djpp), zjpp, rjpp, epsk)
+        val rjpp = rj + ptk.d2fxd * alphaj
+        if (rjpp.norm < epsk) {
+          ptk.copy(x = ptk.x + zjpp, d = zjpp)
+        } else {
+          val betajpp = (rjpp dot rjpp) / (rj dot rj)
+          val djpp = -rjpp + ptk.d * betajpp
+          searchDirection(j + 1, ptk.copy(d = djpp), zjpp, rjpp, epsk, deltak)
+        }
       }
     }
   }
+
+  /**
+   * Find tau such that pk = zj + tau dj minimizes
+   * mk(pk) = fk - dj pk + 1/2 pkT B pk
+   * and satisfies norm(pk) = deltak the trust region size.
+   *
+   * In practice use (zj + tau dj)T (zj + tau dj) = deltak * deltak
+   * to solve a second order equation.
+   */
+  def tauFromTrustRegionEdge(zj: Variables, dj: Variables, deltak: Double) = {
+    val a = dj dot dj
+    val b = zj dot dj
+    val c = (zj dot zj) - deltak * deltak
+    val disc = b * b - a * c
+    (-b + Math.sqrt(disc)) / a
+  }
+
 }
+
+/**
+ * Configuration parameters for the Steihaug conjugate gradient algorithm.
+ *
+ * @param tol tolerance error for convergence
+ * @param maxIter maximum number of iterations
+ * @param eps finite differences step to evaluate derivatives
+ * @param delta0 initial trust region radius
+ * @param deltaMax maximum trust region radius
+ * @param eta minimal actual reduction over predicted reduction
+ */
+case class SteihaugCGConfig(
+  override val tol: Double = 1.0e-5,
+  override val maxIter: Int = 200,
+  override val eps: Double = 1.0e-8,
+  delta0: Double = 1.0,
+  deltaMax: Double = 1.0e5,
+  eta: Double = 0.2) extends ConfigPars(tol, maxIter, eps)

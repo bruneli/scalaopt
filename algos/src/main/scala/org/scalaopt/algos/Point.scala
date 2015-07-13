@@ -50,4 +50,11 @@ case class LineSearchPoint(
   /** Hessian vector product with d */
   lazy val d2fxd = f.dirHessian(x, d)
 
+  /**
+   * Second order approximation of f evaluated in d.
+   *
+   * mk(p) = fx + gk p + pT Bk p
+   * with Bk an approximate Hessian in x.
+   */
+  lazy val md = fx + (grad dot d) + (d dot d2fxd) / 2.0
 }
