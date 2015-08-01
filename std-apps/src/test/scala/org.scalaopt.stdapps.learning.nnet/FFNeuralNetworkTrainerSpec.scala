@@ -17,7 +17,7 @@
 package org.scalaopt.stdapps.learning.nnet
 
 import org.scalaopt.algos._
-import org.scalaopt.algos.gradient.{ConjugateGradient, BFGS}
+import org.scalaopt.algos.gradient.{SteihaugCG, ConjugateGradient, BFGS}
 import org.scalaopt.algos.leastsquares.LevenbergMarquardt
 import org.scalaopt.stdapps.learning.data.Iris
 import org.scalaopt.stdapps.learning.nnet.activation._
@@ -253,30 +253,30 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
     distAfterFit / distBeforeFit should be <= 0.05
   }
 
-  it should "train on data that mimics a regression network with CG" in {
+  it should "train on data that mimics a regression network with Steihaug CG" in {
     import SeqDataSetConverter._
 
     val random = new Random(12345)
 
-    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4)
+    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
     val network = FFNeuralNetwork(
-      Vector(3, 1),
+      Vector(2, 2, 1),
       trueWeights,
       MeanSquaredError,
       LogisticFunction,
       LinearFunction)
 
     val data: DataSet[DataPoint] = for (i <- 1 to 100) yield {
-      val x = for (j <- 1 to 3) yield random.nextGaussian()
+      val x = for (j <- 1 to 2) yield random.nextGaussian()
       val y = network.forward(x).outputs
       DataPoint(x, y)
     }
-    val w0 = Vector(-0.1, 0.6, -0.3, 0.6)
-    val cgConfig = ConjugateGradient.defaultConfig.copy(tol = 0.05)
+    val w0 = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.05, 0.2, 0.2)
+    val cgConfig = SteihaugCG.defaultConfig.copy(tol = 0.05)
     val trainedNetwork = network
       .withWeights(w0)
       .trainOn(data)
-      .withMethod(ConjugateGradient, Some(cgConfig))
+      .withMethod(SteihaugCG, Some(cgConfig))
 
     trainedNetwork should be a 'success
     (trainedNetwork.get.weights - trueWeights).norm should be <= cgConfig.tol

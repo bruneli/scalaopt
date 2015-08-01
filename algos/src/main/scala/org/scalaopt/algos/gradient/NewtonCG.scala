@@ -27,6 +27,12 @@ import scala.util.{Failure, Success, Try}
  *
  * Inexact Newton method that apply the Conjugate Gradient method to the Newton
  * equation to define a search direction.
+ * {{{
+ * scala> import org.scalaopt.algos._
+ * scala> import org.scalaopt.algos.gradient.NewtonCG._
+ * scala> minimize((x: Variables) => x dot x, Vector(2.0, 4.0)) // Approximate derivatives
+ * scala> minimize(((x: Variables) => x dot x, (x: Variables) => x * 2.0), Vector(2.0, 4.0)) // Exact derivatives
+ * }}}
  *
  * @author bruneli
  */

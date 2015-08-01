@@ -21,10 +21,35 @@ import org.scalaopt.algos.linalg.{AugmentedRow, QR}
 import scala.util.Try
 
 /**
+ * Linear model package.
+ *
+ * The only method of that package is lm that can be used to solve a linear equation.
+ * {{{
+ * scala> import scala.util.Random
+ * scala> import org.scalaopt.algos._
+ * scala> import linear.lm
+ * scala> import SeqDataSetConverter._
+ * scala> val random = new Random(12345)
+ * scala> val beta0 = 80.0 +: (0 until 10).map(_.toDouble)
+ * scala> val data = for (i <- 0 until 1000) yield {
+ * scala>   val x = for (i <- 0 until 10) yield random.nextDouble()
+ * scala>   val y = beta0.head + x.zip(beta0.tail).map { case (x, p) => x*p }.sum + random.nextGaussian()
+ * scala>   DataPoint(x, y)
+ * scala> }
+ * scala> lm(data) // Should be close to beta0
+ * }}}
+ *
  * @author bruneli
  */
 package object linear {
 
+  /**
+   * Try to solve a linear equation (in least-square sense) X Beta = Y via QR decomposition
+   *
+   * @param data      set of rows with X and y values
+   * @param addOrigin add an origin to the linear formula
+   * @return a successful solution Beta of the linear equation or failure
+   */
   def lm(data: DataSet[DataPoint], addOrigin: Boolean = true): Try[Variables] =
     Try {
       val n = if (addOrigin) data.head.x.size + 1 else data.head.x.size

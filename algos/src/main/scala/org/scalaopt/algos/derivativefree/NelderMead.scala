@@ -29,7 +29,7 @@ import scala.util.{Try, Success, Failure}
  * {{{
  * scala> import org.scalaopt.algos._
  * scala> import org.scalaopt.algos.derivativefree.NelderMead._
- * scala> minimize(x => x dot x, Vector(2.0, 4.0))
+ * scala> minimize((x: Variables) => x dot x, Vector(2.0, 4.0))
  * }}}
  * 
  * @author bruneli

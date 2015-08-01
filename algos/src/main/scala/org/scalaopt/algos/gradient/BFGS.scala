@@ -32,8 +32,8 @@ import scala.util.{Try, Success, Failure}
  * {{{
  * scala> import org.scalaopt.algos._
  * scala> import org.scalaopt.algos.gradient.BFGS._
- * scala> minimize(x => x dot x, Vector(2.0, 4.0)) // Approximate derivatives
- * scala> minimizeWithGradient(x => x dot x, x => x * 2.0, Vector(2.0, 4.0)) // Exact derivatives
+ * scala> minimize((x: Variables) => x dot x, Vector(2.0, 4.0)) // Approximate derivatives
+ * scala> minimize(((x: Variables) => x dot x, (x: Variables) => x * 2.0), Vector(2.0, 4.0)) // Exact derivatives
  * }}}
  * 
  * @author bruneli

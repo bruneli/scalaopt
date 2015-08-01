@@ -30,15 +30,18 @@ import scala.util.{Try, Success}
  * computation of the Hessian in case of quadratic Loss function (Least squares problem).
  * Example: find the best exponential curve passing through points
  * {{{
+ * scala> import scala.util.Random
  * scala> import org.scalaopt.algos._
  * scala> import org.scalaopt.algos.leastsquares.LevenbergMarquardt._
+ * scala> import SeqDataSetConverter._
  * scala> val random = new Random(12345)
- * scala> val data = for (i <- 1 to 10) yield {
+ * scala> val exponential = (x: Variables, t: Variables) => Seq(x(0) * Math.exp(x(1) * t(0)))
+ * scala> val data: DataSet[DataPoint] = for (i <- 1 to 10) yield {
  *      |   val x = i / 10.0
  *      |   val y = 2.0 * Math.exp(0.5 * x) + 0.1 * random.nextGaussian()
- *      |   (Seq(x), y)
+ *      |   DataPoint(x, y)
  *      | }
- * scala> minimize((p: Variables, x: Seq[Double]) => p(0) * Math.exp(p(1) * x(0)), data, Vector(1.0, 1.0))
+ * scala> minimize((exponential, data), Vector(1.0, 1.0))
  * }}}
  *
  * Although modified, the code implemented below has been inspired from

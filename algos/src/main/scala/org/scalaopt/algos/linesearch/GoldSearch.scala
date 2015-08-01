@@ -28,7 +28,7 @@ import scala.util.{Try, Success, Failure}
  * {{{
  * scala> import org.scalaopt.algos.linesearch.GoldSearch._
  * scala> def f(x: Double) = math.pow(x - 2.0, 4.0) // Objective function
- * scala> val (a, b) = bracket(f, 0.0) // Find Lower, upper bounds starting from 0
+ * scala> val (a, b) = bracket(f, 0.0).get // Find Lower, upper bounds starting from 0
  * scala> minimize(f, a, b) // Find a minimum within that interval
  * }}}
  * 
@@ -102,7 +102,6 @@ object GoldSearch {
    * @param a lower bound
    * @param b upper bound
    * @return tuple2 with (xmin, f(xmin))
-   * 
    */
   def minimize(
     f: Double => Double,

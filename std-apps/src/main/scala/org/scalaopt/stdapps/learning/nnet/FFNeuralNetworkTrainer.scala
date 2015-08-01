@@ -71,7 +71,6 @@ case class FFNeuralNetworkTrainer(
   }
 
   override def dirHessian(weights: Variables, d: Variables): Variables = {
-    // TODO use chain rules to compute the directional derivative of gradient
     val gradx = gradient(weights)
     val gradxd = gradient(weights + d * eps)
     (gradxd - gradx) / eps

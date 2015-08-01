@@ -24,6 +24,14 @@ package org.scalaopt.algos
  */
 case class DataPoint(x: Variables, y: Variables)
 
+object DataPoint {
+
+  def apply(x: Variables, y: Double): DataPoint = DataPoint(x, Seq(y))
+
+  def apply(x: Double, y: Double): DataPoint = DataPoint(Seq(x), Seq(y))
+
+}
+
 /**
  * Define a point with a direction used in searches along a line.
  *
@@ -51,10 +59,17 @@ case class LineSearchPoint(
   lazy val d2fxd = f.dirHessian(x, d)
 
   /**
-   * Second order approximation of f evaluated in d.
+   * Second order approximation of f evaluated in p.
    *
    * mk(p) = fx + gk p + pT Bk p
    * with Bk an approximate Hessian in x.
    */
-  lazy val md = fx + (grad dot d) + (d dot d2fxd) / 2.0
+  def m(p: Variables, eps: Double = 1.0e-8): Double = {
+    if (p.norm < eps) {
+      fx
+    } else {
+      val pTBp = p dot f.dirHessian(x, p)
+      fx + (grad dot p) + pTBp / 2.0
+    }
+  }
 }
