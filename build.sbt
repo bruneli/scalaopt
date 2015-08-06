@@ -1,15 +1,18 @@
-organization := "org.scalaopt"
 
 name := "scalaopt"
 
-lazy val root = project.in( file(".")).aggregate(algos, stdapps, sparkapps).dependsOn(algos, stdapps, sparkapps)
+lazy val commonSettings = Seq(
+  organization := "com.github.bruneli.scalaopt",
+  scalaVersion := "2.10.5",
+  crossScalaVersions := Seq("2.10.5", "2.11.7")
+)
 
-lazy val algos = project.in( file("algos"))
+lazy val root = project.in(file(".")).aggregate(core, stdapps, sparkapps).dependsOn(core, stdapps, sparkapps)
 
-lazy val stdapps = project.in( file("std-apps")).dependsOn(algos)
+lazy val core = project.in(file("core")).settings(commonSettings: _*)
 
-lazy val sparkapps = project.in( file("spark-apps")).dependsOn(algos)
+lazy val stdapps = project.in(file("std-apps")).settings(commonSettings: _*).dependsOn(core)
 
-scalaVersion := "2.10.4"
+lazy val sparkapps = project.in(file("spark-apps")).settings(commonSettings: _*).dependsOn(core)
 
-crossScalaVersions := Seq("2.11.1", "2.11.2")
+

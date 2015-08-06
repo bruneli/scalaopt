@@ -10,15 +10,15 @@ variables represented by any collection deriving from `Seq[Double]`.
 
 The following lines show how to minimize a quadratic function with the BFGS method:
 
-    scala> import org.scalaopt.algos._
-    scala> import org.scalaopt.algos.gradient.BFGS._
+    scala> import com.github.bruneli.scalaopt.core._
+    scala> import gradient.BFGS._
     scala> minimize((x: Variables) => x dot x, Vector(2.0, 4.0)) // Approximate derivatives
     scala> minimize(((x: Variables) => x dot x, (x: Variables) => x * 2.0), Vector(2.0, 4.0)) // Exact derivatives
 
 `Variables` is an alias for `Seq[Double]`. The two classes `RichVector` and `RichMatrix` provide
 some small DSL used internally to easy the understanding of vector and matrix algebra.
 
-The `algos` project has only one dependency on apache math common3 for the matrix algebra.
+The `core` project has only one dependency on apache math common3 for the matrix algebra.
 
 Below is a list of algorithms implemented:
 
