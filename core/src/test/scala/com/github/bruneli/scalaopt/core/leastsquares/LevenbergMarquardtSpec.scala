@@ -16,8 +16,7 @@
 
 package com.github.bruneli.scalaopt.core.leastsquares
 
-import com.github.bruneli.scalaopt.core.{Variables, DataSet, DataPoint, SeqDataSetConverter}
-import org.scalaopt.algos._
+import com.github.bruneli.scalaopt.core._
 import org.scalatest.{TryValues, Matchers, FlatSpec}
 
 import scala.util.Random

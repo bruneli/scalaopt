@@ -16,8 +16,7 @@
 
 package com.github.bruneli.scalaopt.core.gradient
 
-import com.github.bruneli.scalaopt.core.{Variables, MaxIterException}
-import org.scalaopt.algos._
+import com.github.bruneli.scalaopt.core._
 import org.scalatest.{Matchers, FlatSpec}
 
 /**

@@ -17,7 +17,6 @@
 package com.github.bruneli.scalaopt.core.linear
 
 import com.github.bruneli.scalaopt.core.{DataPoint, SeqDataSetConverter}
-import org.scalaopt.algos._
 import org.scalatest.{Matchers, FlatSpec}
 
 import scala.util.{Failure, Success, Random}

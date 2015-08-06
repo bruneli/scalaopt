@@ -16,9 +16,8 @@
 
 package com.github.bruneli.scalaopt.stdapps.learning.nnet
 
-import com.github.bruneli.scalaopt.core.Variables
+import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.stdapps.learning.nnet.activation.ActivationFunction
-import org.scalaopt.algos._
 
 /**
  * Defines an artificial network neuron

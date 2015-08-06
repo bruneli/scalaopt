@@ -16,11 +16,9 @@
 
 package com.github.bruneli.scalaopt.core.gradient
 
-import com.github.bruneli.scalaopt.core.{Variables, MaxIterException}
-import org.scalaopt.algos._
-import scala.util.{Try, Success, Failure}
+import com.github.bruneli.scalaopt.core._
+import scala.util.{Success, Failure}
 import org.scalatest._
-import org.scalatest.Matchers._
 
 class BFGSSpec extends FlatSpec with Matchers {
   import BFGS._

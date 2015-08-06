@@ -16,11 +16,9 @@
 
 package com.github.bruneli.scalaopt.core.linesearch
 
-import com.github.bruneli.scalaopt.core.{Variables, MaxIterException, LineSearchPoint}
-import org.scalaopt.algos._
+import com.github.bruneli.scalaopt.core._
 import scala.util.{Success, Failure}
 import org.scalatest._
-import org.scalatest.Matchers._
 
 class StrongWolfeSpec extends FlatSpec with Matchers {
   import StrongWolfe._
