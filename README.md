@@ -16,7 +16,7 @@ The following lines show how to minimize a quadratic function with the BFGS meth
     scala> minimize(((x: Variables) => x dot x, (x: Variables) => x * 2.0), Vector(2.0, 4.0)) // Exact derivatives
 
 `Variables` is an alias for `Seq[Double]`. The two classes `RichVector` and `RichMatrix` provide
-some small DSL used internally to easy the understanding of vector and matrix algebra.
+some small DSL used internally to ease the understanding of vector and matrix algebra.
 
 The `core` project has only one dependency on apache math common3 for the matrix algebra.
 
@@ -33,3 +33,5 @@ Below is a list of algorithms implemented:
 * Derivative free methods:
     * Nelder-Mead
     * Powell
+    
+To get further details on the package you can look at the [Reference Manual](http://bruneli.github.io/scalaopt/#com.github.bruneli.scalaopt.core.package)    
