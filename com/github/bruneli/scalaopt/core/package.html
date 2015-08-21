@@ -1,0 +1,580 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html>
+        <head>
+          <title>core - com.github.bruneli.scalaopt.core</title>
+          <meta name="description" content="core - com.github.bruneli.scalaopt.core" />
+          <meta name="keywords" content="core com.github.bruneli.scalaopt.core" />
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+          
+      <link href="../../../../../lib/template.css" media="screen" type="text/css" rel="stylesheet" />
+      <link href="../../../../../lib/diagrams.css" media="screen" type="text/css" rel="stylesheet" id="diagrams-css" />
+      <script type="text/javascript">
+         if(top === self) {
+            var url = '../../../../../index.html';
+            var hash = 'com.github.bruneli.scalaopt.core.package';
+            var anchor = window.location.hash;
+            var anchor_opt = '';
+            if (anchor.length >= 1)
+              anchor_opt = '@' + anchor.substring(1);
+            window.location.href = url + '#' + hash + anchor_opt;
+         }
+   	  </script>
+    
+        </head>
+        <body class="value">
+      <div id="definition">
+        <img src="../../../../../lib/package_big.png" />
+        <p id="owner"><a href="../../../../package.html" class="extype" name="com">com</a>.<a href="../../../package.html" class="extype" name="com.github">github</a>.<a href="../../package.html" class="extype" name="com.github.bruneli">bruneli</a>.<a href="../package.html" class="extype" name="com.github.bruneli.scalaopt">scalaopt</a></p>
+        <h1>core</h1>
+      </div>
+
+      <h4 id="signature" class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <span class="name">core</span>
+      </span>
+      </h4>
+      
+          <div id="comment" class="fullcommenttop"><div class="comment cmt"><p>Numerical Optimization Algorithms written in Scala.</p><p>All optimization algorithms contain a static method named minimize.
+minimize takes as input a real objective function acting on variables.
+Variables are represented by any scala collection of Double deriving from
+Seq like commonly used Array, List, Vector,...
+The real valued objective function can be any method taking as input a
+scala collection of Double and returning a Double.
+The minimize function returns as output a Try[Variables] rather than
+directly Variables to explicit the fact that all optimization algorithms
+can fail to find a feasible solution.
+</p></div><div class="toggleContainer block">
+          <span class="toggle">Linear Supertypes</span>
+          <div class="superTypes hiddenContent"><span class="extype" name="scala.AnyRef">AnyRef</span>, <span class="extype" name="scala.Any">Any</span></div>
+        </div></div>
+        
+
+      <div id="mbrsel">
+        <div id="textfilter"><span class="pre"></span><span class="input"><input id="mbrsel-input" type="text" accesskey="/" /></span><span class="post"></span></div>
+        <div id="order">
+              <span class="filtertype">Ordering</span>
+              <ol>
+                
+                <li class="alpha in"><span>Alphabetic</span></li>
+                <li class="inherit out"><span>By inheritance</span></li>
+              </ol>
+            </div>
+        <div id="ancestors">
+                <span class="filtertype">Inherited<br />
+                </span>
+                <ol id="linearization">
+                  <li class="in" name="com.github.bruneli.scalaopt.core"><span>core</span></li><li class="in" name="scala.AnyRef"><span>AnyRef</span></li><li class="in" name="scala.Any"><span>Any</span></li>
+                </ol>
+              </div><div id="ancestors">
+            <span class="filtertype"></span>
+            <ol>
+              <li class="hideall out"><span>Hide All</span></li>
+              <li class="showall in"><span>Show all</span></li>
+            </ol>
+            <a href="http://docs.scala-lang.org/overviews/scaladoc/usage.html#members" target="_blank">Learn more about member selection</a>
+          </div>
+        <div id="visbl">
+            <span class="filtertype">Visibility</span>
+            <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+          </div>
+      </div>
+
+      <div id="template">
+        <div id="allMembers">
+        
+
+        <div id="types" class="types members">
+              <h3>Type Members</h3>
+              <ol><li name="com.github.bruneli.scalaopt.core.ConfigPars" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="ConfigParsextendsAnyRef"></a>
+      <a id="ConfigPars:ConfigPars"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="ConfigPars.html"><span class="name">ConfigPars</span></a><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Common set of configuration parameters.</p>
+    </li><li name="com.github.bruneli.scalaopt.core.DataPoint" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="DataPointextendsProductwithSerializable"></a>
+      <a id="DataPoint:DataPoint"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="DataPoint.html"><span class="name">DataPoint</span></a><span class="params">(<span name="x">x: <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a></span>, <span name="y">y: <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a></span>)</span><span class="result"> extends <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Data point representation
+</p>
+    </li><li name="com.github.bruneli.scalaopt.core.DataSet" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="DataSet[A]extendsAnyRef"></a>
+      <a id="DataSet[A]:DataSet[A]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="DataSet.html"><span class="name">DataSet</span></a><span class="tparams">[<span name="A">A</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">An ordered list of elements that is used in the context of this library
+to store observed values or intermediate results.</p>
+    </li><li name="com.github.bruneli.scalaopt.core.LineSearchPoint" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="LineSearchPointextendsProductwithSerializable"></a>
+      <a id="LineSearchPoint:LineSearchPoint"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="LineSearchPoint.html"><span class="name">LineSearchPoint</span></a><span class="params">(<span name="x">x: <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a></span>, <span name="f">f: <a href="ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a></span>, <span name="d">d: <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a></span>)</span><span class="result"> extends <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Define a point with a direction used in searches along a line.</p>
+    </li><li name="com.github.bruneli.scalaopt.core.MSEFunction" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="MSEFunctionextendsObjectiveFunction"></a>
+      <a id="MSEFunction:MSEFunction"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="MSEFunction.html"><span class="name">MSEFunction</span></a><span class="result"> extends <a href="ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Objective function relying on the Mean Squared Error expected loss function
+</p>
+    </li><li name="com.github.bruneli.scalaopt.core.MaxIterException" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="MaxIterExceptionextendsExceptionwithProductwithSerializable"></a>
+      <a id="MaxIterException:MaxIterException"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="MaxIterException.html"><span class="name">MaxIterException</span></a><span class="params">(<span name="msg">msg: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result"> extends <span class="extype" name="scala.Exception">Exception</span> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.ObjectiveFunction" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="ObjectiveFunctionextendsAnyRef"></a>
+      <a id="ObjectiveFunction:ObjectiveFunction"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="ObjectiveFunction.html"><span class="name">ObjectiveFunction</span></a><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Define an objective function as a real-valued function acting on a vector of real variables
+</p>
+    </li><li name="com.github.bruneli.scalaopt.core.ObjectiveFunctionForRegression" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="ObjectiveFunctionForRegressionextendsObjectiveFunction"></a>
+      <a id="ObjectiveFunctionForRegression:ObjectiveFunctionForRegression"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="ObjectiveFunctionForRegression.html"><span class="name">ObjectiveFunctionForRegression</span></a><span class="result"> extends <a href="ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a></span>
+      </span>
+      </h4>
+      <p class="comment cmt">An objective function dedicated to regression techniques
+</p>
+    </li><li name="com.github.bruneli.scalaopt.core.Optimizer" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Optimizer[A&lt;:com.github.bruneli.scalaopt.core.ObjectiveFunction,B&lt;:com.github.bruneli.scalaopt.core.ConfigPars]extendsAnyRef"></a>
+      <a id="Optimizer[A&lt;:ObjectiveFunction,B&lt;:ConfigPars]:Optimizer[A,B]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Optimizer.html"><span class="name">Optimizer</span></a><span class="tparams">[<span name="A">A &lt;: <a href="ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a></span>, <span name="B">B &lt;: <a href="ConfigPars.html" class="extype" name="com.github.bruneli.scalaopt.core.ConfigPars">ConfigPars</a></span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">An optimizer should implement at least one minimize method.</p>
+    </li><li name="com.github.bruneli.scalaopt.core.RegressionFunction" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="RegressionFunction=(com.github.bruneli.scalaopt.core.package.Variables,com.github.bruneli.scalaopt.core.package.Variables)=&gt;com.github.bruneli.scalaopt.core.package.Variables"></a>
+      <a id="RegressionFunction:(Variables,Variables)⇒Variables"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">type</span>
+      </span>
+      <span class="symbol">
+        <span class="name">RegressionFunction</span><span class="result"> = (<a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>, <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>) ⇒ <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Function taking as input p unknown parameters and x observed values to give estimates of y dependent variables</p>
+    </li><li name="com.github.bruneli.scalaopt.core.RichMatrix" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="RichMatrixextendsAnyRef"></a>
+      <a id="RichMatrix:RichMatrix"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="RichMatrix.html"><span class="name">RichMatrix</span></a><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Enrich apache math3 RealMatrix with operators.</p>
+    </li><li name="com.github.bruneli.scalaopt.core.RichVariables" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="RichVariablesextendsAnyRef"></a>
+      <a id="RichVariables:RichVariables"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="RichVariables.html"><span class="name">RichVariables</span></a><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Enrich Seq[Double] with mathematical operations
+on vectors in the Euclidean space.</p>
+    </li><li name="com.github.bruneli.scalaopt.core.SimpleFunctionFiniteDiffGradient" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SimpleFunctionFiniteDiffGradientextendsObjectiveFunction"></a>
+      <a id="SimpleFunctionFiniteDiffGradient:SimpleFunctionFiniteDiffGradient"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="SimpleFunctionFiniteDiffGradient.html"><span class="name">SimpleFunctionFiniteDiffGradient</span></a><span class="result"> extends <a href="ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.SimpleFunctionWithGradient" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SimpleFunctionWithGradientextendsObjectiveFunction"></a>
+      <a id="SimpleFunctionWithGradient:SimpleFunctionWithGradient"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="SimpleFunctionWithGradient.html"><span class="name">SimpleFunctionWithGradient</span></a><span class="result"> extends <a href="ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.SimpleMSEFunction" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SimpleMSEFunctionextendsMSEFunctionwithProductwithSerializable"></a>
+      <a id="SimpleMSEFunction:SimpleMSEFunction"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="SimpleMSEFunction.html"><span class="name">SimpleMSEFunction</span></a><span class="params">(<span name="f">f: (<a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>, <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>) ⇒ <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a></span>, <span name="data">data: <a href="DataSet.html" class="extype" name="com.github.bruneli.scalaopt.core.DataSet">DataSet</a>[<a href="DataPoint.html" class="extype" name="com.github.bruneli.scalaopt.core.DataPoint">DataPoint</a>]</span>, <span name="eps">eps: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">1.0E-8</span></span>)</span><span class="result"> extends <a href="MSEFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.MSEFunction">MSEFunction</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Simple MSE function taking as input a regression function
+</p>
+    </li><li name="com.github.bruneli.scalaopt.core.Variables" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Variables=Seq[Double]"></a>
+      <a id="Variables:Variables"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">type</span>
+      </span>
+      <span class="symbol">
+        <span class="name">Variables</span><span class="result"> = <span class="extype" name="scala.collection.Seq">Seq</span>[<span class="extype" name="scala.Double">Double</span>]</span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Define the vector of variables as a sequence of Double values</p>
+    </li></ol>
+            </div>
+
+        
+
+        <div id="values" class="values members">
+              <h3>Value Members</h3>
+              <ol><li name="com.github.bruneli.scalaopt.core.ConfigPars" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="ConfigPars"></a>
+      <a id="ConfigPars:ConfigPars"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="ConfigPars$.html"><span class="name">ConfigPars</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.DataPoint" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="DataPoint"></a>
+      <a id="DataPoint:DataPoint"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="DataPoint$.html"><span class="name">DataPoint</span></a><span class="result"> extends <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.SeqDataSetConverter" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SeqDataSetConverter"></a>
+      <a id="SeqDataSetConverter:SeqDataSetConverter"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="SeqDataSetConverter$.html"><span class="name">SeqDataSetConverter</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.derivativefree" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="derivativefree"></a>
+      <a id="derivativefree:derivativefree"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="derivativefree/package.html"><span class="name">derivativefree</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.gradient" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="gradient"></a>
+      <a id="gradient:gradient"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="gradient/package.html"><span class="name">gradient</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.leastsquares" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="leastsquares"></a>
+      <a id="leastsquares:leastsquares"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="leastsquares/package.html"><span class="name">leastsquares</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.linalg" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="linalg"></a>
+      <a id="linalg:linalg"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="linalg/package.html"><span class="name">linalg</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.linesearch" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="linesearch"></a>
+      <a id="linesearch:linesearch"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="linesearch/package.html"><span class="name">linesearch</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.package#ones" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="ones(n:Int):com.github.bruneli.scalaopt.core.package.Variables"></a>
+      <a id="ones(Int):Variables"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">ones</span><span class="params">(<span name="n">n: <span class="extype" name="scala.Int">Int</span></span>)</span><span class="result">: <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Create an n-vector of Variables filled with ones</p>
+    </li><li name="com.github.bruneli.scalaopt.core.package#toDataPointYScalar" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="toDataPointYScalar(xy:(com.github.bruneli.scalaopt.core.package.Variables,Double)):com.github.bruneli.scalaopt.core.DataPoint"></a>
+      <a id="toDataPointYScalar((Variables,Double)):DataPoint"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">toDataPointYScalar</span><span class="params">(<span name="xy">xy: (<a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>, <span class="extype" name="scala.Double">Double</span>)</span>)</span><span class="result">: <a href="DataPoint.html" class="extype" name="com.github.bruneli.scalaopt.core.DataPoint">DataPoint</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="com.github.bruneli.scalaopt.core.package#toDataPointYVector" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="toDataPointYVector(xy:(com.github.bruneli.scalaopt.core.package.Variables,com.github.bruneli.scalaopt.core.package.Variables)):com.github.bruneli.scalaopt.core.DataPoint"></a>
+      <a id="toDataPointYVector((Variables,Variables)):DataPoint"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">toDataPointYVector</span><span class="params">(<span name="xy">xy: (<a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>, <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>)</span>)</span><span class="result">: <a href="DataPoint.html" class="extype" name="com.github.bruneli.scalaopt.core.DataPoint">DataPoint</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Implicit conversion of a tuple (x, y) to a DataPoint</p>
+    </li><li name="com.github.bruneli.scalaopt.core.package#toFunctionWithGradient" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="toFunctionWithGradient(f:(com.github.bruneli.scalaopt.core.package.Variables=&gt;Double,com.github.bruneli.scalaopt.core.package.Variables=&gt;com.github.bruneli.scalaopt.core.package.Variables)):com.github.bruneli.scalaopt.core.ObjectiveFunction"></a>
+      <a id="toFunctionWithGradient(((Variables)⇒Double,(Variables)⇒Variables)):ObjectiveFunction"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">toFunctionWithGradient</span><span class="params">(<span name="f">f: ((<a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>) ⇒ <span class="extype" name="scala.Double">Double</span>, (<a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>) ⇒ <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>)</span>)</span><span class="result">: <a href="ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Implicit conversion of a (function, gradient) tuple to an objective function</p>
+    </li><li name="com.github.bruneli.scalaopt.core.package#toFunctionWoGradient" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="toFunctionWoGradient(f:com.github.bruneli.scalaopt.core.package.Variables=&gt;Double):com.github.bruneli.scalaopt.core.ObjectiveFunction"></a>
+      <a id="toFunctionWoGradient((Variables)⇒Double):ObjectiveFunction"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">toFunctionWoGradient</span><span class="params">(<span name="f">f: (<a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>) ⇒ <span class="extype" name="scala.Double">Double</span></span>)</span><span class="result">: <a href="ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Implicit conversion of a function to an objective function with finite differences derivatives</p>
+    </li><li name="com.github.bruneli.scalaopt.core.package#toMSEFunctionWoGradient" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="toMSEFunctionWoGradient(funcAndData:((com.github.bruneli.scalaopt.core.package.Variables,com.github.bruneli.scalaopt.core.package.Variables)=&gt;com.github.bruneli.scalaopt.core.package.Variables,com.github.bruneli.scalaopt.core.DataSet[com.github.bruneli.scalaopt.core.DataPoint])):com.github.bruneli.scalaopt.core.MSEFunction"></a>
+      <a id="toMSEFunctionWoGradient(((Variables,Variables)⇒Variables,DataSet[DataPoint])):MSEFunction"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">toMSEFunctionWoGradient</span><span class="params">(<span name="funcAndData">funcAndData: ((<a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>, <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>) ⇒ <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a>, <a href="DataSet.html" class="extype" name="com.github.bruneli.scalaopt.core.DataSet">DataSet</a>[<a href="DataPoint.html" class="extype" name="com.github.bruneli.scalaopt.core.DataPoint">DataPoint</a>])</span>)</span><span class="result">: <a href="MSEFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.MSEFunction">MSEFunction</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Implicit conversion of a regression function with set of data points to an MSE objective function</p>
+    </li><li name="com.github.bruneli.scalaopt.core.package#toRichMatrix" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="toRichMatrix(m:org.apache.commons.math3.linear.RealMatrix):com.github.bruneli.scalaopt.core.RichMatrix"></a>
+      <a id="toRichMatrix(RealMatrix):RichMatrix"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">toRichMatrix</span><span class="params">(<span name="m">m: <span class="extype" name="org.apache.commons.math3.linear.RealMatrix">RealMatrix</span></span>)</span><span class="result">: <a href="RichMatrix.html" class="extype" name="com.github.bruneli.scalaopt.core.RichMatrix">RichMatrix</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Implicit conversion of RealMatrix to RichMatrix</p>
+    </li><li name="com.github.bruneli.scalaopt.core.package#toRichVariables" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="toRichVariables(v:com.github.bruneli.scalaopt.core.package.Variables):com.github.bruneli.scalaopt.core.RichVariables"></a>
+      <a id="toRichVariables(Variables):RichVariables"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">toRichVariables</span><span class="params">(<span name="v">v: <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a></span>)</span><span class="result">: <a href="RichVariables.html" class="extype" name="com.github.bruneli.scalaopt.core.RichVariables">RichVariables</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Implicit conversion of Seq[Double] to RichVariables</p>
+    </li><li name="com.github.bruneli.scalaopt.core.package#vector" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="vector(n:Int,value:Double):com.github.bruneli.scalaopt.core.package.Variables"></a>
+      <a id="vector(Int,Double):Variables"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">vector</span><span class="params">(<span name="n">n: <span class="extype" name="scala.Int">Int</span></span>, <span name="value">value: <span class="extype" name="scala.Double">Double</span></span>)</span><span class="result">: <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Create an n-vector of Variables filled with a constant value</p>
+    </li><li name="com.github.bruneli.scalaopt.core.package#zeros" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="zeros(n:Int):com.github.bruneli.scalaopt.core.package.Variables"></a>
+      <a id="zeros(Int):Variables"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">zeros</span><span class="params">(<span name="n">n: <span class="extype" name="scala.Int">Int</span></span>)</span><span class="result">: <a href="#Variables=Seq[Double]" class="extmbr" name="com.github.bruneli.scalaopt.core.Variables">Variables</a></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Create a n-vector of Variables filled with zeros</p>
+    </li></ol>
+            </div>
+
+        
+
+        
+        </div>
+
+        <div id="inheritedMembers">
+        <div class="parent" name="scala.AnyRef">
+              <h3>Inherited from <span class="extype" name="scala.AnyRef">AnyRef</span></h3>
+            </div><div class="parent" name="scala.Any">
+              <h3>Inherited from <span class="extype" name="scala.Any">Any</span></h3>
+            </div>
+        
+        </div>
+
+        <div id="groupedMembers">
+        <div class="group" name="Ungrouped">
+              <h3>Ungrouped</h3>
+              
+            </div>
+        </div>
+
+      </div>
+
+      <div id="tooltip"></div>
+
+      <div id="footer">  </div>
+      <script defer="defer" type="text/javascript" id="jquery-js" src="../../../../../lib/jquery.js"></script><script defer="defer" type="text/javascript" id="jquery-ui-js" src="../../../../../lib/jquery-ui.js"></script><script defer="defer" type="text/javascript" id="tools-tooltip-js" src="../../../../../lib/tools.tooltip.js"></script><script defer="defer" type="text/javascript" id="template-js" src="../../../../../lib/template.js"></script>
+    </body>
+      </html>

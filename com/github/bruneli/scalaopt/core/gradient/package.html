@@ -1,0 +1,186 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html>
+        <head>
+          <title>gradient - com.github.bruneli.scalaopt.core.gradient</title>
+          <meta name="description" content="gradient - com.github.bruneli.scalaopt.core.gradient" />
+          <meta name="keywords" content="gradient com.github.bruneli.scalaopt.core.gradient" />
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+          
+      <link href="../../../../../../lib/template.css" media="screen" type="text/css" rel="stylesheet" />
+      <link href="../../../../../../lib/diagrams.css" media="screen" type="text/css" rel="stylesheet" id="diagrams-css" />
+      <script type="text/javascript">
+         if(top === self) {
+            var url = '../../../../../../index.html';
+            var hash = 'com.github.bruneli.scalaopt.core.gradient.package';
+            var anchor = window.location.hash;
+            var anchor_opt = '';
+            if (anchor.length >= 1)
+              anchor_opt = '@' + anchor.substring(1);
+            window.location.href = url + '#' + hash + anchor_opt;
+         }
+   	  </script>
+    
+        </head>
+        <body class="value">
+      <div id="definition">
+        <img src="../../../../../../lib/package_big.png" />
+        <p id="owner"><a href="../../../../../package.html" class="extype" name="com">com</a>.<a href="../../../../package.html" class="extype" name="com.github">github</a>.<a href="../../../package.html" class="extype" name="com.github.bruneli">bruneli</a>.<a href="../../package.html" class="extype" name="com.github.bruneli.scalaopt">scalaopt</a>.<a href="../package.html" class="extype" name="com.github.bruneli.scalaopt.core">core</a></p>
+        <h1>gradient</h1>
+      </div>
+
+      <h4 id="signature" class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <span class="name">gradient</span>
+      </span>
+      </h4>
+      
+          <div id="comment" class="fullcommenttop"></div>
+        
+
+      <div id="mbrsel">
+        <div id="textfilter"><span class="pre"></span><span class="input"><input id="mbrsel-input" type="text" accesskey="/" /></span><span class="post"></span></div>
+        
+        
+        <div id="visbl">
+            <span class="filtertype">Visibility</span>
+            <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+          </div>
+      </div>
+
+      <div id="template">
+        <div id="allMembers">
+        
+
+        <div id="types" class="types members">
+              <h3>Type Members</h3>
+              <ol><li name="com.github.bruneli.scalaopt.core.gradient.BFGSConfig" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="BFGSConfigextendsConfigParswithProductwithSerializable"></a>
+      <a id="BFGSConfig:BFGSConfig"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="BFGSConfig.html"><span class="name">BFGSConfig</span></a><span class="params">(<span name="tol">tol: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">1.0E-5</span></span>, <span name="maxIter">maxIter: <span class="extype" name="scala.Int">Int</span> = <span class="symbol">200</span></span>, <span name="eps">eps: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">1.0E-8</span></span>, <span name="maxIterLine">maxIterLine: <span class="extype" name="scala.Int">Int</span> = <span class="symbol">10</span></span>, <span name="maxIterZoom">maxIterZoom: <span class="extype" name="scala.Int">Int</span> = <span class="symbol">10</span></span>, <span name="maxIterFirstTime">maxIterFirstTime: <span class="extype" name="scala.Option">Option</span>[<span class="extype" name="scala.Int">Int</span>] = <span class="symbol">scala.None</span></span>, <span name="c1">c1: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">1.0E-4</span></span>, <span name="c2">c2: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">0.9</span></span>, <span name="c3">c3: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">2.0</span></span>)</span><span class="result"> extends <a href="../ConfigPars.html" class="extype" name="com.github.bruneli.scalaopt.core.ConfigPars">ConfigPars</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Configuration parameters for the BFGS algorithm.</p>
+    </li><li name="com.github.bruneli.scalaopt.core.gradient.CGConfig" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="CGConfigextendsConfigParswithProductwithSerializable"></a>
+      <a id="CGConfig:CGConfig"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="CGConfig.html"><span class="name">CGConfig</span></a><span class="params">(<span name="tol">tol: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">1.0E-5</span></span>, <span name="maxIter">maxIter: <span class="extype" name="scala.Int">Int</span> = <span class="symbol">200</span></span>, <span name="eps">eps: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">1.0E-8</span></span>, <span name="maxIterLine">maxIterLine: <span class="extype" name="scala.Int">Int</span> = <span class="symbol">10</span></span>, <span name="maxIterZoom">maxIterZoom: <span class="extype" name="scala.Int">Int</span> = <span class="symbol">10</span></span>, <span name="c1">c1: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">1.0E-4</span></span>, <span name="c2">c2: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">0.4</span></span>, <span name="c3">c3: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">2.0</span></span>, <span name="method">method: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;PR+&quot;</span></span>)</span><span class="result"> extends <a href="../ConfigPars.html" class="extype" name="com.github.bruneli.scalaopt.core.ConfigPars">ConfigPars</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Configuration parameters for the conjugate gradient algorithm.</p>
+    </li><li name="com.github.bruneli.scalaopt.core.gradient.SteihaugCGConfig" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SteihaugCGConfigextendsConfigParswithProductwithSerializable"></a>
+      <a id="SteihaugCGConfig:SteihaugCGConfig"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="SteihaugCGConfig.html"><span class="name">SteihaugCGConfig</span></a><span class="params">(<span name="tol">tol: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">1.0E-5</span></span>, <span name="maxIter">maxIter: <span class="extype" name="scala.Int">Int</span> = <span class="symbol">200</span></span>, <span name="eps">eps: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">1.0E-8</span></span>, <span name="delta0">delta0: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">1.0</span></span>, <span name="deltaMax">deltaMax: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">100000.0</span></span>, <span name="eta">eta: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">0.2</span></span>)</span><span class="result"> extends <a href="../ConfigPars.html" class="extype" name="com.github.bruneli.scalaopt.core.ConfigPars">ConfigPars</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Configuration parameters for the Steihaug conjugate gradient algorithm.</p>
+    </li></ol>
+            </div>
+
+        
+
+        <div id="values" class="values members">
+              <h3>Value Members</h3>
+              <ol><li name="com.github.bruneli.scalaopt.core.gradient.BFGS" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="BFGS"></a>
+      <a id="BFGS:BFGS"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="BFGS$.html"><span class="name">BFGS</span></a><span class="result"> extends <a href="../Optimizer.html" class="extype" name="com.github.bruneli.scalaopt.core.Optimizer">Optimizer</a>[<a href="../ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a>, <a href="BFGSConfig.html" class="extype" name="com.github.bruneli.scalaopt.core.gradient.BFGSConfig">BFGSConfig</a>]</span>
+      </span>
+      </h4>
+      <p class="comment cmt">Implements the quasi-Newton BFGS method.</p>
+    </li><li name="com.github.bruneli.scalaopt.core.gradient.ConjugateGradient" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="ConjugateGradient"></a>
+      <a id="ConjugateGradient:ConjugateGradient"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="ConjugateGradient$.html"><span class="name">ConjugateGradient</span></a><span class="result"> extends <a href="../Optimizer.html" class="extype" name="com.github.bruneli.scalaopt.core.Optimizer">Optimizer</a>[<a href="../ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a>, <a href="CGConfig.html" class="extype" name="com.github.bruneli.scalaopt.core.gradient.CGConfig">CGConfig</a>]</span>
+      </span>
+      </h4>
+      <p class="comment cmt">Implements the non-linear conjugate gradient method.</p>
+    </li><li name="com.github.bruneli.scalaopt.core.gradient.NewtonCG" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="NewtonCG"></a>
+      <a id="NewtonCG:NewtonCG"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="NewtonCG$.html"><span class="name">NewtonCG</span></a><span class="result"> extends <a href="../Optimizer.html" class="extype" name="com.github.bruneli.scalaopt.core.Optimizer">Optimizer</a>[<a href="../ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a>, <a href="CGConfig.html" class="extype" name="com.github.bruneli.scalaopt.core.gradient.CGConfig">CGConfig</a>]</span>
+      </span>
+      </h4>
+      <p class="comment cmt">Line search Newton Conjugate Gradient method.</p>
+    </li><li name="com.github.bruneli.scalaopt.core.gradient.SteihaugCG" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SteihaugCG"></a>
+      <a id="SteihaugCG:SteihaugCG"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="SteihaugCG$.html"><span class="name">SteihaugCG</span></a><span class="result"> extends <a href="../Optimizer.html" class="extype" name="com.github.bruneli.scalaopt.core.Optimizer">Optimizer</a>[<a href="../ObjectiveFunction.html" class="extype" name="com.github.bruneli.scalaopt.core.ObjectiveFunction">ObjectiveFunction</a>, <a href="SteihaugCGConfig.html" class="extype" name="com.github.bruneli.scalaopt.core.gradient.SteihaugCGConfig">SteihaugCGConfig</a>]</span>
+      </span>
+      </h4>
+      <p class="comment cmt">Trust region Newton Conjugate Gradient method from Steihaug.</p>
+    </li></ol>
+            </div>
+
+        
+
+        
+        </div>
+
+        <div id="inheritedMembers">
+        
+        
+        </div>
+
+        <div id="groupedMembers">
+        <div class="group" name="Ungrouped">
+              <h3>Ungrouped</h3>
+              
+            </div>
+        </div>
+
+      </div>
+
+      <div id="tooltip"></div>
+
+      <div id="footer">  </div>
+      <script defer="defer" type="text/javascript" id="jquery-js" src="../../../../../../lib/jquery.js"></script><script defer="defer" type="text/javascript" id="jquery-ui-js" src="../../../../../../lib/jquery-ui.js"></script><script defer="defer" type="text/javascript" id="tools-tooltip-js" src="../../../../../../lib/tools.tooltip.js"></script><script defer="defer" type="text/javascript" id="template-js" src="../../../../../../lib/template.js"></script>
+    </body>
+      </html>
