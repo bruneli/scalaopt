@@ -34,4 +34,23 @@ Below is a list of algorithms implemented:
     * Nelder-Mead
     * Powell
     
-To get further details on the package you can look at the [Reference Manual](http://bruneli.github.io/scalaopt/#com.github.bruneli.scalaopt.core.package)    
+To get further details on the package you can look at the [Reference Manual](http://bruneli.github.io/scalaopt/#com.github.bruneli.scalaopt.core.package)
+
+scalaopt Usage
+--------------
+
+### SBT
+
+Add the following dependency to your `build.sbt`
+
+    libraryDependencies += "com.github.bruneli.scalaopt" % "scalaopt-core_2.10" % "0.1"
+
+### Maven
+
+Add the following dependency to your `pom` file
+
+    <dependency>
+        <groupId>com.github.bruneli.scalaopt</groupId>
+        <artifactId>scalaopt-core_2.10</artifactId>
+        <version>0.1</version>
+    </dependency>
