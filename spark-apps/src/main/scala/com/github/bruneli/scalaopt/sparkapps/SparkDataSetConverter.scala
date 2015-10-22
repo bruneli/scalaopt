@@ -65,6 +65,8 @@ object SparkDataSetConverter {
         iterator.map { b: B => (b, Int.MaxValue.toLong) }
       }
 
+    override def reduce(op: (A, A) => A): A = rdd reduce op
+
   }
 
 }

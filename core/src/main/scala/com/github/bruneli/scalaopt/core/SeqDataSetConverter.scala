@@ -44,6 +44,8 @@ object SeqDataSetConverter {
     
     override def map[B: ClassTag](f: (A) => B): DataSet[B] = v map f
 
+    override def reduce(op: (A, A) => A): A = v reduce op
+
     override def size = v.size.toLong
 
     override def zipWithIndex: DataSet[(A, Long)] = v.zipWithIndex.map {

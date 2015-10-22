@@ -41,6 +41,17 @@ trait ConstrainedFunction extends ObjectiveFunction {
 
 }
 
+case class Constraint(c: (Variables) => Double, op: ConstraintOperator.Value, b: Double)
+
+/**
+ * Enumerate the different type of constraint operators i.e. equal, lower equal, greater equal
+ */
+object ConstraintOperator extends Enumeration {
+
+  val Eq, Le, Ge = Value
+
+}
+
 /**
  * Objective function and constrains used in linear programming
  *

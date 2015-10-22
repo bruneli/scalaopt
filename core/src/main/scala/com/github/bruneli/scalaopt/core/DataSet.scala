@@ -71,6 +71,16 @@ trait DataSet[A] {
    */
   def map[B: ClassTag](f: (A) => B): DataSet[B]
 
+  def maxBy(f: A => Double) = reduce {
+    case (el1, el2) => if (f(el2) > f(el1)) el2 else el1
+  }
+
+  def minBy(f: A => Double) = reduce {
+    case (el1, el2) => if (f(el2) < f(el1)) el2 else el1
+  }
+
+  def reduce(op: (A, A) => A): A
+
   def size: Long
 
   /**
