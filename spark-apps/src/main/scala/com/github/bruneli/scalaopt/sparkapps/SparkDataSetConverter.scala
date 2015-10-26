@@ -54,6 +54,13 @@ object SparkDataSetConverter {
 
     override def size = rdd.count()
 
+    def zip[B](that: DataSet[B]): DataSet[(A, B)] = that match {
+      case other: SparkDataSet[B] => this.rdd.zip(other.rdd)
+      case other: SeqDataSet[B] =>
+        require(other.size >= rdd.size, "that size should be >= this size")
+        this.zipWithIndex.map { case (left, index) => (left, other.collect()(index.toInt)) }
+    }
+
     override def zipWithIndex: DataSet[(A, Long)] = rdd.mapPartitionsWithIndex(setIndicesInFirstPartition[A])
 
     private def setIndicesInFirstPartition[B](index: Int, iterator: Iterator[B]): Iterator[(B, Long)] =

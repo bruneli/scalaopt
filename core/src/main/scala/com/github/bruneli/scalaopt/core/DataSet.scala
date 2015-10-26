@@ -84,6 +84,15 @@ trait DataSet[A] {
   def size: Long
 
   /**
+   * Zip a data set with another one
+   *
+   * @param that another data set
+   * @tparam B type of the other data set
+   * @return new data set composed with elements of both data sets
+   */
+  def zip[B](that: DataSet[B]): DataSet[(A, B)]
+
+  /**
    * Zips this sequence with its indices.
    *
    * @return A new sequence containing pairs consisting of all elements of

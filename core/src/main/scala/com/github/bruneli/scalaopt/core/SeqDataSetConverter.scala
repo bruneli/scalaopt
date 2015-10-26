@@ -48,6 +48,10 @@ object SeqDataSetConverter {
 
     override def size = v.size.toLong
 
+    override def zip[B](that: DataSet[B]): DataSet[(A, B)] = {
+      this.collect().zip(that.collect())
+    }
+
     override def zipWithIndex: DataSet[(A, Long)] = v.zipWithIndex.map {
       case (a, i) => (a, i.toLong)
     }

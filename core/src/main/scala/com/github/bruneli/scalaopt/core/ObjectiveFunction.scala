@@ -24,6 +24,11 @@ package com.github.bruneli.scalaopt.core
 trait ObjectiveFunction {
 
   /**
+   * Constrained or unconstrained objective function
+   */
+  val isConstrained = false
+
+  /**
    * Evaluate the objective function for a given vector of variables
    *
    * @param x vector of variables
@@ -60,6 +65,9 @@ trait ObjectiveFunction {
    * @return product of the Hessian in x times d
    */
   def dirHessian(x: Variables, d: Variables): Variables = ???
+
+  def subjectTo(constraints: Constraint*): ConstrainedObjectiveFunction = ???
+
 }
 
 class SimpleFunctionWithGradient(

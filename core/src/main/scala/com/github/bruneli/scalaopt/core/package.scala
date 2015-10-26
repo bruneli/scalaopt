@@ -60,10 +60,22 @@ package object core {
   /** Implicit conversion of RealMatrix to RichMatrix */
   implicit def toRichMatrix(m: RealMatrix): RichMatrix = new RichMatrix(m)
 
+  /** Implicit conversion of a real-valued function to the left hand side of a constraint */
+  implicit def toLHConstraint(c: Variables => Double): LHConstraint = new LHConstraint(c)
+
   /** Implicit conversion of a tuple (x, y) to a DataPoint */
   implicit def toDataPointYVector(xy: (Variables, Variables)): DataPoint = DataPoint(xy._1, xy._2)
 
   implicit def toDataPointYScalar(xy: (Variables, Double)): DataPoint = DataPoint(xy._1, Vector(xy._2))
+
+  def min(f: (Variables) => Double)(implicit pars: ConfigPars = new ConfigPars()): ObjectiveFunction = {
+    new SimpleFunctionFiniteDiffGradient(f, pars)
+  }
+
+  def min(f: (Variables) => Double, df: (Variables) => Variables)(
+    implicit pars: ConfigPars = new ConfigPars()): ObjectiveFunction = {
+    new SimpleFunctionWithGradient((f, df), pars)
+  }
 
   /** Create an n-vector of Variables filled with a constant value */
   def vector(n: Int, value: Double): Variables = (1 to n).map(i => value)
@@ -73,5 +85,8 @@ package object core {
 
   /** Create an n-vector of Variables filled with ones */
   def ones(n: Int): Variables = vector(n, 1.0)
+
+  /** Create an n-dimensional basis vector with i-th element set to 1 */
+  def e(n: Int, i: Int): Variables = zeros(n).updated(i, 1.0)
 
 }

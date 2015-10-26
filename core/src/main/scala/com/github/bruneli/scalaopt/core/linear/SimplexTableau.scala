@@ -16,7 +16,8 @@
 
 package com.github.bruneli.scalaopt.core.linear
 
-import com.github.bruneli.scalaopt.core.{Variables, ConstrainedFunction, DataSet}
+import com.github.bruneli.scalaopt.core._
+import SeqDataSetConverter._
 
 /**
  * Define a tableau used with the Standard Simplex algorithm
@@ -51,11 +52,37 @@ import com.github.bruneli.scalaopt.core.{Variables, ConstrainedFunction, DataSet
  *
  * @author bruneli
  */
-case class SimplexTableau(columns: DataSet[TableauColumn], rhs: TableauColumn) extends ConstrainedFunction {
+case class SimplexTableau(columns: DataSet[TableauColumn], rhs: TableauColumn) extends ConstrainedObjectiveFunction {
 
-  override val equalities: Vector[(Variables) => Double] = ???
-
-  override val inequalities: Vector[(Variables) => Double] = ???
+  /**
+   * Add a linear constraint to the existing tableau
+   *
+   * In case of a new inequality, a new column is created to host a slack variable
+   *
+   * @param constraint a linear constraint
+   * @return updated tableau
+   */
+  def addLinearConstraint(constraint: LinearConstraint): SimplexTableau = constraint.op match {
+    case ConstraintOperator.Eq =>
+      val resizedConstraint = constraint.toEquality(columns.size.toInt)
+      val modifiedColumns = columns.zip(resizedConstraint.a).map {
+        case (column, newElement) => column.copy(constrains = column.constrains :+ newElement)
+      }
+      val rhs = this.rhs.copy(constrains = this.rhs.constrains :+ resizedConstraint.b)
+      SimplexTableau(modifiedColumns, rhs)
+    case _ =>
+      val n = columns.size.toInt
+      val resizedConstraint = constraint.toEquality(n + 1, Some(n))
+      val modifiedColumns = columns.zip(resizedConstraint.a).map {
+        case (column, newElement) => column.copy(constrains = column.constrains :+ newElement)
+      }
+      val rhs = this.rhs.copy(constrains = this.rhs.constrains :+ resizedConstraint.b)
+      // New column for the slack variable
+      val m = rhs.constrains.size
+      val newColumn: DataSet[TableauColumn] =
+        List(TableauColumn(0.0, 0.0, e(m, m - 1).toVector, n, m - 1, ColumnType.BasicVariable))
+      SimplexTableau(modifiedColumns ++ newColumn, rhs)
+  }
 
   /**
    * Evaluate the objective function for a given vector of variables
@@ -66,14 +93,31 @@ case class SimplexTableau(columns: DataSet[TableauColumn], rhs: TableauColumn) e
   override def apply(x: Variables): Double = columns.aggregate(0.0)(addColumnCost, _ + _)
 
   /**
+   * Get a constraint
+   *
+   * @param i index of the constraint
+   * @return constraint
+   */
+  override def constraint(i: Int): Constraint = {
+    val a = columns.map(_.constrains(i))
+    LinearConstraint(a, ConstraintOperator.Eq, rhs.constrains(i)).toConstraint
+  }
+
+  /**
    * Check if the phase1 and phase2 objective functions are optimal
    *
    * @param epsilon error precision
    * @return true when all cost are positive or null
    */
   def isOptimal(epsilon: Double): Boolean = {
-    columns.filter(_.phase1Cost < -epsilon).size == 0 && columns.filter(_.phase2Cost < -epsilon).size == 0
+    columns.filter(_.phase1Cost < -epsilon).size == 0 &&
+    columns.filter(_.phase2Cost < -epsilon).size == 0
   }
+
+  /**
+   * Return the number of constraints
+   */
+  override def numberOfConstraints: Int = rhs.constrains.size
 
   /**
    * Pivot the tableau columns given a pivot column and row
