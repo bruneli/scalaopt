@@ -19,6 +19,8 @@ package com.github.bruneli.scalaopt.core.linear
 import com.github.bruneli.scalaopt.core._
 import SeqDataSetConverter._
 
+import scala.util.{Success, Failure, Try}
+
 /**
  * Define a tableau used with the Standard Simplex algorithm
  *
@@ -52,7 +54,9 @@ import SeqDataSetConverter._
  *
  * @author bruneli
  */
-case class SimplexTableau(columns: DataSet[TableauColumn], rhs: TableauColumn) extends ConstrainedObjectiveFunction {
+case class SimplexTableau(
+  columns: DataSet[TableauColumn],
+  rhs: TableauColumn) extends ConstrainedObjectiveFunction {
 
   /**
    * Add a linear constraint to the existing tableau
@@ -135,8 +139,44 @@ case class SimplexTableau(columns: DataSet[TableauColumn], rhs: TableauColumn) e
     columns.map(column => column.solution(rhs)).collect()
   }
 
+  override def subjectTo(constraints: Constraint*): SimplexTableau = {
+    if (constraints.isEmpty) {
+      this
+    } else {
+      val n = this.columns.size.toInt
+      val headConstraint = LinearConstraint(constraints.head, n).get
+      constraints.tail.foldLeft(this.addLinearConstraint(headConstraint)) {
+        case (previousTableau, constraint) =>
+          val linearConstraint = LinearConstraint(constraint, n).get
+          previousTableau.addLinearConstraint(linearConstraint)
+      }
+    }
+  }
+
+  def withMethod[B <: ConfigPars](
+    method: Optimizer[SimplexTableau, B])(
+    implicit pars: B): Try[Variables] = {
+    method.minimize(this, Vector.empty[Double])(pars)
+  }
+
   private def addColumnCost(previousCost: Double, column: TableauColumn) = {
     previousCost + column.phase2Cost
+  }
+
+}
+
+object SimplexTableau {
+
+  def apply(f: Variables => Double): SimplexTableau = {
+    def iterate(x: Vector[Double]): Int = Try(f(x)) match {
+      case Failure(e) => iterate(x :+ 0.0)
+      case Success(value) => x.size
+    }
+    val n = iterate(Vector(0.0))
+    val columns =
+      (0 until n).map(i => TableauColumn(0.0, f(e(n, i)), Vector(), i, 0, ColumnType.NonBasicVariable))
+    val rhs = TableauColumn(0.0, 0.0, Vector(), n, 0, ColumnType.RightHandSide)
+    SimplexTableau(columns, rhs)
   }
 
 }
@@ -152,8 +192,8 @@ case class SimplexTableau(columns: DataSet[TableauColumn], rhs: TableauColumn) e
  * @param columnType column type                 
  */
 case class TableauColumn(
-  phase1Cost: Double, 
-  phase2Cost: Double, 
+  phase1Cost: Double,
+  phase2Cost: Double,
   constrains: Vector[Double],
   column: Long,
   row: Int,
@@ -220,5 +260,6 @@ object ColumnType extends Enumeration {
   val NonBasicVariable = Value(0)
   val BasicVariable = Value(1)
   val ArtificialVariable = Value(2)
-  
+  val RightHandSide = Value(3)
+
 }

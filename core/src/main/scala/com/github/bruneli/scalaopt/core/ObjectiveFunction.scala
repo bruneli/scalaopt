@@ -88,6 +88,10 @@ class SimpleFunctionWithGradient(
     (gradxd - gradx) / pars.eps
   }
 
+  override def subjectTo(constraints: Constraint*) = {
+    new ConstrainedFunctionWithGradient(f, constraints.toVector, pars)
+  }
+
 }
 
 class SimpleFunctionFiniteDiffGradient(
@@ -110,6 +114,11 @@ class SimpleFunctionFiniteDiffGradient(
     val gradxd = gradient(x + d * pars.eps)
     (gradxd - gradx) / pars.eps
   }
+
+  override def subjectTo(constraints: Constraint*) = {
+    new ConstrainedFunctionFiniteDiffGradient(f, constraints.toVector, pars)
+  }
+
 }
 
 /**
