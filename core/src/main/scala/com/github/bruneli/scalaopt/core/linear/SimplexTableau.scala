@@ -61,31 +61,43 @@ case class SimplexTableau(
   /**
    * Add a linear constraint to the existing tableau
    *
-   * In case of a new inequality, a new column is created to host a slack variable
+   * In case the new constraint include variables that are not yet included in the cost function,
+   * the tableau is extended.
+   * In case of a new inequality, a new column is created to host a slack variable.
    *
    * @param constraint a linear constraint
    * @return updated tableau
    */
-  def addLinearConstraint(constraint: LinearConstraint): SimplexTableau = constraint.op match {
-    case ConstraintOperator.Eq =>
-      val resizedConstraint = constraint.toEquality(columns.size.toInt)
-      val modifiedColumns = columns.zip(resizedConstraint.a).map {
-        case (column, newElement) => column.copy(constrains = column.constrains :+ newElement)
-      }
-      val rhs = this.rhs.copy(constrains = this.rhs.constrains :+ resizedConstraint.b)
-      SimplexTableau(modifiedColumns, rhs)
-    case _ =>
-      val n = columns.size.toInt
-      val resizedConstraint = constraint.toEquality(n + 1, Some(n))
-      val modifiedColumns = columns.zip(resizedConstraint.a).map {
-        case (column, newElement) => column.copy(constrains = column.constrains :+ newElement)
-      }
-      val rhs = this.rhs.copy(constrains = this.rhs.constrains :+ resizedConstraint.b)
-      // New column for the slack variable
-      val m = rhs.constrains.size
-      val newColumn: DataSet[TableauColumn] =
-        List(TableauColumn(0.0, 0.0, e(m, m - 1).toVector, n, m - 1, ColumnType.BasicVariable))
-      SimplexTableau(modifiedColumns ++ newColumn, rhs)
+  def addLinearConstraint(constraint: LinearConstraint): SimplexTableau = {
+    // Initial tableau size
+    val n0 = columns.size.toInt
+    val m0 = this.rhs.constrains.size
+    // Updated tableau size
+    val n = if (constraint.op == ConstraintOperator.Eq) {
+      Math.max(n0, constraint.a.size.toInt)
+    } else {
+      Math.max(n0, constraint.a.size.toInt) + 1
+    }
+    // Transform the constraint into an equality constraint
+    val resizedConstraint = if (constraint.op == ConstraintOperator.Eq) {
+      constraint.toEquality(n)
+    } else {
+      constraint.toEquality(n, Some(n - 1))
+    }
+    // Add new columns if necessary
+    val resizedColumns = if (n > n0) {
+      val newColumns = (n0 until n)
+        .map(i => TableauColumn(0.0, 0.0, zeros(m0).toVector, i, 0, ColumnType.NonBasicVariable))
+      columns ++ newColumns
+    } else {
+      columns
+    }
+    // Add new constraint to the columns
+    val modifiedColumns = resizedColumns.zip(resizedConstraint.a).map {
+      case (column, newElement) => column.copy(constrains = column.constrains :+ newElement)
+    }
+    val rhs = this.rhs.copy(constrains = this.rhs.constrains :+ resizedConstraint.b)
+    SimplexTableau(modifiedColumns, rhs)
   }
 
   /**
@@ -143,11 +155,11 @@ case class SimplexTableau(
     if (constraints.isEmpty) {
       this
     } else {
-      val n = this.columns.size.toInt
-      val headConstraint = LinearConstraint(constraints.head, n).get
+      val headConstraint = this.toLinearConstraint(constraints.head, this.columns.size.toInt)
       constraints.tail.foldLeft(this.addLinearConstraint(headConstraint)) {
         case (previousTableau, constraint) =>
-          val linearConstraint = LinearConstraint(constraint, n).get
+          val n = previousTableau.columns.size.toInt
+          val linearConstraint = this.toLinearConstraint(constraint, n)
           previousTableau.addLinearConstraint(linearConstraint)
       }
     }
@@ -159,15 +171,23 @@ case class SimplexTableau(
     method.minimize(this, Vector.empty[Double])(pars)
   }
 
-  private def addColumnCost(previousCost: Double, column: TableauColumn) = {
+  private def addColumnCost(previousCost: Double, column: TableauColumn): Double = {
     previousCost + column.phase2Cost
+  }
+
+  private def toLinearConstraint(constraint: Constraint, n0: Int) = {
+    def iterate(n: Int): LinearConstraint = LinearConstraint(constraint, n) match {
+      case Success(linearConstraint) => linearConstraint
+      case Failure(e) => iterate(n + 1)
+    }
+    iterate(n0)
   }
 
 }
 
 object SimplexTableau {
 
-  def apply(f: Variables => Double): SimplexTableau = {
+  def min(f: Variables => Double): SimplexTableau = {
     def iterate(x: Vector[Double]): Int = Try(f(x)) match {
       case Failure(e) => iterate(x :+ 0.0)
       case Success(value) => x.size

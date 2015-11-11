@@ -73,7 +73,7 @@ case class LinearConstraint(a: DataSet[Double], op: Value, b: Double, eps: Doubl
       case Le =>
         // Add a slack variable
         val s = slack.get - m
-        this.a ++ e(n - m, s)
+        this.a ++ (e(n - m, s) * -1.0)
       case Ge =>
         // Revert sign of all vector values and add a slack variable
         val s = slack.get - m
@@ -94,13 +94,19 @@ object LinearConstraint {
    * @param n          number of dimensions of the left hand side of the constraint
    * @return linear constraint expressed as a left hand side vector, an equality operator and a right hand side value
    */
-  def apply(constraint: Constraint, n: Int): Try[LinearConstraint] = Try(constraint.c(ones(n))) match {
-    case Success(value) =>
+  def apply(constraint: Constraint, n: Int): Try[LinearConstraint] =
+    Try(constraint.c(ones(n))).map {
+      value =>
       val a = (0 until n).map(i => constraint.c(e(n, i)))
-      Success(LinearConstraint(a, constraint.op, constraint.b))
-    case Failure(e) =>
-      Failure(throw new IllegalArgumentException(
-        s"constraint $constraint cannot be converted into an $n-dimension linear constraint"))
-  }
+      LinearConstraint(a, constraint.op, constraint.b)
+    }
+//  def apply(constraint: Constraint, n: Int): Try[LinearConstraint] = Try(constraint.c(ones(n))) match {
+//    case Success(value) =>
+//      val a = (0 until n).map(i => constraint.c(e(n, i)))
+//      Success(LinearConstraint(a, constraint.op, constraint.b))
+//    case Failure(e) =>
+//      Failure(throw new IllegalArgumentException(
+//        s"constraint $constraint cannot be converted into an $n-dimension linear constraint"))
+//  }
 
 }

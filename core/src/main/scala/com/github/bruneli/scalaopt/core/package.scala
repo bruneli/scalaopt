@@ -68,15 +68,6 @@ package object core {
 
   implicit def toDataPointYScalar(xy: (Variables, Double)): DataPoint = DataPoint(xy._1, Vector(xy._2))
 
-  def min(f: (Variables) => Double)(implicit pars: ConfigPars = new ConfigPars()): ObjectiveFunction = {
-    new SimpleFunctionFiniteDiffGradient(f, pars)
-  }
-
-  def min(f: (Variables) => Double, df: (Variables) => Variables)(
-    implicit pars: ConfigPars = new ConfigPars()): ObjectiveFunction = {
-    new SimpleFunctionWithGradient((f, df), pars)
-  }
-
   /** Create an n-vector of Variables filled with a constant value */
   def vector(n: Int, value: Double): Variables = (1 to n).map(i => value)
 
