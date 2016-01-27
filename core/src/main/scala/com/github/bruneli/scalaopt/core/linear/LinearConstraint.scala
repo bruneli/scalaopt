@@ -71,15 +71,14 @@ case class LinearConstraint(a: DataSet[Double], op: Value, b: Double, eps: Doubl
     val a = op match {
       case Eq => if (n == m) this.a else this.a ++ zeros(n - m)
       case Le =>
-        // Add a slack variable
+        // Add a slack variable to have equality satisfied
+        val s = slack.get - m
+        this.a ++ e(n - m, s)
+      case Ge =>
+        // Add an excess variable to have equality satisfied
         val s = slack.get - m
         this.a ++ (e(n - m, s) * -1.0)
-      case Ge =>
-        // Revert sign of all vector values and add a slack variable
-        val s = slack.get - m
-        this.a.map(value => -value) ++ e(n - m, s)
     }
-    val b = if (op == Ge) -this.b else this.b
     LinearConstraint(a, Eq, b)
   }
 

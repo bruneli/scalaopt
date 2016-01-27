@@ -51,12 +51,14 @@ import scala.util.{Success, Failure, Try}
  *
  * @param columns tableau columns except the right hand side
  * @param rhs tableau right hand side with objective function values and constrains parameters
+ * @param constraintTypes equality type (>=, ==, <=) of every constraint
  *
  * @author bruneli
  */
 case class SimplexTableau(
   columns: DataSet[TableauColumn],
-  rhs: TableauColumn) extends ConstrainedObjectiveFunction {
+  rhs: TableauColumn,
+  constraintTypes: Vector[ConstraintOperator.Value]) extends ConstrainedObjectiveFunction {
 
   /**
    * Add a linear constraint to the existing tableau
@@ -87,17 +89,31 @@ case class SimplexTableau(
     // Add new columns if necessary
     val resizedColumns = if (n > n0) {
       val newColumns = (n0 until n)
-        .map(i => TableauColumn(0.0, 0.0, zeros(m0).toVector, i, 0, ColumnType.NonBasicVariable))
+        .map {
+          i =>
+            val isSlack = i == (n - 1) && constraint.op != ConstraintOperator.Eq
+            val isBasic = isSlack && constraint.op == ConstraintOperator.Le
+            val row = if (isBasic) m0 else -1
+            TableauColumn(
+              0.0,
+              0.0,
+              zeros(m0).toVector,
+              i,
+              isSlack = isSlack,
+              isBasic = isBasic,
+              row = row)
+        }
       columns ++ newColumns
     } else {
       columns
     }
-    // Add new constraint to the columns
+    // Add the new constraint to the columns
     val modifiedColumns = resizedColumns.zip(resizedConstraint.a).map {
       case (column, newElement) => column.copy(constrains = column.constrains :+ newElement)
     }
     val rhs = this.rhs.copy(constrains = this.rhs.constrains :+ resizedConstraint.b)
-    SimplexTableau(modifiedColumns, rhs)
+    val constraintTypes = this.constraintTypes :+ constraint.op
+    SimplexTableau(modifiedColumns, rhs, constraintTypes)
   }
 
   /**
@@ -122,12 +138,16 @@ case class SimplexTableau(
   /**
    * Check if the phase1 and phase2 objective functions are optimal
    *
+   * The basic feasible solution is optimal when all costs are negative or null.
+   *
    * @param epsilon error precision
-   * @return true when all cost are positive or null
+   * @return true when all cost are <= 0
    */
-  def isOptimal(epsilon: Double): Boolean = {
-    columns.filter(_.phase1Cost < -epsilon).size == 0 &&
-    columns.filter(_.phase2Cost < -epsilon).size == 0
+  def isOptimal(
+    epsilon: Double,
+    simplexPhase: SimplexPhase.Value): Boolean = simplexPhase match {
+    case SimplexPhase.Phase1 => columns.filter(_.phase1Cost > epsilon).size == 0
+    case SimplexPhase.Phase2 => columns.filter(_.phase2Cost > epsilon).size == 0
   }
 
   /**
@@ -140,17 +160,26 @@ case class SimplexTableau(
    *
    * Pivot separately the variables A and the right hand side b.
    *
-   * @param pivotColumn pivot column with row index specifying the pivot row
+   * @param pivotColumn pivot column with its row index specifying the pivot row
    * @return pivoted tableau
    */
   def pivot(pivotColumn: TableauColumn): SimplexTableau = {
     this.copy(columns = columns.map(_.pivot(pivotColumn)), rhs = rhs.pivot(pivotColumn))
   }
 
+  /**
+   * Extract the solution of this tableau
+   */
   def solution: Variables = {
     columns.map(column => column.solution(rhs)).collect()
   }
 
+  /**
+   * Add a set of constraints to the tableau
+   *
+   * @param constraints comma separatated list of constraints
+   * @return extended tableau
+   */
   override def subjectTo(constraints: Constraint*): SimplexTableau = {
     if (constraints.isEmpty) {
       this
@@ -165,7 +194,56 @@ case class SimplexTableau(
     }
   }
 
-  def withMethod[B <: ConfigPars](
+  /**
+   * Add new column corresponding to artificial variables for every equality or >= constraint.
+   *
+   * In principle, artificial variables have a phase-1 cost of -1, but following some matrix row
+   * additions, the costs of artificial columns are set to 0 while other columns costs are scaled.
+   *
+   * @return extended tableau with artificial variables
+   */
+  def withArtificialVariables: SimplexTableau = {
+    val tableau0 = this.withoutArtificialVariables
+    val m = this.rhs.constrains.size
+    val artificialConstraints =
+      tableau0.constraintTypes.zipWithIndex.filter(_._1 != ConstraintOperator.Le)
+    val artificialConstraintIdx = artificialConstraints.map(_._2)
+    val n0 = tableau0.columns.size.toInt
+    val n = n0 + artificialConstraints.size
+    val newColumns = (n0 until n)
+      .map { column =>
+        val row = artificialConstraints(column - n0)._2
+        TableauColumn.artificialVariable(column, row, m)
+      }
+    this.copy(
+      columns = tableau0.columns.map(scaleCost(artificialConstraintIdx)) ++ newColumns,
+      rhs = tableau0.rhs.copy(phase1Cost = 0.0))
+  }
+
+  private def scaleCost(indices: Vector[Int])(column: TableauColumn) = {
+    val scaledPhase1Cost = column.constrains.zipWithIndex.foldLeft(0.0) {
+      case (previous, (cost, idx)) =>
+        if (indices.contains(idx)) previous + cost else previous
+    }
+    column.copy(phase1Cost = scaledPhase1Cost)
+  }
+
+  /**
+   * Remove all columns flagged as artificial variables
+   */
+  def withoutArtificialVariables: SimplexTableau = {
+    this.copy(columns = columns.filter(!_.isArtificial))
+  }
+
+  /**
+   * Solve the current tableau with specified method
+   *
+   * @param method method used to solve the linear programming problem
+   * @param pars   parameters associated to the method
+   * @tparam B type of class holding method configuration parameters
+   * @return values of the decision variables at their optimum or failure
+   */
+  def solveWith[B <: ConfigPars](
     method: Optimizer[SimplexTableau, B])(
     implicit pars: B): Try[Variables] = {
     method.minimize(this, Vector.empty[Double])(pars)
@@ -187,37 +265,70 @@ case class SimplexTableau(
 
 object SimplexTableau {
 
-  def min(f: Variables => Double): SimplexTableau = {
+  /**
+   * Given a linear cost function that should be minimized, build an initial tableau
+   *
+   * @param f linear objective function
+   * @return tableau containing only the linear objective function
+   */
+  def min(f: Variables => Double): SimplexTableau = objective(f, true)
+
+  /**
+   * Given a linear cost function that should be maximized, build an initial tableau
+   *
+   * @param f linear objective function
+   * @return tableau containing only the linear objective function
+   */
+  def max(f: Variables => Double): SimplexTableau = objective(f, false)
+
+  /**
+   * Given a linear cost function, build an initial tableau
+   *
+   * @param f            linear objective function
+   * @param isMinimizing true if minimizing f, false if maximizing f
+   * @return tableau containing only the linear objective function
+   */
+  def objective(
+    f: Variables => Double,
+    isMinimizing: Boolean): SimplexTableau = {
     def iterate(x: Vector[Double]): Int = Try(f(x)) match {
       case Failure(e) => iterate(x :+ 0.0)
       case Success(value) => x.size
     }
     val n = iterate(Vector(0.0))
+    // Negate cost values when searching for minimal cost
+    val costSign = if (isMinimizing) -1.0 else 1.0
     val columns =
-      (0 until n).map(i => TableauColumn(0.0, f(e(n, i)), Vector(), i, 0, ColumnType.NonBasicVariable))
-    val rhs = TableauColumn(0.0, 0.0, Vector(), n, 0, ColumnType.RightHandSide)
-    SimplexTableau(columns, rhs)
+      (0 until n).map(i => TableauColumn(0.0, costSign * f(e(n, i)), Vector(), i))
+    val rhs = TableauColumn(0.0, 0.0, Vector(), n)
+    SimplexTableau(columns, rhs, Vector())
   }
 
 }
 
 /**
- * Tableau column describing a decision variable
+ * Tableau column used to describe a decision variable
  *
- * @param phase1Cost impact of the variable on the phase1 cost function
- * @param phase2Cost impact of the variable on the phase2 cost function
- * @param constrains impact of the non basic variable on the m constrains
- * @param column     column index
- * @param row        basic variable non null index or pivoting index
- * @param columnType column type                 
+ * @param phase1Cost   impact of the variable on the phase1 cost function
+ * @param phase2Cost   impact of the variable on the phase2 cost function
+ * @param constrains   impact of the non basic variable on the m constrains
+ * @param column       column index
+ * @param row          basic variable non null index or pivoting index
+ * @param isSlack      true if it is a slack variable added for an inequality constraint
+ * @param isNegative   true if it is the negative part of a decision variable
+ * @param isBasic      true if this column is a basic variable
+ * @param isArtificial true if this column is an artificial variable used to solve the phase1 problem
  */
 case class TableauColumn(
   phase1Cost: Double,
   phase2Cost: Double,
   constrains: Vector[Double],
   column: Long,
-  row: Int,
-  columnType: ColumnType.Value) {
+  row: Int = -1,
+  isSlack: Boolean = false,
+  isNegative: Boolean = false,
+  isBasic: Boolean = false,
+  isArtificial: Boolean = false) {
 
   /**
    * Multiply the content of a column by a constant factor
@@ -229,7 +340,12 @@ case class TableauColumn(
   }
   
   /**
-   * Pivot a column using another column
+   * Pivot a column with another column
+   *
+   * Pivoting column X with pivot column Y means that every value of X is changed to:
+   * X_i := X_i - Y_i * X_j / Y_j if i !=j
+   * X_j := X_j / Y_j
+   * with j the pivoting row
    *
    * @param that pivot column
    * @return pivoted column
@@ -237,49 +353,58 @@ case class TableauColumn(
   def pivot(that: TableauColumn): TableauColumn = {
     if (this.column == that.column) {
       // The entering column becomes a basic variable
-      TableauColumn.basicVariable(column, row)
-    } else if (this.columnType == ColumnType.BasicVariable && this.row != that.row) {
+      this.toBasicVariable(that.row)
+    } else if (this.isBasic && this.row != that.row) {
       // Basic variables are unchanged if their row index is different from the pivoting row
       this
     } else {
       // Column is rescaled according to the pivot column
-      val pivotValue = this.constrains(row) / that.constrains(row)
+      val constrains0 = if (this.isBasic) {
+        e(that.constrains.size, this.row).toVector
+      } else {
+        this.constrains
+      }
+      val pivotValue = constrains0(that.row) / that.constrains(that.row)
       val phase1Cost = this.phase1Cost - that.phase1Cost * pivotValue
       val phase2Cost = this.phase2Cost - that.phase2Cost * pivotValue
-      val constrains = this.constrains.zipWithIndex.map {
-         case (value, i) => if (i == that.row) pivotValue else value - that.constrains(i) * pivotValue
+      val constrains = constrains0.zipWithIndex.map {
+         case (value, i) =>
+           if (i == that.row) pivotValue else value - that.constrains(i) * pivotValue
       }
-      this.copy(phase1Cost = phase1Cost, phase2Cost = phase2Cost, constrains = constrains, row = -1)
+      this.copy(
+        phase1Cost = phase1Cost,
+        phase2Cost = phase2Cost,
+        constrains = constrains,
+        row = -1,
+        isBasic = false)
     }
   }
 
   /**
    * Get the current solution
    */
-  def solution(rhs: TableauColumn): Double = columnType match {
-    case ColumnType.BasicVariable => rhs.constrains(row)
-    case _ => 0.0
+  def solution(rhs: TableauColumn): Double = {
+    if (isBasic) rhs.constrains(row) else 0.0
+  }
+
+  /**
+   * Fill the column with 0 except for the row-th element equal to 1
+   */
+  def toBasicVariable(row: Int) = {
+    this.copy(
+      phase1Cost = 0.0,
+      phase2Cost = 0.0,
+      constrains = Vector.empty[Double],
+      row = row,
+      isBasic = true)
   }
   
 }
 
 object TableauColumn {
 
-  def basicVariable(column: Long, row: Int): TableauColumn = {
-    TableauColumn(0.0, 0.0, Vector.empty[Double], column, row, ColumnType.BasicVariable)
+  def artificialVariable(column: Long, i: Int, n: Int): TableauColumn = {
+    TableauColumn(0.0, 0.0, e(n, i).toVector, column, -1, isArtificial = true, isBasic = true)
   }
-
-}
-
-
-/**
- * Define the different type of decision variables
- */
-object ColumnType extends Enumeration {
-  
-  val NonBasicVariable = Value(0)
-  val BasicVariable = Value(1)
-  val ArtificialVariable = Value(2)
-  val RightHandSide = Value(3)
 
 }

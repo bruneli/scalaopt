@@ -28,7 +28,7 @@ import scala.util.{Try, Success, Failure}
  */
 object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] {
 
-  override val defaultConfig: StandardSimplexConfig = StandardSimplexConfig()
+  implicit val defaultConfig: StandardSimplexConfig = StandardSimplexConfig()
 
   /**
    * Minimize an objective function acting on a vector of real values.
@@ -54,9 +54,9 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
   def pivotColumn(phase: SimplexPhase.Value)(tableau: SimplexTableau) = {
     val pivotCandidate = phase match {
       case SimplexPhase.Phase1 =>
-        tableau.columns.minBy(_.phase1Cost)
+        tableau.columns.maxBy(_.phase1Cost)
       case SimplexPhase.Phase2 =>
-        tableau.columns.filter(_.columnType != ColumnType.ArtificialVariable).minBy(_.phase2Cost)
+        tableau.columns.filter(!_.isArtificial).maxBy(_.phase2Cost)
     }
     minRatioRow(pivotCandidate, tableau.rhs)
   }
@@ -69,16 +69,25 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
    * @return pivot column with row index corresponding to minimum ratio
    */
   def minRatioRow(pivotColumn: TableauColumn, rhs: TableauColumn) = {
-    val minRatioIdx = pivotColumn.constrains.zip(rhs.constrains).map(computeRatio).zipWithIndex.minBy(_._1)._2
-    pivotColumn.copy(row = minRatioIdx)
+    if (pivotColumn.isBasic) {
+      pivotColumn
+    } else {
+      val minRatioIdx = pivotColumn
+        .constrains
+        .zip(rhs.constrains)
+        .map(computeRatio)
+        .zipWithIndex
+        .minBy(_._1)._2
+      pivotColumn.copy(row = minRatioIdx)
+    }
   }
 
   def solvePhase1(pars: StandardSimplexConfig)(tableau: SimplexTableau): Try[SimplexTableau] = {
-    iterate(0, tableau, SimplexPhase.Phase1, pars)
+    iterate(0, tableau.withArtificialVariables, SimplexPhase.Phase1, pars)
   }
 
   def solvePhase2(pars: StandardSimplexConfig)(tableau: SimplexTableau): Try[SimplexTableau] = {
-    iterate(0, tableau, SimplexPhase.Phase2, pars)
+    iterate(0, tableau.withoutArtificialVariables, SimplexPhase.Phase2, pars)
   }
 
   private def computeRatio(values: (Double, Double)) = {
@@ -92,7 +101,7 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
     tableau: SimplexTableau,
     simplexPhase: SimplexPhase.Value,
     pars: StandardSimplexConfig): Try[SimplexTableau] = {
-    if (tableau.isOptimal(pars.eps)) {
+    if (tableau.isOptimal(pars.eps, simplexPhase)) {
       Success(tableau)
     } else if (i >= pars.maxIter) {
       Failure(throw new MaxIterException(s"Simplex $simplexPhase: number of iterations exceeds ${pars.maxIter}"))
