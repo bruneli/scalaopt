@@ -16,7 +16,7 @@
 
 package com.github.bruneli.scalaopt.core.linear
 
-import com.github.bruneli.scalaopt.core.{MaxIterException, Variables, ConfigPars, Optimizer}
+import com.github.bruneli.scalaopt.core._
 
 import scala.annotation.tailrec
 import scala.util.{Try, Success, Failure}
@@ -41,7 +41,7 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
   override def minimize(
     tableau: SimplexTableau, x0: Variables)(
     implicit pars: StandardSimplexConfig): Try[Variables] = {
-    solvePhase1(pars)(tableau) flatMap solvePhase2(pars) map(_.solution)
+    solvePhase1(pars)(tableau).flatMap(solvePhase2(pars)).map(_.solution)
   }
 
   /**
@@ -67,18 +67,23 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
    * @param pivotColumn pivot column
    * @param rhs         equality constrains right hand side
    * @return pivot column with row index corresponding to minimum ratio
+   * @throws UnboundedProgramException when all b_i are negative
    */
   def minRatioRow(pivotColumn: TableauColumn, rhs: TableauColumn) = {
     if (pivotColumn.isBasic) {
       pivotColumn
     } else {
-      val minRatioIdx = pivotColumn
+      val (minRatioValue, minRatioIdx) = pivotColumn
         .constrains
         .zip(rhs.constrains)
         .map(computeRatio)
         .zipWithIndex
-        .minBy(_._1)._2
-      pivotColumn.copy(row = minRatioIdx)
+        .minBy(_._1)
+      if (minRatioValue >= Double.PositiveInfinity) {
+        throw new UnboundedProgramException("Linear program is unbounded")
+      } else {
+        pivotColumn.copy(row = minRatioIdx)
+      }
     }
   }
 
@@ -102,7 +107,11 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
     simplexPhase: SimplexPhase.Value,
     pars: StandardSimplexConfig): Try[SimplexTableau] = {
     if (tableau.isOptimal(pars.eps, simplexPhase)) {
-      Success(tableau)
+      if (simplexPhase == SimplexPhase.Phase1 && Math.abs(tableau.rhs.phase1Cost) > pars.eps) {
+        Failure(throw new NoSolutionException("Simplex phase1 failed to find a solution at zero cost"))
+      } else {
+        Success(tableau)
+      }
     } else if (i >= pars.maxIter) {
       Failure(throw new MaxIterException(s"Simplex $simplexPhase: number of iterations exceeds ${pars.maxIter}"))
     } else {

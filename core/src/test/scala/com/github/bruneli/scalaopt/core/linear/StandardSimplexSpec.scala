@@ -21,8 +21,8 @@ import com.github.bruneli.scalaopt.core._
 import SimplexTableau.{min, max}
 
 /**
- * @author bruneli
- */
+  * @author bruneli
+  */
 class StandardSimplexSpec extends FlatSpec with Matchers {
 
   import StandardSimplex._
@@ -32,8 +32,8 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMin = Vector(0.0, 1.0)
 
     val xOpt = min((x: Variables) => x(0) + x(1))
-      .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
-      .solveWith(StandardSimplex)
+        .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
+        .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
@@ -47,15 +47,29 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMax = Vector(1.0, 2.0)
 
     val xOpt = max((x: Variables) => x(0) + x(1))
-      .subjectTo(
-        ((x: Variables) => x(0)) <= 1.0,
-        ((x: Variables) => -x(0) + x(1)) <= 1.0
-      )
-      .solveWith(StandardSimplex)
+        .subjectTo(
+          ((x: Variables) => x(0)) <= 1.0,
+          ((x: Variables) => -x(0) + x(1)) <= 1.0
+        )
+        .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMax)) {
       xObs shouldBe xExp +- 1.0e-8
+    }
+
+  }
+
+  it should "fail to solve the linear program when constraints offer no solution" in {
+
+    a[NoSolutionException] shouldBe thrownBy {
+      max((x: Variables) => x(0) + x(1))
+          .subjectTo(
+            ((x: Variables) => x(0)) <= 1.0,
+            ((x: Variables) => x(1)) <= 1.0,
+            ((x: Variables) => x(0) + x(1)) >= 2.0
+          )
+          .solveWith(StandardSimplex)
     }
 
   }
