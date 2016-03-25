@@ -23,6 +23,8 @@ import SeqDataSetConverter.SeqDataSet
 import scala.reflect.ClassTag
 
 /**
+ * Implicit class used to run numerical optimization methods on data sets stored in a spark RDD
+ *
  * @author bruneli
  */
 object SparkDataSetConverter {
@@ -45,6 +47,8 @@ object SparkDataSetConverter {
     override def collect(): Seq[A] = rdd.collect()
 
     override def filter(p: A => Boolean): DataSet[A] = rdd filter p
+
+    override def flatMap(f: (A) => TraversableOnce[A]): DataSet[A] = rdd flatMap f
 
     override def foreach(f: (A) => Unit): Unit = rdd foreach f
 

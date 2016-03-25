@@ -49,10 +49,9 @@ import scala.util.{Success, Failure, Try}
  * - s1 & s2 = additional slack variables to transform inequality constrains into equality constrains
  * - a1 & a2 = additional artificial variables to solve the phase1 problem
  *
- * @param columns tableau columns except the right hand side
- * @param rhs tableau right hand side with objective function values and constrains parameters
+ * @param columns         tableau columns except the right hand side and negative sum columns
+ * @param rhs             tableau right hand side with objective function values and constrains parameters
  * @param constraintTypes equality type (>=, ==, <=) of every constraint
- *
  * @author bruneli
  */
 case class SimplexTableau(
@@ -71,49 +70,54 @@ case class SimplexTableau(
    * @return updated tableau
    */
   def addLinearConstraint(constraint: LinearConstraint): SimplexTableau = {
-    // Initial tableau size
-    val n0 = columns.size.toInt
-    val m0 = this.rhs.constrains.size
-    // Updated tableau size
-    val n = if (constraint.op == ConstraintOperator.Eq) {
-      Math.max(n0, constraint.a.size.toInt)
+    if (constraint.b >= 0.0) {
+      // Initial tableau size
+      val n0 = columns.size.toInt
+      val m0 = this.rhs.constrains.size
+      // Updated tableau size
+      val n = if (constraint.op == ConstraintOperator.Eq) {
+        Math.max(n0, constraint.a.size.toInt)
+      } else {
+        Math.max(n0, constraint.a.size.toInt) + 1
+      }
+      // Transform the constraint into an equality constraint
+      val resizedConstraint = if (constraint.op == ConstraintOperator.Eq) {
+        constraint.toEquality(n)
+      } else {
+        constraint.toEquality(n, Some(n - 1))
+      }
+      // Add new columns like slack variables if necessary
+      val resizedColumns = if (n > n0) {
+        val newColumns = (n0 until n).map(addSlackVariable(n, m0, constraint.op))
+        columns ++ newColumns
+      } else {
+        columns
+      }
+      // Add the new constraint to the columns
+      val modifiedColumns = resizedColumns.zip(resizedConstraint.a).map {
+        case (column, newElement) => column.copy(constrains = column.constrains :+ newElement)
+      }
+      val rhs = this.rhs.copy(constrains = this.rhs.constrains :+ resizedConstraint.b)
+      val constraintTypes = this.constraintTypes :+ constraint.op
+      SimplexTableau(modifiedColumns, rhs, constraintTypes)
     } else {
-      Math.max(n0, constraint.a.size.toInt) + 1
+      // If constraint has a negative right-hand side, invert it
+      addLinearConstraint(constraint.withPositiveRhs)
     }
-    // Transform the constraint into an equality constraint
-    val resizedConstraint = if (constraint.op == ConstraintOperator.Eq) {
-      constraint.toEquality(n)
-    } else {
-      constraint.toEquality(n, Some(n - 1))
-    }
-    // Add new columns if necessary
-    val resizedColumns = if (n > n0) {
-      val newColumns = (n0 until n)
-        .map {
-          i =>
-            val isSlack = i == (n - 1) && constraint.op != ConstraintOperator.Eq
-            val isBasic = isSlack && constraint.op == ConstraintOperator.Le
-            val row = if (isBasic) m0 else -1
-            TableauColumn(
-              0.0,
-              0.0,
-              zeros(m0).toVector,
-              i,
-              isSlack = isSlack,
-              isBasic = isBasic,
-              row = row)
-        }
-      columns ++ newColumns
-    } else {
-      columns
-    }
-    // Add the new constraint to the columns
-    val modifiedColumns = resizedColumns.zip(resizedConstraint.a).map {
-      case (column, newElement) => column.copy(constrains = column.constrains :+ newElement)
-    }
-    val rhs = this.rhs.copy(constrains = this.rhs.constrains :+ resizedConstraint.b)
-    val constraintTypes = this.constraintTypes :+ constraint.op
-    SimplexTableau(modifiedColumns, rhs, constraintTypes)
+  }
+
+  private def addSlackVariable(n: Int, m0: Int, op: ConstraintOperator.Value)(i: Int) = {
+    val isSlack = i == (n - 1) && op != ConstraintOperator.Eq
+    val isBasic = isSlack && op == ConstraintOperator.Le
+    val row = if (isBasic) m0 else -1
+    TableauColumn(
+      0.0,
+      0.0,
+      zeros(m0).toVector,
+      i,
+      isSlack = isSlack,
+      isBasic = isBasic,
+      row = row)
   }
 
   /**
@@ -164,14 +168,30 @@ case class SimplexTableau(
    * @return pivoted tableau
    */
   def pivot(pivotColumn: TableauColumn): SimplexTableau = {
-    this.copy(columns = columns.map(_.pivot(pivotColumn)), rhs = rhs.pivot(pivotColumn))
+    this.copy(
+      columns = columns.map(_.pivot(pivotColumn)),
+      rhs = rhs.pivot(pivotColumn))
   }
 
   /**
    * Extract the solution of this tableau
    */
   def solution: Variables = {
-    columns.map(column => column.solution(rhs)).collect()
+    columns
+      .filter(column => !(column.isSlack || column.isArtificial))
+      .collect().foldLeft(Vector.empty[Double])(addColumnToSolution(rhs))
+  }
+
+  private def addColumnToSolution(
+    rhs: TableauColumn)(
+    previous: Vector[Double],
+    column: TableauColumn) = {
+    val solution = column.solution(rhs)
+    if (column.isNegative) {
+      previous.updated(previous.size - 1, previous(previous.size - 1) - solution)
+    } else {
+      previous :+ solution
+    }
   }
 
   /**
@@ -197,7 +217,7 @@ case class SimplexTableau(
   /**
    * Add new column corresponding to artificial variables for every equality or >= constraint.
    *
-   * In principle, artificial variables have a phase-1 cost of -1, but following some matrix row
+   * In this implementation, artificial variables have a phase-1 cost of 1, but following some matrix row
    * additions, the costs of artificial columns are set to 0 while other columns costs are scaled.
    *
    * @return extended tableau with artificial variables
@@ -217,7 +237,7 @@ case class SimplexTableau(
       }
     this.copy(
       columns = tableau0.columns.map(scaleCost(artificialConstraintIdx)) ++ newColumns,
-      rhs = tableau0.rhs.copy(phase1Cost = 0.0))
+      rhs = scaleCost(artificialConstraintIdx)(tableau0.rhs))
   }
 
   private def scaleCost(indices: Vector[Int])(column: TableauColumn) = {
@@ -233,6 +253,20 @@ case class SimplexTableau(
    */
   def withoutArtificialVariables: SimplexTableau = {
     this.copy(columns = columns.filter(!_.isArtificial))
+  }
+
+  /**
+   * Restrict decision variables to take only positive values
+   */
+  def withPositiveVariables: SimplexTableau = {
+    this.copy(columns = columns.filter(!_.isNegative))
+  }
+
+  /**
+   * Add extra columns with all sign reverted for all non-slack and non-artificial variables
+   */
+  def withNegativeVariables: SimplexTableau = {
+    this.copy(columns = columns.filter(!_.isNegative).flatMap(splitIntoPosAndNegVars))
   }
 
   /**
@@ -259,6 +293,19 @@ case class SimplexTableau(
       case Failure(e) => iterate(n + 1)
     }
     iterate(n0)
+  }
+
+  /**
+   * Split a decision variables into its positive and negative components.
+   *
+   * To do that, create 2 columns, one with positive components, one with negative components
+   */
+  private def splitIntoPosAndNegVars(column: TableauColumn): Vector[TableauColumn] = {
+    if (column.isArtificial || column.isSlack) {
+      Vector(column)
+    } else {
+      Vector(column, column.negate)
+    }
   }
 
 }
@@ -300,7 +347,7 @@ object SimplexTableau {
     val costSign = if (isMinimizing) -1.0 else 1.0
     val columns =
       (0 until n).map(i => TableauColumn(0.0, costSign * f(e(n, i)), Vector(), i))
-    val rhs = TableauColumn(0.0, 0.0, Vector(), n)
+    val rhs = TableauColumn(0.0, 0.0, Vector(), n + 1)
     SimplexTableau(columns, rhs, Vector())
   }
 
@@ -334,11 +381,22 @@ case class TableauColumn(
    * Multiply the content of a column by a constant factor
    */
   def *(multiplier: Double): TableauColumn = {
-    this.copy(phase1Cost = phase1Cost * multiplier, 
-              phase2Cost = phase2Cost * multiplier, 
-              constrains = constrains.map(_ * multiplier))
+    this.copy(phase1Cost = phase1Cost * multiplier,
+      phase2Cost = phase2Cost * multiplier,
+      constrains = constrains.map(_ * multiplier))
   }
-  
+
+  /**
+   * Build a new column with all sign reverted
+   */
+  def negate: TableauColumn = {
+    this.copy(
+      phase1Cost = -this.phase1Cost,
+      phase2Cost = -this.phase2Cost,
+      constrains = this.constrains.map(_ * -1.0),
+      isNegative = !this.isNegative)
+  }
+
   /**
    * Pivot a column with another column
    *
@@ -368,8 +426,8 @@ case class TableauColumn(
       val phase1Cost = this.phase1Cost - that.phase1Cost * pivotValue
       val phase2Cost = this.phase2Cost - that.phase2Cost * pivotValue
       val constrains = constrains0.zipWithIndex.map {
-         case (value, i) =>
-           if (i == that.row) pivotValue else value - that.constrains(i) * pivotValue
+        case (value, i) =>
+          if (i == that.row) pivotValue else value - that.constrains(i) * pivotValue
       }
       this.copy(
         phase1Cost = phase1Cost,
@@ -398,7 +456,7 @@ case class TableauColumn(
       row = row,
       isBasic = true)
   }
-  
+
 }
 
 object TableauColumn {

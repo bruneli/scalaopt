@@ -49,9 +49,26 @@ trait DataSet[A] {
   def aggregate[B: ClassTag](z: => B)(seqop: (B, A) => B, combop: (B, B) => B): B
 
   def collect(): Seq[A]
-  
+
+  /**
+   * Selects all elements of this traversable collection which satisfy a predicate.
+   *
+   * @param p the predicate used to test elements.
+   * @return a new traversable collection consisting of all elements of this traversable collection that satisfy the
+   *         given predicate p. The order of the elements is preserved.
+   */
   def filter(p: A => Boolean): DataSet[A]
-  
+
+  /**
+   * Builds a new collection by applying a function to all elements of this list and using the elements of the
+   * resulting collections.
+   *
+   * @param f the function to apply to each element.
+   * @return a new list resulting from applying the given collection-valued function f to each element of this list and
+   *         concatenating the results.
+   */
+  def flatMap(f: (A) => TraversableOnce[A]): DataSet[A]
+
   /**
    * Applies a function f to all elements of the data set.
    * 
@@ -59,6 +76,9 @@ trait DataSet[A] {
    */
   def foreach(f: (A) => Unit): Unit
 
+  /**
+   * Selects the first element of this iterable collection.
+   */
   def head: A
 
   /**
@@ -71,16 +91,38 @@ trait DataSet[A] {
    */
   def map[B: ClassTag](f: (A) => B): DataSet[B]
 
+  /**
+   * Finds the first element which yields the largest value measured by function f.
+   *
+   * @param f The measuring function.
+   * @return the first element of this list with the largest value measured by function f.
+   */
   def maxBy(f: A => Double) = reduce {
     case (el1, el2) => if (f(el2) > f(el1)) el2 else el1
   }
 
+  /**
+   * Finds the first element which yields the smallest value measured by function f.
+   *
+   * @param f The measuring function.
+   * @return the first element of this list with the smallest value measured by function f.
+   */
   def minBy(f: A => Double) = reduce {
     case (el1, el2) => if (f(el2) < f(el1)) el2 else el1
   }
 
+  /**
+   * Reduces the elements of this traversable or iterator using the specified associative binary operator.
+   *
+   * @param op A binary operator that must be associative.
+   * @return The result of applying reduce operator op between all the elements if the traversable or
+   *         iterator is nonempty.
+   */
   def reduce(op: (A, A) => A): A
 
+  /**
+   * The size of this data set
+   */
   def size: Long
 
   /**

@@ -38,6 +38,8 @@ object SeqDataSetConverter {
     
     override def filter(p: A => Boolean): DataSet[A] = v filter p
 
+    override def flatMap(f: (A) => TraversableOnce[A]): DataSet[A] = v flatMap f
+
     override def foreach(f: (A) => Unit): Unit = v foreach f
 
     override def head = v head

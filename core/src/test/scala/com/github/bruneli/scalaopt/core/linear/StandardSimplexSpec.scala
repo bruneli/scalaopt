@@ -21,8 +21,8 @@ import com.github.bruneli.scalaopt.core._
 import SimplexTableau.{min, max}
 
 /**
-  * @author bruneli
-  */
+ * @author bruneli
+ */
 class StandardSimplexSpec extends FlatSpec with Matchers {
 
   import StandardSimplex._
@@ -34,6 +34,45 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xOpt = min((x: Variables) => x(0) + x(1))
         .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
         .solveWith(StandardSimplex)
+
+    xOpt shouldBe 'success
+    for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
+      xObs shouldBe xExp +- 1.0e-8
+    }
+
+  }
+
+  it should "find the minimum of a basic linear program that is in negative plane" in {
+
+    val xMin = Vector(-1.0, -0.5)
+
+    val xOpt = min((x: Variables) => x(0) + x(1))
+      .subjectTo(
+        ((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= -1.0,
+        ((x: Variables) => x(0)) >= -1.0
+      )
+      .withNegativeVariables
+      .solveWith(StandardSimplex)
+
+    xOpt shouldBe 'success
+    for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
+      xObs shouldBe xExp +- 1.0e-8
+    }
+
+  }
+
+  it should "find the minimum of at intersection of two equations in negative plane" in {
+
+    val xMin = Vector(0.0, -1.0)
+
+    val xOpt = min((x: Variables) => x(0) + 2.0 * x(1))
+      .subjectTo(
+        ((x: Variables) =>  1.0 * x(0)) >= -2.0,
+        ((x: Variables) =>  1.0 * x(0) + 1.0 * x(1)) >= -1.0,
+        ((x: Variables) =>  1.0 * x(0) - 1.0 * x(1)) <=  1.0
+      )
+      .withNegativeVariables
+      .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
@@ -67,9 +106,23 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
           .subjectTo(
             ((x: Variables) => x(0)) <= 1.0,
             ((x: Variables) => x(1)) <= 1.0,
-            ((x: Variables) => x(0) + x(1)) >= 2.0
+            ((x: Variables) => x(0) + x(1)) >= 3.0
           )
           .solveWith(StandardSimplex)
+    }
+
+  }
+
+  it should "throw an exception when program is unbounded from below" in {
+
+    an[UnboundedProgramException] shouldBe thrownBy {
+      min((x: Variables) => x(0) + x(1))
+        .subjectTo(
+          ((x: Variables) => x(0)) <= 1.0,
+          ((x: Variables) => x(1)) <= 1.0
+        )
+        .withNegativeVariables
+        .solveWith(StandardSimplex)
     }
 
   }

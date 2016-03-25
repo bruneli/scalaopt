@@ -82,6 +82,22 @@ case class LinearConstraint(a: DataSet[Double], op: Value, b: Double, eps: Doubl
     LinearConstraint(a, Eq, b)
   }
 
+  /**
+   * Produce a new linear constraint with a positive right-hand-side value
+   */
+  def withPositiveRhs: LinearConstraint = {
+    if (b < 0.0) {
+      val inverseOp = op match {
+        case Le => Ge
+        case Eq => Eq
+        case Ge => Le
+      }
+      LinearConstraint(a.map(_ * -1.0), inverseOp, -b)
+    } else {
+      this
+    }
+  }
+
 }
 
 object LinearConstraint {

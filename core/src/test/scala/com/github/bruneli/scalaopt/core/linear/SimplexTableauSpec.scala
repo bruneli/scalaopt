@@ -74,7 +74,7 @@ class SimplexTableauSpec extends FlatSpec with Matchers {
 
   }
 
-  "subjectTo" should "resize cost function when constraint exceeds objective function size" in {
+  it should "resize cost function when constraint exceeds objective function size" in {
 
     val tableau =
       min((x: Variables) => 2.0 * x(0) + 1.0 * x(1) + 3.0 * x(2))
