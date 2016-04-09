@@ -24,6 +24,15 @@ import scala.util.{Try, Success, Failure}
 /**
  * Standard primal simplex method
  *
+ * Example, find the minimum of a linear objective function subject to linear constraints
+ * {{{
+ * scala> import com.github.bruneli.scalaopt.core._
+ * scala> import linear.SimplexTableau
+ * scala> import linear.StandardSimplex._
+ * scala> val c1: Constraint = ((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0
+ * scala> SimplexTableau.min((x: Variables) => x(0) + x(1)).subjectTo(c1).withMethod(StandardSimplex)
+ * }}}
+ *
  * @author bruneli
  */
 object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] {
@@ -33,7 +42,7 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
   /**
    * Minimize an objective function acting on a vector of real values.
    *
-   * @param tableau real-valued objective function
+   * @param tableau real-valued objective function that is in this case a linear program
    * @param x0      initial Variables
    * @param pars    algorithm configuration parameters
    * @return Variables at a local minimum or failure
@@ -54,9 +63,21 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
   def pivotColumn(phase: SimplexPhase.Value)(tableau: SimplexTableau) = {
     val pivotCandidate = phase match {
       case SimplexPhase.Phase1 =>
-        tableau.columns.maxBy(_.phase1Cost)
+        val posCandidate = tableau.columns.maxBy(_.phase1Cost)
+        if (tableau.negativeColumn.isDefined &&
+          tableau.negativeColumn.get.phase1Cost > posCandidate.phase1Cost) {
+          tableau.negativeColumn.get
+        } else {
+          posCandidate
+        }
       case SimplexPhase.Phase2 =>
-        tableau.columns.filter(!_.isArtificial).maxBy(_.phase2Cost)
+        val posCandidate = tableau.columns.filter(!_.isArtificial).maxBy(_.phase2Cost)
+        if (tableau.negativeColumn.isDefined &&
+          tableau.negativeColumn.get.phase2Cost > posCandidate.phase2Cost) {
+          tableau.negativeColumn.get
+        } else {
+          posCandidate
+        }
     }
     minRatioRow(pivotCandidate, tableau.rhs)
   }
@@ -87,14 +108,37 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
     }
   }
 
+  /**
+   * Perform phase 1 of the simplex algorithm, that is find a basic feasible solution
+   *
+   * A basic feasible solution is found by adding artificial variables with a cost of 1 and then
+   * try to minimize that cost function.
+   *
+   * @param pars    config parameters
+   * @param tableau simplex tableau
+   * @return simplex tableau satisfying a basic feasible solution or failure if no solution exists
+   */
   def solvePhase1(pars: StandardSimplexConfig)(tableau: SimplexTableau): Try[SimplexTableau] = {
     iterate(0, tableau.withArtificialVariables, SimplexPhase.Phase1, pars)
   }
 
+  /**
+   * Perform phase 2 of the simplex algorithm, that is find the optimal basic feasible solution
+   *
+   * @param pars    config parameters
+   * @param tableau simplex tableau being a basic feasible solution
+   * @return simplex tableau satisfying the best feasible solution or failure if problem is unbounded
+   */
   def solvePhase2(pars: StandardSimplexConfig)(tableau: SimplexTableau): Try[SimplexTableau] = {
     iterate(0, tableau.withoutArtificialVariables, SimplexPhase.Phase2, pars)
   }
 
+  /**
+   * Compute the ratio b_i / A_(i,j) except if b_i is negative as it leads to unbounded solutions
+   *
+   * @param values (b_i, A_(i,j))
+   * @return b_i / A_(i,j)
+   */
   private def computeRatio(values: (Double, Double)) = {
     val (row, rhs) = values
     if (row <= 0.0) Double.PositiveInfinity else rhs / row
@@ -107,16 +151,23 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
     simplexPhase: SimplexPhase.Value,
     pars: StandardSimplexConfig): Try[SimplexTableau] = {
     if (tableau.isOptimal(pars.eps, simplexPhase)) {
+      // If tableau is optimal (all costs are negative), stop iteration loop
       if (simplexPhase == SimplexPhase.Phase1 && Math.abs(tableau.rhs.phase1Cost) > pars.eps) {
         Failure(throw new NoSolutionException("Simplex phase1 failed to find a solution at zero cost"))
       } else {
         Success(tableau)
       }
     } else if (i >= pars.maxIter) {
+      // If maximum number of iterations is reached, stop iteration loop
       Failure(throw new MaxIterException(s"Simplex $simplexPhase: number of iterations exceeds ${pars.maxIter}"))
     } else {
-      val column = pivotColumn(simplexPhase)(tableau)
-      iterate(i + 1, tableau.pivot(column), simplexPhase, pars)
+      // If tableau is not optimal, try to find a pivot column (might fail if problem is unbounded)
+      Try(pivotColumn(simplexPhase)(tableau)) match {
+        case Failure(e) => Failure(e)
+        case Success(column) =>
+          // Perform a pivoting operation and start a new iteration
+          iterate(i + 1, tableau.pivot(column), simplexPhase, pars)
+      }
     }
   }
 

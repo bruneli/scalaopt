@@ -52,12 +52,14 @@ import scala.util.{Success, Failure, Try}
  * @param columns         tableau columns except the right hand side and negative sum columns
  * @param rhs             tableau right hand side with objective function values and constrains parameters
  * @param constraintTypes equality type (>=, ==, <=) of every constraint
+ * @param negativeColumn  optional column that represents the opposite of the sum of all columns
  * @author bruneli
  */
 case class SimplexTableau(
   columns: DataSet[TableauColumn],
   rhs: TableauColumn,
-  constraintTypes: Vector[ConstraintOperator.Value]) extends ConstrainedObjectiveFunction {
+  constraintTypes: Vector[ConstraintOperator.Value],
+  negativeColumn: Option[TableauColumn] = None) extends ConstrainedObjectiveFunction {
 
   /**
    * Add a linear constraint to the existing tableau
@@ -99,7 +101,10 @@ case class SimplexTableau(
       }
       val rhs = this.rhs.copy(constrains = this.rhs.constrains :+ resizedConstraint.b)
       val constraintTypes = this.constraintTypes :+ constraint.op
-      SimplexTableau(modifiedColumns, rhs, constraintTypes)
+      // Recompute the negative column
+      val negativeColumn = this.negativeColumn.map(column => getNegativeColumn(modifiedColumns))
+      // Build the new tableau with modified information
+      SimplexTableau(modifiedColumns, rhs, constraintTypes, negativeColumn)
     } else {
       // If constraint has a negative right-hand side, invert it
       addLinearConstraint(constraint.withPositiveRhs)
@@ -150,8 +155,12 @@ case class SimplexTableau(
   def isOptimal(
     epsilon: Double,
     simplexPhase: SimplexPhase.Value): Boolean = simplexPhase match {
-    case SimplexPhase.Phase1 => columns.filter(_.phase1Cost > epsilon).size == 0
-    case SimplexPhase.Phase2 => columns.filter(_.phase2Cost > epsilon).size == 0
+    case SimplexPhase.Phase1 =>
+      columns.filter(_.phase1Cost > epsilon).size == 0 &&
+        negativeColumn.forall(_.phase1Cost < epsilon)
+    case SimplexPhase.Phase2 =>
+      columns.filter(_.phase2Cost > epsilon).size == 0 &&
+        negativeColumn.forall(_.phase2Cost < epsilon)
   }
 
   /**
@@ -170,16 +179,25 @@ case class SimplexTableau(
   def pivot(pivotColumn: TableauColumn): SimplexTableau = {
     this.copy(
       columns = columns.map(_.pivot(pivotColumn)),
-      rhs = rhs.pivot(pivotColumn))
+      rhs = rhs.pivot(pivotColumn),
+      negativeColumn = negativeColumn.map(_.pivot(pivotColumn)))
   }
 
   /**
    * Extract the solution of this tableau
    */
   def solution: Variables = {
+    val offset = negativeColumn.map {
+      column: TableauColumn => if (column.isBasic) rhs.constrains(column.row) else 0.0
+    }.getOrElse(0.0)
     columns
-      .filter(column => !(column.isSlack || column.isArtificial))
-      .collect().foldLeft(Vector.empty[Double])(addColumnToSolution(rhs))
+      .filter(isInitialColumn)
+      .collect()
+      .map(_.solution(rhs) - offset)
+  }
+
+  private def isInitialColumn(column: TableauColumn) = {
+    !(column.isSlack || column.isArtificial || column.isNegative)
   }
 
   private def addColumnToSolution(
@@ -259,14 +277,16 @@ case class SimplexTableau(
    * Restrict decision variables to take only positive values
    */
   def withPositiveVariables: SimplexTableau = {
-    this.copy(columns = columns.filter(!_.isNegative))
+    this.copy(columns = columns.filter(!_.isNegative), negativeColumn = None)
   }
 
   /**
-   * Add extra columns with all sign reverted for all non-slack and non-artificial variables
+   * Add an extra column with all sign reverted for all non-slack and non-artificial variables
    */
   def withNegativeVariables: SimplexTableau = {
-    this.copy(columns = columns.filter(!_.isNegative).flatMap(splitIntoPosAndNegVars))
+    this.copy(
+      columns = columns.filter(!_.isNegative), //.flatMap(splitIntoPosAndNegVars),
+      negativeColumn = Some(getNegativeColumn(columns)))
   }
 
   /**
@@ -306,6 +326,18 @@ case class SimplexTableau(
     } else {
       Vector(column, column.negate)
     }
+  }
+
+  private def getNegativeColumn(columns: DataSet[TableauColumn]): TableauColumn = {
+    val initialColumn = TableauColumn(0.0, 0.0, zeros(constraintTypes.size).toVector, 0)
+    val isPositiveColumn = (column: TableauColumn) => !column.isSlack && !column.isArtificial && !column.isNegative
+    val seqOp = (previous: TableauColumn, current: TableauColumn) => {
+      previous + current.negate
+    }
+    columns
+      .filter(isPositiveColumn)
+      .aggregate(initialColumn)(seqOp, _ + _)
+      .copy(column = -1, isNegative = true, isSlack = false, isArtificial = false, isBasic = false)
   }
 
 }
@@ -376,6 +408,14 @@ case class TableauColumn(
   isNegative: Boolean = false,
   isBasic: Boolean = false,
   isArtificial: Boolean = false) {
+
+  def +(that: TableauColumn): TableauColumn = {
+    TableauColumn(
+      this.phase1Cost + that.phase1Cost,
+      this.phase2Cost + that.phase2Cost,
+      (this.constrains + that.constrains).toVector,
+      0)
+  }
 
   /**
    * Multiply the content of a column by a constant factor

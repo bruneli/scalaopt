@@ -42,6 +42,20 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
   }
 
+  it should "find the minimum of a basic linear program with no constraint" in {
+
+    val xMin = Vector(0.0, 0.0)
+
+    val xOpt = min((x: Variables) => x(0) + x(1))
+      .solveWith(StandardSimplex)
+
+    xOpt shouldBe 'success
+    for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
+      xObs shouldBe xExp +- 1.0e-8
+    }
+
+  }
+
   it should "find the minimum of a basic linear program that is in negative plane" in {
 
     val xMin = Vector(-1.0, -0.5)
@@ -115,15 +129,14 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
   it should "throw an exception when program is unbounded from below" in {
 
-    an[UnboundedProgramException] shouldBe thrownBy {
-      min((x: Variables) => x(0) + x(1))
+    val xopt = min((x: Variables) => x(0) + x(1))
         .subjectTo(
           ((x: Variables) => x(0)) <= 1.0,
           ((x: Variables) => x(1)) <= 1.0
         )
         .withNegativeVariables
         .solveWith(StandardSimplex)
-    }
+    xopt shouldBe 'failure
 
   }
 
