@@ -50,7 +50,7 @@ object SeqDataSetConverter {
 
     override def size = v.size.toLong
 
-    override def zip[B](that: DataSet[B]): DataSet[(A, B)] = {
+    override def zip[B: ClassTag](that: DataSet[B]): DataSet[(A, B)] = {
       this.collect().zip(that.collect())
     }
 

@@ -58,7 +58,7 @@ object SparkDataSetConverter {
 
     override def size = rdd.count()
 
-    def zip[B](that: DataSet[B]): DataSet[(A, B)] = that match {
+    def zip[B: ClassTag](that: DataSet[B]): DataSet[(A, B)] = that match {
       case other: SparkDataSet[B] => this.rdd.zip(other.rdd)
       case other: SeqDataSet[B] =>
         require(other.size >= rdd.size, "that size should be >= this size")

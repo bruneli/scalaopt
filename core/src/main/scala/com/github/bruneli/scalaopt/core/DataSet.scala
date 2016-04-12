@@ -132,7 +132,7 @@ trait DataSet[A] {
    * @tparam B type of the other data set
    * @return new data set composed with elements of both data sets
    */
-  def zip[B](that: DataSet[B]): DataSet[(A, B)]
+  def zip[B: ClassTag](that: DataSet[B]): DataSet[(A, B)]
 
   /**
    * Zips this sequence with its indices.
