@@ -18,13 +18,16 @@ package com.github.bruneli.scalaopt.core.linear
 
 import org.scalatest.{Matchers, FlatSpec}
 import com.github.bruneli.scalaopt.core._
+import SeqDataSetConverter._
 import SimplexTableau.{min, max}
+import ConstraintOperator._
 
 /**
  * @author bruneli
  */
 class StandardSimplexSpec extends FlatSpec with Matchers {
 
+  import StandardSimplexSpec._
   import StandardSimplex._
 
   "solveWith" should "find the minimum of a basic linear program with 2 variables and 1 constraint" in {
@@ -32,8 +35,8 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMin = Vector(0.0, 1.0)
 
     val xOpt = min((x: Variables) => x(0) + x(1))
-        .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
-        .solveWith(StandardSimplex)
+      .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
+      .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
@@ -81,9 +84,9 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     val xOpt = min((x: Variables) => x(0) + 2.0 * x(1))
       .subjectTo(
-        ((x: Variables) =>  1.0 * x(0)) >= -2.0,
-        ((x: Variables) =>  1.0 * x(0) + 1.0 * x(1)) >= -1.0,
-        ((x: Variables) =>  1.0 * x(0) - 1.0 * x(1)) <=  1.0
+        ((x: Variables) => 1.0 * x(0)) >= -2.0,
+        ((x: Variables) => 1.0 * x(0) + 1.0 * x(1)) >= -1.0,
+        ((x: Variables) => 1.0 * x(0) - 1.0 * x(1)) <= 1.0
       )
       .withNegativeVariables
       .solveWith(StandardSimplex)
@@ -100,11 +103,11 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMax = Vector(1.0, 2.0)
 
     val xOpt = max((x: Variables) => x(0) + x(1))
-        .subjectTo(
-          ((x: Variables) => x(0)) <= 1.0,
-          ((x: Variables) => -x(0) + x(1)) <= 1.0
-        )
-        .solveWith(StandardSimplex)
+      .subjectTo(
+        ((x: Variables) => x(0)) <= 1.0,
+        ((x: Variables) => -x(0) + x(1)) <= 1.0
+      )
+      .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMax)) {
@@ -117,12 +120,12 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     a[NoSolutionException] shouldBe thrownBy {
       max((x: Variables) => x(0) + x(1))
-          .subjectTo(
-            ((x: Variables) => x(0)) <= 1.0,
-            ((x: Variables) => x(1)) <= 1.0,
-            ((x: Variables) => x(0) + x(1)) >= 3.0
-          )
-          .solveWith(StandardSimplex)
+        .subjectTo(
+          ((x: Variables) => x(0)) <= 1.0,
+          ((x: Variables) => x(1)) <= 1.0,
+          ((x: Variables) => x(0) + x(1)) >= 3.0
+        )
+        .solveWith(StandardSimplex)
     }
 
   }
@@ -130,14 +133,64 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
   it should "throw an exception when program is unbounded from below" in {
 
     val xopt = min((x: Variables) => x(0) + x(1))
-        .subjectTo(
-          ((x: Variables) => x(0)) <= 1.0,
-          ((x: Variables) => x(1)) <= 1.0
-        )
-        .withNegativeVariables
-        .solveWith(StandardSimplex)
+      .subjectTo(
+        ((x: Variables) => x(0)) <= 1.0,
+        ((x: Variables) => x(1)) <= 1.0
+      )
+      .withNegativeVariables
+      .solveWith(StandardSimplex)
     xopt shouldBe 'failure
 
   }
+
+  it should "find the market clearing result from an electricity pool auction" in {
+
+    val nDemandOffers = electricityDemand("prices").size
+    val nSupplyOffers = electricitySupply("prices").size
+    val nOffers = nDemandOffers + nSupplyOffers
+
+    // Electricity cannot be easily stored => total generation must be equal to the total load
+    val balancing = LinearConstraint(ones(nDemandOffers) ++ vector(nSupplyOffers, -1.0), Eq, 0.0)
+
+    // Upper bound on supplied energy per offer
+    val upperBounds = (electricityDemand("energies") ++ electricitySupply("energies")).zipWithIndex.map {
+      case (max, index) => LinearConstraint(e(nOffers, index), Le, max)
+    }
+
+    // maximize the social welfare defined as the area between consumption and generation bid ladders
+    // given balancing and upper bound constraints
+    val clearingEnergies = max(electricityDemand("prices") ++ (electricitySupply("prices") * -1.0))
+      .subjectTo(upperBounds.toSet + balancing)
+      .solveWith(StandardSimplex)
+
+    clearingEnergies shouldBe 'success
+
+    // Select all demand offers with prices >= 37.5 and supply offers with prices <= 37.5
+    // To match demand and supply, the last supply offer has only 55 MWh selected.
+    val expectedClearing =
+      Vector(250.0, 300.0, 120.0, 80.0, 40.0, 70.0, 60.0, 45.0, 30.0, 0.0, 0.0, 0.0,
+             120.0, 50.0, 200.0, 400.0, 60.0, 50.0, 60.0, 55.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+    for ((selectedVolume, expectedVolume) <- clearingEnergies.get.zip(expectedClearing)) {
+      selectedVolume shouldBe expectedVolume +- 1.0e-8
+    }
+  }
+
+}
+
+object StandardSimplexSpec {
+
+  /** Energies (MWh) and prices (EUR/MWh) for each demand offer */
+  lazy val electricityDemand: Map[String, Vector[Double]] = {
+    Map("energies" -> Vector(250.0, 300.0, 120.0, 80.0, 40.0, 70.0, 60.0, 45.0, 30.0, 35.0, 25.0, 10.0),
+      "prices" -> Vector(200.0, 110.0, 100.0, 90.0, 85.0, 75.0, 65.0, 40.0, 37.6, 30.0, 24.0, 15.0))
+  }
+
+  /** Energies (MWh) and prices (EUR/MWh) for each supply offer */
+  lazy val electricitySupply: Map[String, Vector[Double]] = {
+    Map("energies" -> Vector(120.0, 50.0, 200.0, 400.0, 60.0, 50.0, 60.0, 100.0, 70.0, 50.0, 70.0, 45.0, 50.0, 60.0, 50.0),
+      "prices" -> Vector(0.0, 0.0, 15.0, 30.0, 32.5, 34.0, 36.0, 37.5, 39.0, 40.0, 60.0, 70.0, 100.0, 150.0, 200.0))
+  }
+
 
 }

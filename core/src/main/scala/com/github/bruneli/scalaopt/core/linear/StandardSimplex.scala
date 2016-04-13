@@ -174,7 +174,7 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
 }
 
 case class StandardSimplexConfig(override val tol: Double = 1.49012e-8,
-                                 override val maxIter: Int = 10,
+                                 override val maxIter: Int = 1000,
                                  override val eps: Double = 1.0e-8) extends ConfigPars(tol, maxIter, eps)
 
 /**

@@ -18,7 +18,7 @@ package com.github.bruneli.scalaopt.core.linear
 
 import com.github.bruneli.scalaopt.core._
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 import ConstraintOperator._
 import SeqDataSetConverter._
 
@@ -115,13 +115,5 @@ object LinearConstraint {
       val a = (0 until n).map(i => constraint.c(e(n, i)))
       LinearConstraint(a, constraint.op, constraint.b)
     }
-//  def apply(constraint: Constraint, n: Int): Try[LinearConstraint] = Try(constraint.c(ones(n))) match {
-//    case Success(value) =>
-//      val a = (0 until n).map(i => constraint.c(e(n, i)))
-//      Success(LinearConstraint(a, constraint.op, constraint.b))
-//    case Failure(e) =>
-//      Failure(throw new IllegalArgumentException(
-//        s"constraint $constraint cannot be converted into an $n-dimension linear constraint"))
-//  }
 
 }

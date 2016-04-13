@@ -233,6 +233,23 @@ case class SimplexTableau(
   }
 
   /**
+   * Add a set of linear constraints to the tableau
+   *
+   * @param linearConstraints set of linear constraints
+   * @return extended tableau
+   */
+  def subjectTo(linearConstraints: Set[LinearConstraint]): SimplexTableau = {
+    if (linearConstraints.isEmpty) {
+      this
+    } else {
+      linearConstraints.tail.foldLeft(this.addLinearConstraint(linearConstraints.head)) {
+        case (previousTableau, linearConstraint) =>
+          previousTableau.addLinearConstraint(linearConstraint)
+      }
+    }
+  }
+
+  /**
    * Add new column corresponding to artificial variables for every equality or >= constraint.
    *
    * In this implementation, artificial variables have a phase-1 cost of 1, but following some matrix row
@@ -353,12 +370,38 @@ object SimplexTableau {
   def min(f: Variables => Double): SimplexTableau = objective(f, true)
 
   /**
+   * Given a cost vector, build a initial simplex tableau without any constraint
+   *
+   * @param c cost vector
+   * @return tableau with only the linear cost function
+   */
+  def min(c: DataSet[Double]): SimplexTableau = {
+    val columns = c.zipWithIndex.map {
+      case (cost, index) => TableauColumn.costOnlyColumn(index, -cost) // negative cost when minimizing
+    }
+    SimplexTableau(columns, TableauColumn.costOnlyColumn(c.size, 0.0), Vector())
+  }
+
+  /**
    * Given a linear cost function that should be maximized, build an initial tableau
    *
    * @param f linear objective function
    * @return tableau containing only the linear objective function
    */
   def max(f: Variables => Double): SimplexTableau = objective(f, false)
+
+  /**
+   * Given a cost vector, build a initial simplex tableau without any constraint
+   *
+   * @param c cost vector
+   * @return tableau with only the linear cost function
+   */
+  def max(c: DataSet[Double]): SimplexTableau = {
+    val columns = c.zipWithIndex.map {
+      case (cost, index) => TableauColumn.costOnlyColumn(index, cost)
+    }
+    SimplexTableau(columns, TableauColumn.costOnlyColumn(c.size, 0.0), Vector())
+  }
 
   /**
    * Given a linear cost function, build an initial tableau
@@ -500,6 +543,10 @@ case class TableauColumn(
 }
 
 object TableauColumn {
+
+  def costOnlyColumn(column: Long, phase2Cost: Double): TableauColumn = {
+    TableauColumn(0.0, phase2Cost, Vector(), column)
+  }
 
   def artificialVariable(column: Long, i: Int, n: Int): TableauColumn = {
     TableauColumn(0.0, 0.0, e(n, i).toVector, column, -1, isArtificial = true, isBasic = true)
