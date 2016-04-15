@@ -159,19 +159,19 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     // maximize the social welfare defined as the area between consumption and generation bid ladders
     // given balancing and upper bound constraints
-    val clearingEnergies = max(electricityDemand("prices") ++ (electricitySupply("prices") * -1.0))
-      .subjectTo(upperBounds.toSet + balancing)
-      .solveWith(StandardSimplex)
+    val tableau = StandardSimplex.solve(
+        max(electricityDemand("prices") ++ (electricitySupply("prices") * -1.0))
+          .subjectTo(upperBounds.toSet + balancing))
 
-    clearingEnergies shouldBe 'success
+    tableau shouldBe 'success
 
     // Select all demand offers with prices >= 37.5 and supply offers with prices <= 37.5
     // To match demand and supply, the last supply offer has only 55 MWh selected.
     val expectedClearing =
       Vector(250.0, 300.0, 120.0, 80.0, 40.0, 70.0, 60.0, 45.0, 30.0, 0.0, 0.0, 0.0,
-             120.0, 50.0, 200.0, 400.0, 60.0, 50.0, 60.0, 55.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        120.0, 50.0, 200.0, 400.0, 60.0, 50.0, 60.0, 55.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-    for ((selectedVolume, expectedVolume) <- clearingEnergies.get.zip(expectedClearing)) {
+    for ((selectedVolume, expectedVolume) <- tableau.get.solution.zip(expectedClearing)) {
       selectedVolume shouldBe expectedVolume +- 1.0e-8
     }
   }

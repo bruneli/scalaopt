@@ -50,7 +50,19 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
   override def minimize(
     tableau: SimplexTableau, x0: Variables)(
     implicit pars: StandardSimplexConfig): Try[Variables] = {
-    solvePhase1(pars)(tableau).flatMap(solvePhase2(pars)).map(_.solution)
+    solve(tableau)(pars).map(_.solution)
+  }
+
+  /**
+   * Solve a linear program expressed in a tableau form.
+   *
+   * @param tableau real-valued objective function that is in this case a linear program
+   * @param pars    algorithm configuration parameters
+   * @return Tableau at a local minimum or failure
+   */
+  def solve(tableau: SimplexTableau)(
+    implicit pars: StandardSimplexConfig): Try[SimplexTableau] = {
+    solvePhase1(pars)(tableau).flatMap(solvePhase2(pars))
   }
 
   /**

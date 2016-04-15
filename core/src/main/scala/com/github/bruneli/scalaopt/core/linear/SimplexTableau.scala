@@ -184,7 +184,7 @@ case class SimplexTableau(
   }
 
   /**
-   * Extract the solution of this tableau
+   * Extract the primal solution vector of this tableau
    */
   def solution: Variables = {
     val offset = negativeColumn.map {
@@ -198,18 +198,6 @@ case class SimplexTableau(
 
   private def isInitialColumn(column: TableauColumn) = {
     !(column.isSlack || column.isArtificial || column.isNegative)
-  }
-
-  private def addColumnToSolution(
-    rhs: TableauColumn)(
-    previous: Vector[Double],
-    column: TableauColumn) = {
-    val solution = column.solution(rhs)
-    if (column.isNegative) {
-      previous.updated(previous.size - 1, previous(previous.size - 1) - solution)
-    } else {
-      previous :+ solution
-    }
   }
 
   /**
@@ -302,7 +290,7 @@ case class SimplexTableau(
    */
   def withNegativeVariables: SimplexTableau = {
     this.copy(
-      columns = columns.filter(!_.isNegative), //.flatMap(splitIntoPosAndNegVars),
+      columns = columns.filter(!_.isNegative),
       negativeColumn = Some(getNegativeColumn(columns)))
   }
 
@@ -330,19 +318,6 @@ case class SimplexTableau(
       case Failure(e) => iterate(n + 1)
     }
     iterate(n0)
-  }
-
-  /**
-   * Split a decision variables into its positive and negative components.
-   *
-   * To do that, create 2 columns, one with positive components, one with negative components
-   */
-  private def splitIntoPosAndNegVars(column: TableauColumn): Vector[TableauColumn] = {
-    if (column.isArtificial || column.isSlack) {
-      Vector(column)
-    } else {
-      Vector(column, column.negate)
-    }
   }
 
   private def getNegativeColumn(columns: DataSet[TableauColumn]): TableauColumn = {
