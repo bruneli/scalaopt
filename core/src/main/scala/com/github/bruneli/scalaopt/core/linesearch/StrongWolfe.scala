@@ -70,7 +70,7 @@ object StrongWolfe {
     val fVec = (x: Variables) => f(x(0))
     val dfVec = (x: Variables) => Seq(df(x(0)))
 
-    stepLength(LineSearchPoint(Seq(0.0), (fVec, dfVec), Seq(1.0))).map(_.x(0))
+    stepLength(LineSearchPoint(Seq(0.0), (fVec, dfVec), Seq(1.0)))(pars).map(_.x(0))
   }
 
   /**

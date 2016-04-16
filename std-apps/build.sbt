@@ -33,6 +33,6 @@ pomExtra := (
       </developer>
     </developers>)
 
-libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.2.1" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 
 libraryDependencies += "com.github.wookietreiber" %% "scala-chart" % "latest.integration"

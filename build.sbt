@@ -36,11 +36,11 @@ pomExtra := (
 
 lazy val commonSettings = Seq(
   organization := "com.github.bruneli.scalaopt",
-  scalaVersion := "2.10.5",
-  crossScalaVersions := Seq("2.10.5", "2.11.7")
+  scalaVersion := "2.11.8",
+  crossScalaVersions := Seq("2.10.6", "2.11.8")
 )
 
-lazy val root = project.in(file(".")).aggregate(core, stdapps, sparkapps).dependsOn(core, stdapps, sparkapps)
+lazy val root = project.in(file(".")).settings(commonSettings: _*).aggregate(core, stdapps, sparkapps).dependsOn(core, stdapps, sparkapps)
 
 lazy val core = project.in(file("core")).settings(commonSettings: _*)
 
