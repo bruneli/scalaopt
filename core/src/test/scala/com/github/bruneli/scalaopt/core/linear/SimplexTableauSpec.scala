@@ -18,7 +18,7 @@ package com.github.bruneli.scalaopt.core.linear
 
 import org.scalatest.{Matchers, FlatSpec}
 import com.github.bruneli.scalaopt.core._
-import SimplexTableau.{min, max}
+import PrimalTableau.{min, max}
 
 /**
  * @author bruneli

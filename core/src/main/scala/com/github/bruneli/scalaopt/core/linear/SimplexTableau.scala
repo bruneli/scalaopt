@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Renaud Bruneliere
+ * Copyright 2016 Renaud Bruneliere
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,114 +16,24 @@
 
 package com.github.bruneli.scalaopt.core.linear
 
+import com.github.bruneli.scalaopt.core.ConstraintOperator._
+import com.github.bruneli.scalaopt.core.SimplexPhase._
 import com.github.bruneli.scalaopt.core._
 import SeqDataSetConverter._
 
-import scala.util.{Success, Failure, Try}
+import scala.util.Try
 
 /**
- * Define a tableau used with the Standard Simplex algorithm
+ * Define a generic simplex tableau implemented either for the primal or the dual simplex method
  *
- * The linear programming problem:
- *
- * min cx
- * subject to
- * ax <= b,
- * x >= 0
- *
- * is rewritten in a matrix form:
- *
- * x1   x2   x2-   s1   s2   a1   a2   z
- * --------------------------------------
- * 0    0    0     0    0    -1   -1   w
- * -c1  -c2  c2    0    0    0    0    z
- * a11  a12  -a12  1    0    1    0    b1
- * a21  a22  -a22  0    1    0    1    b2
- *
- * with
- * - row1 = phase1 objective function
- * - row2 = phase2 objective function cx
- * - rows 3 & 4 = (inequality) constrains ax <= b
- * - x1 & x2 = decision variables
- * - x2- = additional variable in case x2 is not restricted to be >= 0 when defined
- * - s1 & s2 = additional slack variables to transform inequality constrains into equality constrains
- * - a1 & a2 = additional artificial variables to solve the phase1 problem
- *
- * @param columns         tableau columns except the right hand side and negative sum columns
- * @param rhs             tableau right hand side with objective function values and constrains parameters
- * @param constraintTypes equality type (>=, ==, <=) of every constraint
- * @param negativeColumn  optional column that represents the opposite of the sum of all columns
  * @author bruneli
  */
-case class SimplexTableau(
-  columns: DataSet[TableauColumn],
-  rhs: TableauColumn,
-  constraintTypes: Vector[ConstraintOperator.Value],
-  negativeColumn: Option[TableauColumn] = None) extends ConstrainedObjectiveFunction {
+trait SimplexTableau extends ConstrainedObjectiveFunction {
 
-  /**
-   * Add a linear constraint to the existing tableau
-   *
-   * In case the new constraint include variables that are not yet included in the cost function,
-   * the tableau is extended.
-   * In case of a new inequality, a new column is created to host a slack variable.
-   *
-   * @param constraint a linear constraint
-   * @return updated tableau
-   */
-  def addLinearConstraint(constraint: LinearConstraint): SimplexTableau = {
-    if (constraint.b >= 0.0) {
-      // Initial tableau size
-      val n0 = columns.size.toInt
-      val m0 = this.rhs.constrains.size
-      // Updated tableau size
-      val n = if (constraint.op == ConstraintOperator.Eq) {
-        Math.max(n0, constraint.a.size.toInt)
-      } else {
-        Math.max(n0, constraint.a.size.toInt) + 1
-      }
-      // Transform the constraint into an equality constraint
-      val resizedConstraint = if (constraint.op == ConstraintOperator.Eq) {
-        constraint.toEquality(n)
-      } else {
-        constraint.toEquality(n, Some(n - 1))
-      }
-      // Add new columns like slack variables if necessary
-      val resizedColumns = if (n > n0) {
-        val newColumns = (n0 until n).map(addSlackVariable(n, m0, constraint.op))
-        columns ++ newColumns
-      } else {
-        columns
-      }
-      // Add the new constraint to the columns
-      val modifiedColumns = resizedColumns.zip(resizedConstraint.a).map {
-        case (column, newElement) => column.copy(constrains = column.constrains :+ newElement)
-      }
-      val rhs = this.rhs.copy(constrains = this.rhs.constrains :+ resizedConstraint.b)
-      val constraintTypes = this.constraintTypes :+ constraint.op
-      // Recompute the negative column
-      val negativeColumn = this.negativeColumn.map(column => getNegativeColumn(modifiedColumns))
-      // Build the new tableau with modified information
-      SimplexTableau(modifiedColumns, rhs, constraintTypes, negativeColumn)
-    } else {
-      // If constraint has a negative right-hand side, invert it
-      addLinearConstraint(constraint.withPositiveRhs)
-    }
-  }
-
-  private def addSlackVariable(n: Int, m0: Int, op: ConstraintOperator.Value)(i: Int) = {
-    val isSlack = i == (n - 1) && op != ConstraintOperator.Eq
-    val isBasic = isSlack && op == ConstraintOperator.Le
-    val row = if (isBasic) m0 else -1
-    TableauColumn(
-      0.0,
-      0.0,
-      zeros(m0).toVector,
-      i,
-      isSlack = isSlack,
-      isBasic = isBasic,
-      row = row)
-  }
+  val columns: DataSet[TableauColumn]
+  val rhs: TableauColumn
+  val constraintTypes: Vector[ConstraintOperator]
+  val negativeColumn: Option[TableauColumn]
 
   /**
    * Evaluate the objective function for a given vector of variables
@@ -134,6 +44,11 @@ case class SimplexTableau(
   override def apply(x: Variables): Double = columns.aggregate(0.0)(addColumnCost, _ + _)
 
   /**
+   * Return the number of constraints
+   */
+  override def numberOfConstraints: Int = rhs.constrains.size
+
+  /**
    * Get a constraint
    *
    * @param i index of the constraint
@@ -141,157 +56,7 @@ case class SimplexTableau(
    */
   override def constraint(i: Int): Constraint = {
     val a = columns.map(_.constrains(i))
-    LinearConstraint(a, ConstraintOperator.Eq, rhs.constrains(i)).toConstraint
-  }
-
-  /**
-   * Check if the phase1 and phase2 objective functions are optimal
-   *
-   * The basic feasible solution is optimal when all costs are negative or null.
-   *
-   * @param epsilon error precision
-   * @return true when all cost are <= 0
-   */
-  def isOptimal(
-    epsilon: Double,
-    simplexPhase: SimplexPhase.Value): Boolean = simplexPhase match {
-    case SimplexPhase.Phase1 =>
-      columns.filter(_.phase1Cost > epsilon).size == 0 &&
-        negativeColumn.forall(_.phase1Cost < epsilon)
-    case SimplexPhase.Phase2 =>
-      columns.filter(_.phase2Cost > epsilon).size == 0 &&
-        negativeColumn.forall(_.phase2Cost < epsilon)
-  }
-
-  /**
-   * Return the number of constraints
-   */
-  override def numberOfConstraints: Int = rhs.constrains.size
-
-  /**
-   * Pivot the tableau columns given a pivot column and row
-   *
-   * Pivot separately the variables A and the right hand side b.
-   *
-   * @param pivotColumn pivot column with its row index specifying the pivot row
-   * @return pivoted tableau
-   */
-  def pivot(pivotColumn: TableauColumn): SimplexTableau = {
-    this.copy(
-      columns = columns.map(_.pivot(pivotColumn)),
-      rhs = rhs.pivot(pivotColumn),
-      negativeColumn = negativeColumn.map(_.pivot(pivotColumn)))
-  }
-
-  /**
-   * Extract the primal solution vector of this tableau
-   */
-  def solution: Variables = {
-    val offset = negativeColumn.map {
-      column: TableauColumn => if (column.isBasic) rhs.constrains(column.row) else 0.0
-    }.getOrElse(0.0)
-    columns
-      .filter(isInitialColumn)
-      .collect()
-      .map(_.solution(rhs) - offset)
-  }
-
-  private def isInitialColumn(column: TableauColumn) = {
-    !(column.isSlack || column.isArtificial || column.isNegative)
-  }
-
-  /**
-   * Add a set of constraints to the tableau
-   *
-   * @param constraints comma separatated list of constraints
-   * @return extended tableau
-   */
-  override def subjectTo(constraints: Constraint*): SimplexTableau = {
-    if (constraints.isEmpty) {
-      this
-    } else {
-      val headConstraint = this.toLinearConstraint(constraints.head, this.columns.size.toInt)
-      constraints.tail.foldLeft(this.addLinearConstraint(headConstraint)) {
-        case (previousTableau, constraint) =>
-          val n = previousTableau.columns.size.toInt
-          val linearConstraint = this.toLinearConstraint(constraint, n)
-          previousTableau.addLinearConstraint(linearConstraint)
-      }
-    }
-  }
-
-  /**
-   * Add a set of linear constraints to the tableau
-   *
-   * @param linearConstraints set of linear constraints
-   * @return extended tableau
-   */
-  def subjectTo(linearConstraints: Set[LinearConstraint]): SimplexTableau = {
-    if (linearConstraints.isEmpty) {
-      this
-    } else {
-      linearConstraints.tail.foldLeft(this.addLinearConstraint(linearConstraints.head)) {
-        case (previousTableau, linearConstraint) =>
-          previousTableau.addLinearConstraint(linearConstraint)
-      }
-    }
-  }
-
-  /**
-   * Add new column corresponding to artificial variables for every equality or >= constraint.
-   *
-   * In this implementation, artificial variables have a phase-1 cost of 1, but following some matrix row
-   * additions, the costs of artificial columns are set to 0 while other columns costs are scaled.
-   *
-   * @return extended tableau with artificial variables
-   */
-  def withArtificialVariables: SimplexTableau = {
-    val tableau0 = this.withoutArtificialVariables
-    val m = this.rhs.constrains.size
-    val artificialConstraints =
-      tableau0.constraintTypes.zipWithIndex.filter(_._1 != ConstraintOperator.Le)
-    val artificialConstraintIdx = artificialConstraints.map(_._2)
-    val n0 = tableau0.columns.size.toInt
-    val n = n0 + artificialConstraints.size
-    val newColumns = (n0 until n)
-      .map { column =>
-        val row = artificialConstraints(column - n0)._2
-        TableauColumn.artificialVariable(column, row, m)
-      }
-    this.copy(
-      columns = tableau0.columns.map(scaleCost(artificialConstraintIdx)) ++ newColumns,
-      rhs = scaleCost(artificialConstraintIdx)(tableau0.rhs))
-  }
-
-  private def scaleCost(indices: Vector[Int])(column: TableauColumn) = {
-    val scaledPhase1Cost = column.constrains.zipWithIndex.foldLeft(0.0) {
-      case (previous, (cost, idx)) =>
-        if (indices.contains(idx)) previous + cost else previous
-    }
-    column.copy(phase1Cost = scaledPhase1Cost)
-  }
-
-  /**
-   * Remove all columns flagged as artificial variables
-   */
-  def withoutArtificialVariables: SimplexTableau = {
-    this.copy(columns = columns.filter(!_.isArtificial))
-  }
-
-  /**
-   * Restrict decision variables to take only positive values
-   */
-  def withPositiveVariables: SimplexTableau = {
-    this.copy(columns = columns.filter(!_.isNegative), negativeColumn = None)
-  }
-
-  /**
-   * Add an extra column with all sign reverted for all non-slack and non-artificial variables
-   */
-  def withNegativeVariables: SimplexTableau = {
-    this.copy(
-      columns = columns.filter(!_.isNegative),
-      negativeColumn = Some(getNegativeColumn(columns)))
+    LinearConstraint(a, EQ, rhs.constrains(i)).toConstraint
   }
 
   /**
@@ -308,97 +73,180 @@ case class SimplexTableau(
     method.minimize(this, Vector.empty[Double])(pars)
   }
 
-  private def addColumnCost(previousCost: Double, column: TableauColumn): Double = {
-    previousCost + column.phase2Cost
+  /**
+   * Check if the phase1 and phase2 objective functions are optimal
+   *
+   * The basic feasible solution is optimal when all costs are negative or null.
+   *
+   * @param epsilon error precision
+   * @return true when all cost are <= 0
+   */
+  def isOptimal(
+    epsilon: Double,
+    simplexPhase: SimplexPhase): Boolean = simplexPhase match {
+    case PHASE1 =>
+      columns.filter(_.phase1Cost > epsilon).size == 0 &&
+        negativeColumn.forall(_.phase1Cost < epsilon)
+    case PHASE2 =>
+      columns.filter(_.phase2Cost > epsilon).size == 0 &&
+        negativeColumn.forall(_.phase2Cost < epsilon)
   }
 
-  private def toLinearConstraint(constraint: Constraint, n0: Int) = {
-    def iterate(n: Int): LinearConstraint = LinearConstraint(constraint, n) match {
-      case Success(linearConstraint) => linearConstraint
-      case Failure(e) => iterate(n + 1)
+  /**
+   * Extract the primal solution vector of this tableau
+   */
+  def solution: Variables
+
+  /**
+   * Extract the total cost for a given simplex phase
+   */
+  def cost(simplexPhase: SimplexPhase): Double = simplexPhase match {
+    case PHASE1 => rhs.phase1Cost
+    case PHASE2 => rhs.phase2Cost
+    case _ => ???
+  }
+
+  /**
+   * Add new column corresponding to artificial variables for every equality or >= constraint.
+   *
+   * In this implementation, artificial variables have a phase-1 cost of 1, but following some matrix row
+   * additions, the costs of artificial columns are set to 0 while other columns costs are scaled.
+   *
+   * @return extended tableau with artificial variables
+   */
+  def withArtificialVariables: SimplexTableau
+
+  /**
+   * Remove all columns flagged as artificial variables
+   */
+  def withoutArtificialVariables: SimplexTableau
+
+  /**
+   * Pivot the tableau columns given a pivot column and row
+   *
+   * Pivot separately the variables A and the right hand side b.
+   *
+   * @param pivotColumn pivot column with its row index specifying the pivot row
+   * @return pivoted tableau
+   */
+  def pivot(pivotColumn: TableauColumn): SimplexTableau
+
+  /**
+   * Find a pivot column and row and perform a pivot of the tableau around it
+   *
+   * @param simplexPhase simplex phase
+   * @return pivoted tableau or failure
+   */
+  def performPivot(simplexPhase: SimplexPhase): Try[SimplexTableau] = {
+    Try(pivotColumn(simplexPhase)).map(pivot)
+  }
+
+  /**
+   * Find the column with the smallest cost and set its row index to the row with the smallest min ratio
+   *
+   * @param phase   look at simplex phase 1 or phase 2 cost
+   * @return column with the smallest cost
+   */
+  protected def pivotColumn(phase: SimplexPhase): TableauColumn = {
+    val pivotCandidate = phase match {
+      case PHASE1 =>
+        val posCandidate = columns.maxBy(_.phase1Cost)
+        if (negativeColumn.isDefined &&
+          negativeColumn.get.phase1Cost > posCandidate.phase1Cost) {
+          negativeColumn.get
+        } else {
+          posCandidate
+        }
+      case PHASE2 =>
+        val posCandidate = columns.filter(!_.isArtificial).maxBy(_.phase2Cost)
+        if (negativeColumn.isDefined &&
+          negativeColumn.get.phase2Cost > posCandidate.phase2Cost) {
+          negativeColumn.get
+        } else {
+          posCandidate
+        }
     }
-    iterate(n0)
+    minRatioRow(pivotCandidate, rhs)
   }
 
-  private def getNegativeColumn(columns: DataSet[TableauColumn]): TableauColumn = {
+  /**
+   * Find the row index with the minimum ratio b_i / A_(i,j)
+   *
+   * @param pivotColumn pivot column
+   * @param rhs         equality constrains right hand side
+   * @return pivot column with row index corresponding to minimum ratio
+   * @throws UnboundedProgramException when all b_i are negative
+   */
+  protected def minRatioRow(
+    pivotColumn: TableauColumn,
+    rhs: TableauColumn): TableauColumn = {
+    if (pivotColumn.isBasic) {
+      pivotColumn
+    } else {
+      val (minRatioValue, minRatioIdx) = pivotColumn
+        .constrains
+        .zip(rhs.constrains)
+        .map(computeRatio)
+        .zipWithIndex
+        .minBy(_._1)
+      if (minRatioValue >= Double.PositiveInfinity) {
+        throw new UnboundedProgramException("Linear program is unbounded")
+      } else {
+        pivotColumn.copy(row = minRatioIdx)
+      }
+    }
+  }
+
+  /**
+   * Compute the ratio b_i / A_(i,j) except if b_i is negative as it leads to unbounded solutions
+   *
+   * @param values (b_i, A_(i,j))
+   * @return b_i / A_(i,j)
+   */
+  private def computeRatio(values: (Double, Double)): Double = {
+    val (row, rhs) = values
+    if (row <= 0.0) Double.PositiveInfinity else rhs / row
+  }
+
+  protected def addArtificialVariables(tableau0: SimplexTableau) = {
+    val m = tableau0.rhs.constrains.size
+    val artificialConstraints =
+      tableau0.constraintTypes.zipWithIndex.filter(_._1 != LE)
+    val artificialConstraintIdx = artificialConstraints.map(_._2)
+    val n0 = tableau0.columns.size.toInt
+    val n = n0 + artificialConstraints.size
+    val newColumns = (n0 until n)
+      .map { column =>
+        val row = artificialConstraints(column - n0)._2
+        TableauColumn.artificialVariable(column, row, m)
+      }
+    val updatedColumns = tableau0.columns.map(scaleCost(artificialConstraintIdx)) ++ newColumns
+    val updatedRhs = scaleCost(artificialConstraintIdx)(tableau0.rhs)
+    (updatedColumns, updatedRhs)
+  }
+
+  protected def scaleCost(indices: Vector[Int])(column: TableauColumn): TableauColumn = {
+    val scaledPhase1Cost = column.constrains.zipWithIndex.foldLeft(0.0) {
+      case (previous, (cost, idx)) =>
+        if (indices.contains(idx)) previous + cost else previous
+    }
+    column.copy(phase1Cost = scaledPhase1Cost)
+  }
+
+  protected def getNegativeColumn(columns: DataSet[TableauColumn]): TableauColumn = {
     val initialColumn = TableauColumn(0.0, 0.0, zeros(constraintTypes.size).toVector, 0)
-    val isPositiveColumn = (column: TableauColumn) => !column.isSlack && !column.isArtificial && !column.isNegative
+    val isPositiveColumn = (column: TableauColumn) => !column.isSlack && !column.isArtificial
     val seqOp = (previous: TableauColumn, current: TableauColumn) => {
       previous + current.negate
     }
     columns
       .filter(isPositiveColumn)
       .aggregate(initialColumn)(seqOp, _ + _)
-      .copy(column = -1, isNegative = true, isSlack = false, isArtificial = false, isBasic = false)
+      .copy(column = -1, isSlack = false, isArtificial = false, isBasic = false)
   }
 
-}
-
-object SimplexTableau {
-
-  /**
-   * Given a linear cost function that should be minimized, build an initial tableau
-   *
-   * @param f linear objective function
-   * @return tableau containing only the linear objective function
-   */
-  def min(f: Variables => Double): SimplexTableau = objective(f, true)
-
-  /**
-   * Given a cost vector, build a initial simplex tableau without any constraint
-   *
-   * @param c cost vector
-   * @return tableau with only the linear cost function
-   */
-  def min(c: DataSet[Double]): SimplexTableau = {
-    val columns = c.zipWithIndex.map {
-      case (cost, index) => TableauColumn.costOnlyColumn(index, -cost) // negative cost when minimizing
-    }
-    SimplexTableau(columns, TableauColumn.costOnlyColumn(c.size, 0.0), Vector())
-  }
-
-  /**
-   * Given a linear cost function that should be maximized, build an initial tableau
-   *
-   * @param f linear objective function
-   * @return tableau containing only the linear objective function
-   */
-  def max(f: Variables => Double): SimplexTableau = objective(f, false)
-
-  /**
-   * Given a cost vector, build a initial simplex tableau without any constraint
-   *
-   * @param c cost vector
-   * @return tableau with only the linear cost function
-   */
-  def max(c: DataSet[Double]): SimplexTableau = {
-    val columns = c.zipWithIndex.map {
-      case (cost, index) => TableauColumn.costOnlyColumn(index, cost)
-    }
-    SimplexTableau(columns, TableauColumn.costOnlyColumn(c.size, 0.0), Vector())
-  }
-
-  /**
-   * Given a linear cost function, build an initial tableau
-   *
-   * @param f            linear objective function
-   * @param isMinimizing true if minimizing f, false if maximizing f
-   * @return tableau containing only the linear objective function
-   */
-  def objective(
-    f: Variables => Double,
-    isMinimizing: Boolean): SimplexTableau = {
-    def iterate(x: Vector[Double]): Int = Try(f(x)) match {
-      case Failure(e) => iterate(x :+ 0.0)
-      case Success(value) => x.size
-    }
-    val n = iterate(Vector(0.0))
-    // Negate cost values when searching for minimal cost
-    val costSign = if (isMinimizing) -1.0 else 1.0
-    val columns =
-      (0 until n).map(i => TableauColumn(0.0, costSign * f(e(n, i)), Vector(), i))
-    val rhs = TableauColumn(0.0, 0.0, Vector(), n + 1)
-    SimplexTableau(columns, rhs, Vector())
+  private def addColumnCost(previousCost: Double, column: TableauColumn): Double = {
+    previousCost + column.phase2Cost
   }
 
 }
@@ -412,7 +260,6 @@ object SimplexTableau {
  * @param column       column index
  * @param row          basic variable non null index or pivoting index
  * @param isSlack      true if it is a slack variable added for an inequality constraint
- * @param isNegative   true if it is the negative part of a decision variable
  * @param isBasic      true if this column is a basic variable
  * @param isArtificial true if this column is an artificial variable used to solve the phase1 problem
  */
@@ -423,7 +270,6 @@ case class TableauColumn(
   column: Long,
   row: Int = -1,
   isSlack: Boolean = false,
-  isNegative: Boolean = false,
   isBasic: Boolean = false,
   isArtificial: Boolean = false) {
 
@@ -451,8 +297,7 @@ case class TableauColumn(
     this.copy(
       phase1Cost = -this.phase1Cost,
       phase2Cost = -this.phase2Cost,
-      constrains = this.constrains.map(_ * -1.0),
-      isNegative = !this.isNegative)
+      constrains = this.constrains.map(_ * -1.0))
   }
 
   /**

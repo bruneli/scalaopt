@@ -16,6 +16,8 @@
 
 package com.github.bruneli.scalaopt.core
 
+import ConstraintOperator._
+
 /**
  * Define a constraint as a left hand real-valued function, an operator and a right hand side value
  *
@@ -28,7 +30,7 @@ package com.github.bruneli.scalaopt.core
  */
 case class Constraint(
   c: (Variables) => Double,
-  op: ConstraintOperator.Value,
+  op: ConstraintOperator,
   b: Double,
   eps: Double = 1.0e-8) {
 
@@ -39,9 +41,9 @@ case class Constraint(
    * @return true if constraint is satisfied in x
    */
   def apply(x: Variables): Boolean = op match {
-    case ConstraintOperator.Eq => Math.abs(c(x) - b) <= eps
-    case ConstraintOperator.Le => c(x) <= b
-    case ConstraintOperator.Ge => c(x) >= b
+    case EQ => Math.abs(c(x) - b) <= eps
+    case LE => c(x) <= b
+    case GE => c(x) >= b
   }
 
 }
@@ -59,10 +61,10 @@ class LHConstraint(c: (Variables) => Double) {
    * @param b right hand value
    * @return equality constraint
    */
-  def equ(b: Double): Constraint = Constraint(c, ConstraintOperator.Eq, b)
+  def equ(b: Double): Constraint = Constraint(c, EQ, b)
   
   /** Alias of eq method */
-  def ===(b: Double): Constraint = Constraint(c, ConstraintOperator.Eq, b)
+  def ===(b: Double): Constraint = Constraint(c, EQ, b)
 
   /**
    * Build an inequality constraint with an <= operator
@@ -70,7 +72,7 @@ class LHConstraint(c: (Variables) => Double) {
    * @param b right hand value
    * @return inequality constraint
    */
-  def le(b: Double): Constraint = Constraint(c, ConstraintOperator.Le, b)
+  def le(b: Double): Constraint = Constraint(c, LE, b)
 
   /** Alias of le method */
   def <=(b: Double): Constraint = this.le(b)
@@ -81,18 +83,9 @@ class LHConstraint(c: (Variables) => Double) {
    * @param b right hand value
    * @return inequality constraint
    */
-  def ge(b: Double): Constraint = Constraint(c, ConstraintOperator.Ge, b)
+  def ge(b: Double): Constraint = Constraint(c, GE, b)
 
   /** Alias of ge method */
   def >=(b: Double): Constraint = this.ge(b)
-
-}
-
-/**
- * Enumerate the different type of constraint operators i.e. equal, lower equal, greater equal
- */
-object ConstraintOperator extends Enumeration {
-
-  val Eq, Le, Ge = Value
 
 }

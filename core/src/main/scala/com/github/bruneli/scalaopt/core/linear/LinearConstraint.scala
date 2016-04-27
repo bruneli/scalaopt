@@ -31,7 +31,11 @@ import SeqDataSetConverter._
  * @param eps precision to check a strict equality
  * @author bruneli
  */
-case class LinearConstraint(a: DataSet[Double], op: Value, b: Double, eps: Double = 1.0e-8) {
+case class LinearConstraint(
+  a: DataSet[Double],
+  op: ConstraintOperator,
+  b: Double,
+  eps: Double = 1.0e-8) {
 
   /**
    * Check if constraint is satisfied in x
@@ -40,9 +44,9 @@ case class LinearConstraint(a: DataSet[Double], op: Value, b: Double, eps: Doubl
    * @return true if constraint is satisfied in x
    */
   def apply(x: Variables): Boolean = op match {
-    case Eq => Math.abs((a.collect() dot x) - b) <= eps
-    case Le => (a.collect() dot x) <= b
-    case Ge => (a.collect() dot x) >= b
+    case EQ => Math.abs((a.collect() dot x) - b) <= eps
+    case LE => (a.collect() dot x) <= b
+    case GE => (a.collect() dot x) >= b
   }
 
   /**
@@ -63,23 +67,23 @@ case class LinearConstraint(a: DataSet[Double], op: Value, b: Double, eps: Doubl
    */
   def toEquality(n: Int, slack: Option[Int] = None): LinearConstraint = {
     val m = this.a.size.toInt
-    require(n > m || op == Eq && n == m,
+    require(n > m || op == EQ && n == m,
       s"Size of the new linear constraint $n should be >= initial constraint size $m")
-    require(op == Eq || slack.isDefined, s"Every inequality constraint must specify a slack variable position")
+    require(op == EQ || slack.isDefined, s"Every inequality constraint must specify a slack variable position")
     require(slack.isEmpty || slack.get >= m && slack.get < n,
       s"Slack variable position ${slack.get} must be >= $m and < $n")
     val a = op match {
-      case Eq => if (n == m) this.a else this.a ++ zeros(n - m)
-      case Le =>
+      case EQ => if (n == m) this.a else this.a ++ zeros(n - m)
+      case LE =>
         // Add a slack variable to have equality satisfied
         val s = slack.get - m
         this.a ++ e(n - m, s)
-      case Ge =>
+      case GE =>
         // Add an excess variable to have equality satisfied
         val s = slack.get - m
         this.a ++ (e(n - m, s) * -1.0)
     }
-    LinearConstraint(a, Eq, b)
+    LinearConstraint(a, EQ, b)
   }
 
   /**
@@ -88,9 +92,9 @@ case class LinearConstraint(a: DataSet[Double], op: Value, b: Double, eps: Doubl
   def withPositiveRhs: LinearConstraint = {
     if (b < 0.0) {
       val inverseOp = op match {
-        case Le => Ge
-        case Eq => Eq
-        case Ge => Le
+        case LE => GE
+        case EQ => EQ
+        case GE => LE
       }
       LinearConstraint(a.map(_ * -1.0), inverseOp, -b)
     } else {

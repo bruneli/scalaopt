@@ -19,7 +19,6 @@ package com.github.bruneli.scalaopt.core.linear
 import org.scalatest.{Matchers, FlatSpec}
 import com.github.bruneli.scalaopt.core._
 import SeqDataSetConverter._
-import SimplexTableau.{min, max}
 import ConstraintOperator._
 
 /**
@@ -27,14 +26,14 @@ import ConstraintOperator._
  */
 class StandardSimplexSpec extends FlatSpec with Matchers {
 
-  import StandardSimplexSpec._
   import StandardSimplex._
+  import StandardSimplexSpec._
 
   "solveWith" should "find the minimum of a basic linear program with 2 variables and 1 constraint" in {
 
     val xMin = Vector(0.0, 1.0)
 
-    val xOpt = min((x: Variables) => x(0) + x(1))
+    val xOpt = PrimalTableau.min((x: Variables) => x(0) + x(1))
       .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
       .solveWith(StandardSimplex)
 
@@ -49,7 +48,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     val xMin = Vector(0.0, 0.0)
 
-    val xOpt = min((x: Variables) => x(0) + x(1))
+    val xOpt = PrimalTableau.min((x: Variables) => x(0) + x(1))
       .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
@@ -63,7 +62,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     val xMin = Vector(-1.0, -0.5)
 
-    val xOpt = min((x: Variables) => x(0) + x(1))
+    val xOpt = PrimalTableau.min((x: Variables) => x(0) + x(1))
       .subjectTo(
         ((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= -1.0,
         ((x: Variables) => x(0)) >= -1.0
@@ -82,7 +81,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     val xMin = Vector(0.0, -1.0)
 
-    val xOpt = min((x: Variables) => x(0) + 2.0 * x(1))
+    val xOpt = PrimalTableau.min((x: Variables) => x(0) + 2.0 * x(1))
       .subjectTo(
         ((x: Variables) => 1.0 * x(0)) >= -2.0,
         ((x: Variables) => 1.0 * x(0) + 1.0 * x(1)) >= -1.0,
@@ -102,7 +101,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     val xMax = Vector(1.0, 2.0)
 
-    val xOpt = max((x: Variables) => x(0) + x(1))
+    val xOpt = PrimalTableau.max((x: Variables) => x(0) + x(1))
       .subjectTo(
         ((x: Variables) => x(0)) <= 1.0,
         ((x: Variables) => -x(0) + x(1)) <= 1.0
@@ -119,7 +118,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
   it should "fail to solve the linear program when constraints offer no solution" in {
 
     a[NoSolutionException] shouldBe thrownBy {
-      max((x: Variables) => x(0) + x(1))
+      PrimalTableau.max((x: Variables) => x(0) + x(1))
         .subjectTo(
           ((x: Variables) => x(0)) <= 1.0,
           ((x: Variables) => x(1)) <= 1.0,
@@ -132,7 +131,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
   it should "throw an exception when program is unbounded from below" in {
 
-    val xopt = min((x: Variables) => x(0) + x(1))
+    val xopt = PrimalTableau.min((x: Variables) => x(0) + x(1))
       .subjectTo(
         ((x: Variables) => x(0)) <= 1.0,
         ((x: Variables) => x(1)) <= 1.0
@@ -150,17 +149,17 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val nOffers = nDemandOffers + nSupplyOffers
 
     // Electricity cannot be easily stored => total generation must be equal to the total load
-    val balancing = LinearConstraint(ones(nDemandOffers) ++ vector(nSupplyOffers, -1.0), Eq, 0.0)
+    val balancing = LinearConstraint(ones(nDemandOffers) ++ vector(nSupplyOffers, -1.0), EQ, 0.0)
 
     // Upper bound on supplied energy per offer
     val upperBounds = (electricityDemand("energies") ++ electricitySupply("energies")).zipWithIndex.map {
-      case (max, index) => LinearConstraint(e(nOffers, index), Le, max)
+      case (max, index) => LinearConstraint(e(nOffers, index), LE, max)
     }
 
     // maximize the social welfare defined as the area between consumption and generation bid ladders
     // given balancing and upper bound constraints
     val tableau = StandardSimplex.solve(
-        max(electricityDemand("prices") ++ (electricitySupply("prices") * -1.0))
+        PrimalTableau.max(electricityDemand("prices") ++ (electricitySupply("prices") * -1.0))
           .subjectTo(upperBounds.toSet + balancing))
 
     tableau shouldBe 'success
@@ -191,6 +190,5 @@ object StandardSimplexSpec {
     Map("energies" -> Vector(120.0, 50.0, 200.0, 400.0, 60.0, 50.0, 60.0, 100.0, 70.0, 50.0, 70.0, 45.0, 50.0, 60.0, 50.0),
       "prices" -> Vector(0.0, 0.0, 15.0, 30.0, 32.5, 34.0, 36.0, 37.5, 39.0, 40.0, 60.0, 70.0, 100.0, 150.0, 200.0))
   }
-
 
 }
