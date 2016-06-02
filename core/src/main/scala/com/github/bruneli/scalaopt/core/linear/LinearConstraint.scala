@@ -50,6 +50,31 @@ case class LinearConstraint(
   }
 
   /**
+   * Convert a linear constraint to a tableau column
+   */
+  def toColumn(column: Long): TableauColumn = {
+    TableauColumn(0.0, b, a.collect().toVector, column)
+  }
+
+  /**
+   * Resize a constraint to be of size n
+   *
+   * @param n new size of the constraint
+   * @return constraint with an updated size n
+   * @throws IllegalArgumentException when new size n is smaller than initial size
+   */
+  def resize(n: Int): LinearConstraint = {
+    val m = this.a.size.toInt
+    require(n >= m,
+      s"Size of the new linear constraint $n should be >= initial constraint size $m")
+    if (n == m) {
+      this
+    } else {
+      this.copy(a = this.a ++ zeros(n - m))
+    }
+  }
+
+  /**
    * Convert a linear constraint into a general constraint class
    */
   def toConstraint: Constraint = {

@@ -29,11 +29,26 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
   import StandardSimplex._
   import StandardSimplexSpec._
 
-  "solveWith" should "find the minimum of a basic linear program with 2 variables and 1 constraint" in {
+  "solveWith" should "solve a basic linear program from a primal tableau with 2 variables and 1 constraint" in {
 
     val xMin = Vector(0.0, 1.0)
 
     val xOpt = PrimalTableau.min((x: Variables) => x(0) + x(1))
+      .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
+      .solveWith(StandardSimplex)
+
+    xOpt shouldBe 'success
+    for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
+      xObs shouldBe xExp +- 1.0e-8
+    }
+
+  }
+
+  it should "solve a basic linear program from a dual tableau with 2 variables and 1 constraint" in {
+
+    val xMin = Vector(0.0, 1.0)
+
+    val xOpt = DualTableau.min((x: Variables) => x(0) + x(1))
       .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
       .solveWith(StandardSimplex)
 
@@ -159,8 +174,8 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     // maximize the social welfare defined as the area between consumption and generation bid ladders
     // given balancing and upper bound constraints
     val tableau = StandardSimplex.solve(
-        PrimalTableau.max(electricityDemand("prices") ++ (electricitySupply("prices") * -1.0))
-          .subjectTo(upperBounds.toSet + balancing))
+      PrimalTableau.max(electricityDemand("prices") ++ (electricitySupply("prices") * -1.0))
+        .subjectTo(upperBounds.toSet + balancing))
 
     tableau shouldBe 'success
 

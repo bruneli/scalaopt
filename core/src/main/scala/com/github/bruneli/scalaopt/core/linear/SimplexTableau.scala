@@ -21,7 +21,7 @@ import com.github.bruneli.scalaopt.core.SimplexPhase._
 import com.github.bruneli.scalaopt.core._
 import SeqDataSetConverter._
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * Define a generic simplex tableau implemented either for the primal or the dual simplex method
@@ -34,6 +34,29 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
   val rhs: TableauColumn
   val constraintTypes: Vector[ConstraintOperator]
   val negativeColumn: Option[TableauColumn]
+
+  /**
+   * Extract the primal solution vector of this tableau
+   */
+  def primal: Variables = {
+    val offset = negativeColumn.map {
+      column: TableauColumn => if (column.isBasic) rhs.constrains(column.row) else 0.0
+    }.getOrElse(0.0)
+    columns
+      .filter(isInitialColumn)
+      .collect()
+      .map(_.solution(rhs) - offset)
+  }
+
+  /**
+   * Extract the dual solution vector of this tableau
+   */
+  def dual: Variables = {
+    columns
+      .filter(_.isSlack)
+      .map(_.phase2Cost * -1.0)
+      .collect()
+  }
 
   /**
    * Evaluate the objective function for a given vector of variables
@@ -96,6 +119,10 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
    * Extract the primal solution vector of this tableau
    */
   def solution: Variables
+
+  protected def isInitialColumn(column: TableauColumn) = {
+    !(column.isSlack || column.isArtificial)
+  }
 
   /**
    * Extract the total cost for a given simplex phase
@@ -247,6 +274,32 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
 
   private def addColumnCost(previousCost: Double, column: TableauColumn): Double = {
     previousCost + column.phase2Cost
+  }
+
+  protected def toLinearConstraint(constraint: Constraint, n0: Int): LinearConstraint = {
+    def iterate(n: Int): LinearConstraint = LinearConstraint(constraint, n) match {
+      case Success(linearConstraint) => linearConstraint
+      case Failure(e) => iterate(n + 1)
+    }
+    iterate(n0)
+  }
+
+  protected def addSlackVariable(
+    n: Int,
+    m0: Int,
+    op: ConstraintOperator)(
+    i: Int): TableauColumn = {
+    val isSlack = i == (n - 1) && op != EQ
+    val isBasic = isSlack && op == LE
+    val row = if (isBasic) m0 else -1
+    TableauColumn(
+      0.0,
+      0.0,
+      zeros(m0).toVector,
+      i,
+      isSlack = isSlack,
+      isBasic = isBasic,
+      row = row)
   }
 
 }

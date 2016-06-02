@@ -64,20 +64,10 @@ case class PrimalTableau(
   extends SimplexTableau {
 
   /**
-   * Extract the primal solution vector of this tableau
+   * Extract the solution vector of this tableau
    */
   def solution: Variables = {
-    val offset = negativeColumn.map {
-      column: TableauColumn => if (column.isBasic) rhs.constrains(column.row) else 0.0
-    }.getOrElse(0.0)
-    columns
-      .filter(isInitialColumn)
-      .collect()
-      .map(_.solution(rhs) - offset)
-  }
-
-  private def isInitialColumn(column: TableauColumn) = {
-    !(column.isSlack || column.isArtificial)
+    primal
   }
 
   /**
@@ -207,28 +197,6 @@ case class PrimalTableau(
       // If constraint has a negative right-hand side, invert it
       addLinearConstraint(constraint.withPositiveRhs)
     }
-  }
-
-  private def addSlackVariable(n: Int, m0: Int, op: ConstraintOperator)(i: Int) = {
-    val isSlack = i == (n - 1) && op != EQ
-    val isBasic = isSlack && op == LE
-    val row = if (isBasic) m0 else -1
-    TableauColumn(
-      0.0,
-      0.0,
-      zeros(m0).toVector,
-      i,
-      isSlack = isSlack,
-      isBasic = isBasic,
-      row = row)
-  }
-
-  private def toLinearConstraint(constraint: Constraint, n0: Int) = {
-    def iterate(n: Int): LinearConstraint = LinearConstraint(constraint, n) match {
-      case Success(linearConstraint) => linearConstraint
-      case Failure(e) => iterate(n + 1)
-    }
-    iterate(n0)
   }
 
 }

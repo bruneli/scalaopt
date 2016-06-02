@@ -23,7 +23,7 @@ import PrimalTableau.{min, max}
 /**
  * @author bruneli
  */
-class SimplexTableauSpec extends FlatSpec with Matchers {
+class PrimalTableauSpec extends FlatSpec with Matchers {
 
   "min" should "build a tableau from a linear function without any constraint" in {
 
