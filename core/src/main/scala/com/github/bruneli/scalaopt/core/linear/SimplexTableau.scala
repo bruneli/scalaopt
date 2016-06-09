@@ -385,12 +385,13 @@ case class TableauColumn(
         case (value, i) =>
           if (i == that.row) pivotValue else value - that.constrains(i) * pivotValue
       }
-      this.copy(
+      val newColumn = this.copy(
         phase1Cost = phase1Cost,
         phase2Cost = phase2Cost,
         constrains = constrains,
         row = -1,
         isBasic = false)
+      newColumn
     }
   }
 

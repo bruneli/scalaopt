@@ -59,13 +59,22 @@ case class DualTableau(
       val n0 = nonSlackColumns.size.toInt
       // Updated tableau size
       val m = Math.max(m0, constraint.a.size.toInt)
+      val n = n0 + 1
       // Transform the constraint into an equality constraint and then a column
-      val resizedConstraint = constraint.resize(m).toColumn(n0.toLong)
-      // Add as many slack variables as there are rows
-      val slackVariables = (0 until m).map {
-        i => TableauColumn(0.0, 0.0, Vector(), n0 + i, i, true, true, false)
+      val resizedConstraint0 = constraint.resize(m).toColumn(n0.toLong)
+      // Multiply by -1 all values corresponding to GE rows
+      val signedConstrains = (resizedConstraint0.constrains, constraintTypes).zipped.map {
+        case (value, operator) => if (operator == LE) value else -value
       }
-      val constraintTypes = (0 until m).toVector.map(i => ConstraintOperator.LE)
+      val resizedConstraint = resizedConstraint0.copy(constrains = signedConstrains)
+      // Add as many slack variables as there are rows
+      val slackVariables = constraintTypes.zipWithIndex.map {
+        case (constraintType, i) => constraintType match {
+          case LE => TableauColumn(0.0, 0.0, Vector(), n + i, i, true, true, false)
+          case GE | EQ => TableauColumn(0.0, 0.0, (e(m, i) * -1.0).toVector, n + i, i, true, false, false)
+          case _ => ???
+        }
+      }
       // Add the new column to existing ones
       val modifiedColumns = nonSlackColumns ++ Seq(resizedConstraint) ++ slackVariables
       // Recompute the negative column
@@ -88,10 +97,10 @@ case class DualTableau(
     if (constraints.isEmpty) {
       this
     } else {
-      val headConstraint = this.toLinearConstraint(constraints.head, this.columns.size.toInt)
+      val n = rhs.constrains.size
+      val headConstraint = this.toLinearConstraint(constraints.head, n)
       constraints.tail.foldLeft(this.addLinearConstraint(headConstraint)) {
         case (previousTableau, constraint) =>
-          val n = previousTableau.columns.size.toInt
           val linearConstraint = this.toLinearConstraint(constraint, n)
           previousTableau.addLinearConstraint(linearConstraint)
       }
@@ -182,8 +191,11 @@ object DualTableau {
    * @return tableau with only the linear cost function
    */
   def min(c: Variables): DualTableau = {
-    val rhs = TableauColumn(0.0, 0.0, c.toVector, 1)
-    DualTableau(Vector(), rhs, Vector())
+    val constraintTypes = c.map {
+      case value => if (value >= 0.0) LE else GE
+    }
+    val rhs = TableauColumn(0.0, 0.0, c.map(Math.abs).toVector, 1)
+    DualTableau(Vector(), rhs, constraintTypes.toVector)
   }
 
   /**
@@ -201,8 +213,11 @@ object DualTableau {
    * @return tableau with only the linear cost function
    */
   def max(c: Variables): DualTableau = {
-    val rhs = TableauColumn(0.0, 0.0, c.toVector, 1)
-    DualTableau(Vector(), rhs, Vector())
+    val constraintTypes = c.map {
+      case value => if (value >= 0.0) LE else GE
+    }
+    val rhs = TableauColumn(0.0, 0.0, c.map(Math.abs).toVector, 1)
+    DualTableau(Vector(), rhs, constraintTypes.toVector)
   }
 
   /**
@@ -220,11 +235,12 @@ object DualTableau {
       case Success(value) => x.size
     }
     val n = iterate(Vector(0.0))
-    // Negate cost values when searching for minimal cost
-    val costSign = 1.0 //if (isMinimizing) -1.0 else 1.0
-    val constrains = (0 until n).map(i => costSign * f(e(n, i))).toVector
-    val rhs = TableauColumn(0.0, 0.0, constrains, 1)
-    DualTableau(Vector(), rhs, Vector())
+    val constrains = (0 until n).map(i => f(e(n, i))).toVector
+    val constraintTypes = constrains.map {
+      case value => if (value >= 0.0) LE else GE
+    }
+    val rhs = TableauColumn(0.0, 0.0, constrains.map(Math.abs), 1)
+    DualTableau(Vector(), rhs, constraintTypes)
   }
 
 }

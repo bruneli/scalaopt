@@ -130,6 +130,24 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
   }
 
+  it should "find the maximum of a linear program with the dual tableau" in {
+
+    val xMax = Vector(1.0, 2.0)
+
+    val xOpt = DualTableau.max((x: Variables) => x(0) + x(1))
+      .subjectTo(
+        ((x: Variables) => x(0)) <= 1.0,
+        ((x: Variables) => -x(0) + x(1)) <= 1.0
+      )
+      .solveWith(StandardSimplex)
+
+    xOpt shouldBe 'success
+    for ((xObs, xExp) <- xOpt.get.zip(xMax)) {
+      xObs shouldBe xExp +- 1.0e-8
+    }
+
+  }
+
   it should "fail to solve the linear program when constraints offer no solution" in {
 
     a[NoSolutionException] shouldBe thrownBy {
