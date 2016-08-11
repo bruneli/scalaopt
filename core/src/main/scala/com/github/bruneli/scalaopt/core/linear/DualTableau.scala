@@ -108,6 +108,23 @@ case class DualTableau(
   }
 
   /**
+   * Add a set of linear constraints to the tableau
+   *
+   * @param linearConstraints set of linear constraints
+   * @return extended tableau
+   */
+  def subjectTo(linearConstraints: Set[LinearConstraint]): DualTableau = {
+    if (linearConstraints.isEmpty) {
+      this
+    } else {
+      linearConstraints.tail.foldLeft(this.addLinearConstraint(linearConstraints.head)) {
+        case (previousTableau, linearConstraint) =>
+          previousTableau.addLinearConstraint(linearConstraint)
+      }
+    }
+  }
+
+  /**
    * Extract the solution vector of this tableau
    */
   override def solution: Variables = {

@@ -22,8 +22,8 @@ import SeqDataSetConverter._
 import ConstraintOperator._
 
 /**
- * @author bruneli
- */
+  * @author bruneli
+  */
 class StandardSimplexSpec extends FlatSpec with Matchers {
 
   import StandardSimplex._
@@ -34,8 +34,8 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMin = Vector(0.0, 1.0)
 
     val xOpt = PrimalTableau.min((x: Variables) => x(0) + x(1))
-      .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
-      .solveWith(StandardSimplex)
+        .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
+        .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
@@ -49,8 +49,8 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMin = Vector(0.0, 1.0)
 
     val xOpt = DualTableau.min((x: Variables) => x(0) + x(1))
-      .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
-      .solveWith(StandardSimplex)
+        .subjectTo(((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
+        .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
@@ -64,7 +64,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMin = Vector(0.0, 0.0)
 
     val xOpt = PrimalTableau.min((x: Variables) => x(0) + x(1))
-      .solveWith(StandardSimplex)
+        .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
@@ -78,12 +78,12 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMin = Vector(-1.0, -0.5)
 
     val xOpt = PrimalTableau.min((x: Variables) => x(0) + x(1))
-      .subjectTo(
-        ((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= -1.0,
-        ((x: Variables) => x(0)) >= -1.0
-      )
-      .withNegativeVariables
-      .solveWith(StandardSimplex)
+        .subjectTo(
+          ((x: Variables) => 0.5 * x(0) + 1.0 * x(1)) >= -1.0,
+          ((x: Variables) => x(0)) >= -1.0
+        )
+        .withNegativeVariables
+        .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
@@ -97,13 +97,13 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMin = Vector(0.0, -1.0)
 
     val xOpt = PrimalTableau.min((x: Variables) => x(0) + 2.0 * x(1))
-      .subjectTo(
-        ((x: Variables) => 1.0 * x(0)) >= -2.0,
-        ((x: Variables) => 1.0 * x(0) + 1.0 * x(1)) >= -1.0,
-        ((x: Variables) => 1.0 * x(0) - 1.0 * x(1)) <= 1.0
-      )
-      .withNegativeVariables
-      .solveWith(StandardSimplex)
+        .subjectTo(
+          ((x: Variables) => 1.0 * x(0)) >= -2.0,
+          ((x: Variables) => 1.0 * x(0) + 1.0 * x(1)) >= -1.0,
+          ((x: Variables) => 1.0 * x(0) - 1.0 * x(1)) <= 1.0
+        )
+        .withNegativeVariables
+        .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
@@ -117,11 +117,11 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMax = Vector(1.0, 2.0)
 
     val xOpt = PrimalTableau.max((x: Variables) => x(0) + x(1))
-      .subjectTo(
-        ((x: Variables) => x(0)) <= 1.0,
-        ((x: Variables) => -x(0) + x(1)) <= 1.0
-      )
-      .solveWith(StandardSimplex)
+        .subjectTo(
+          ((x: Variables) => x(0)) <= 1.0,
+          ((x: Variables) => -x(0) + x(1)) <= 1.0
+        )
+        .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMax)) {
@@ -135,11 +135,11 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMax = Vector(1.0, 2.0)
 
     val xOpt = DualTableau.max((x: Variables) => x(0) + x(1))
-      .subjectTo(
-        ((x: Variables) => x(0)) <= 1.0,
-        ((x: Variables) => -x(0) + x(1)) <= 1.0
-      )
-      .solveWith(StandardSimplex)
+        .subjectTo(
+          ((x: Variables) => x(0)) <= 1.0,
+          ((x: Variables) => -x(0) + x(1)) <= 1.0
+        )
+        .solveWith(StandardSimplex)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.zip(xMax)) {
@@ -152,12 +152,12 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     a[NoSolutionException] shouldBe thrownBy {
       PrimalTableau.max((x: Variables) => x(0) + x(1))
-        .subjectTo(
-          ((x: Variables) => x(0)) <= 1.0,
-          ((x: Variables) => x(1)) <= 1.0,
-          ((x: Variables) => x(0) + x(1)) >= 3.0
-        )
-        .solveWith(StandardSimplex)
+          .subjectTo(
+            ((x: Variables) => x(0)) <= 1.0,
+            ((x: Variables) => x(1)) <= 1.0,
+            ((x: Variables) => x(0) + x(1)) >= 3.0
+          )
+          .solveWith(StandardSimplex)
     }
 
   }
@@ -165,17 +165,17 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
   it should "throw an exception when program is unbounded from below" in {
 
     val xopt = PrimalTableau.min((x: Variables) => x(0) + x(1))
-      .subjectTo(
-        ((x: Variables) => x(0)) <= 1.0,
-        ((x: Variables) => x(1)) <= 1.0
-      )
-      .withNegativeVariables
-      .solveWith(StandardSimplex)
+        .subjectTo(
+          ((x: Variables) => x(0)) <= 1.0,
+          ((x: Variables) => x(1)) <= 1.0
+        )
+        .withNegativeVariables
+        .solveWith(StandardSimplex)
     xopt shouldBe 'failure
 
   }
 
-  it should "find the market clearing result from an electricity pool auction" in {
+  it should "find the market clearing volumes from an electricity pool auction" in {
 
     val nDemandOffers = electricityDemand("prices").size
     val nSupplyOffers = electricitySupply("prices").size
@@ -193,7 +193,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     // given balancing and upper bound constraints
     val tableau = StandardSimplex.solve(
       PrimalTableau.max(electricityDemand("prices") ++ (electricitySupply("prices") * -1.0))
-        .subjectTo(upperBounds.toSet + balancing))
+          .subjectTo(upperBounds.toSet + balancing))
 
     tableau shouldBe 'success
 
@@ -208,6 +208,38 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     }
   }
 
+  it should "find the market clearing prices from an electricity pool auction" in {
+
+    val nDemandOffers = electricityDemand("prices").size
+    val nSupplyOffers = electricitySupply("prices").size
+    val nOffers = nDemandOffers + nSupplyOffers
+
+    // Electricity cannot be easily stored => total generation must be equal to the total load
+    val balancing = LinearConstraint(ones(nDemandOffers) ++ vector(nSupplyOffers, -1.0), EQ, 0.0)
+
+    // Upper bound on supplied energy per offer
+    val upperBounds = (electricityDemand("energies") ++ electricitySupply("energies")).zipWithIndex.map {
+      case (max, index) => LinearConstraint(e(nOffers, index), LE, max)
+    }
+
+    // maximize the social welfare defined as the area between consumption and generation bid ladders
+    // given balancing and upper bound constraints
+    val tableau = StandardSimplex.solve(
+      DualTableau.max(electricityDemand("prices") ++ (electricitySupply("prices") * -1.0))
+          .subjectTo(upperBounds.toSet + balancing))
+
+    tableau shouldBe 'success
+
+    // Select all demand offers with prices >= 37.5 and supply offers with prices <= 37.5
+    // To match demand and supply, the last supply offer has only 55 MWh selected.
+    val expectedClearing =
+      Vector(250.0, 300.0, 120.0, 80.0, 40.0, 70.0, 60.0, 45.0, 30.0, 0.0, 0.0, 0.0,
+        120.0, 50.0, 200.0, 400.0, 60.0, 50.0, 60.0, 55.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+    for ((selectedVolume, expectedVolume) <- tableau.get.solution.zip(expectedClearing)) {
+      selectedVolume shouldBe expectedVolume +- 1.0e-8
+    }
+  }
 }
 
 object StandardSimplexSpec {
