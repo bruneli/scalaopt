@@ -20,6 +20,7 @@ import com.github.bruneli.scalaopt.core._
 import SeqDataSetConverter._
 import ConstraintOperator._
 import SimplexPhase._
+import ObjectiveType._
 
 import scala.util.{Failure, Success, Try}
 
@@ -38,7 +39,8 @@ case class DualTableau(
   columns: DataSet[TableauColumn],
   rhs: TableauColumn,
   constraintTypes: Vector[ConstraintOperator],
-  negativeColumn: Option[TableauColumn] = None) extends SimplexTableau {
+  negativeColumn: Option[TableauColumn] = None,
+  objectiveType: ObjectiveType = MINIMIZE) extends SimplexTableau {
 
   /**
    * Add a linear constraint to the existing tableau
@@ -62,11 +64,21 @@ case class DualTableau(
       val n = n0 + 1
       // Transform the constraint into an equality constraint and then a column
       val resizedConstraint0 = constraint.resize(m).toColumn(n0.toLong)
-      // Multiply by -1 all values corresponding to GE rows
+      // Multiply by -1 all values corresponding to GE/LE rows depending on objective
       val signedConstrains = (resizedConstraint0.constrains, constraintTypes).zipped.map {
-        case (value, operator) => if (operator == LE) value else -value
+        case (value, operator) =>
+          if (
+            operator == LE && objectiveType == MINIMIZE ||
+            operator == GE && objectiveType == MAXIMIZE) {
+            value
+          } else {
+            -value
+          }
       }
-      val resizedConstraint = resizedConstraint0.copy(constrains = signedConstrains)
+      val sign = if (objectiveType == MAXIMIZE) -1.0 else 1.0
+      val resizedConstraint = resizedConstraint0.copy(
+        phase2Cost = sign * resizedConstraint0.phase2Cost,
+        constrains = signedConstrains)
       // Add as many slack variables as there are rows
       val slackVariables = constraintTypes.zipWithIndex.map {
         case (constraintType, i) => constraintType match {
@@ -80,7 +92,7 @@ case class DualTableau(
       // Recompute the negative column
       val negativeColumn = this.negativeColumn.map(column => getNegativeColumn(modifiedColumns))
       // Build the new tableau with modified information
-      DualTableau(modifiedColumns, rhs, constraintTypes, negativeColumn)
+      DualTableau(modifiedColumns, rhs, constraintTypes, negativeColumn, objectiveType)
     } else {
       // If constraint has a negative right-hand side, invert it
       addLinearConstraint(constraint.withPositiveRhs)
@@ -159,7 +171,7 @@ case class DualTableau(
 
   protected def checkSign(rhs: TableauColumn)(column: TableauColumn): TableauColumn = {
     if (column.isBasic) {
-      if (rhs.constrains(column.row) < 0.0) {
+      if (rhs.getConstraint(column.row) < 0.0) {
         column.copy(
           constrains = (e(rhs.constrains.length, column.row) * -1.0).toVector,
           isBasic = false)
@@ -179,14 +191,15 @@ case class DualTableau(
    *
    * Pivot separately the variables A and the right hand side b.
    *
+   * @param simplexPhase simplex phase
    * @param pivotColumn pivot column with its row index specifying the pivot row
    * @return pivoted tableau
    */
-  override def pivot(pivotColumn: TableauColumn): SimplexTableau = {
+  override def pivot(simplexPhase: SimplexPhase)(pivotColumn: TableauColumn): SimplexTableau = {
     this.copy(
-      columns = columns.map(_.pivot(pivotColumn)),
-      rhs = rhs.pivot(pivotColumn),
-      negativeColumn = negativeColumn.map(_.pivot(pivotColumn)))
+      columns = columns.map(_.pivot(simplexPhase)(pivotColumn)),
+      rhs = rhs.pivot(simplexPhase)(pivotColumn),
+      negativeColumn = negativeColumn.map(_.pivot(simplexPhase)(pivotColumn)))
   }
 
 }
@@ -199,7 +212,7 @@ object DualTableau {
    * @param f linear objective function
    * @return tableau containing only the linear objective function
    */
-  def min(f: Variables => Double): DualTableau = objective(f, true)
+  def min(f: Variables => Double): DualTableau = objective(f, MINIMIZE)
 
   /**
    * Given a cost vector, build a initial simplex tableau without any constraint
@@ -208,11 +221,9 @@ object DualTableau {
    * @return tableau with only the linear cost function
    */
   def min(c: Variables): DualTableau = {
-    val constraintTypes = c.map {
-      case value => if (value >= 0.0) LE else GE
-    }
-    val rhs = TableauColumn(0.0, 0.0, c.map(Math.abs).toVector, 1)
-    DualTableau(Vector(), rhs, constraintTypes.toVector)
+    val constraintTypes = c.map(value => if (value >= 0.0) LE else GE)
+    val rhs = TableauColumn(0.0, 0.0, c.map(Math.abs).toVector, -2)
+    DualTableau(Vector(), rhs, constraintTypes.toVector, objectiveType = MINIMIZE)
   }
 
   /**
@@ -221,7 +232,7 @@ object DualTableau {
    * @param f linear objective function
    * @return tableau containing only the linear objective function
    */
-  def max(f: Variables => Double): DualTableau = objective(f, false)
+  def max(f: Variables => Double): DualTableau = objective(f, MAXIMIZE)
 
   /**
    * Given a cost vector, build a initial simplex tableau without any constraint
@@ -230,34 +241,33 @@ object DualTableau {
    * @return tableau with only the linear cost function
    */
   def max(c: Variables): DualTableau = {
-    val constraintTypes = c.map {
-      case value => if (value >= 0.0) LE else GE
-    }
-    val rhs = TableauColumn(0.0, 0.0, c.map(Math.abs).toVector, 1)
-    DualTableau(Vector(), rhs, constraintTypes.toVector)
+    val constraintTypes = c.map(value => if (value >= 0.0) GE else LE)
+    val rhs = TableauColumn(0.0, 0.0, c.map(Math.abs).toVector, -2)
+    DualTableau(Vector(), rhs, constraintTypes.toVector, objectiveType = MAXIMIZE)
   }
 
   /**
    * Given a linear cost function, build an initial primal tableau
    *
-   * @param f            linear objective function
-   * @param isMinimizing true if minimizing f, false if maximizing f
+   * @param f             linear objective function
+   * @param objectiveType minimize or maximize f
    * @return tableau containing only the linear objective function
    */
   def objective(
     f: Variables => Double,
-    isMinimizing: Boolean): DualTableau = {
+    objectiveType: ObjectiveType): DualTableau = {
     def iterate(x: Vector[Double]): Int = Try(f(x)) match {
       case Failure(e) => iterate(x :+ 0.0)
       case Success(value) => x.size
     }
     val n = iterate(Vector(0.0))
     val constrains = (0 until n).map(i => f(e(n, i))).toVector
-    val constraintTypes = constrains.map {
-      case value => if (value >= 0.0) LE else GE
-    }
-    val rhs = TableauColumn(0.0, 0.0, constrains.map(Math.abs), 1)
-    DualTableau(Vector(), rhs, constraintTypes)
+    val constraintTypes = constrains.map(
+      value => if (
+        value >= 0.0 && objectiveType == MINIMIZE ||
+        value < 0.0 && objectiveType == MAXIMIZE) LE else GE)
+    val rhs = TableauColumn(0.0, 0.0, constrains.map(Math.abs), -2)
+    DualTableau(Vector(), rhs, constraintTypes, objectiveType = objectiveType)
   }
 
 }

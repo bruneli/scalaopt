@@ -107,11 +107,11 @@ case class PrimalTableau(
     }
   }
 
-  override def pivot(pivotColumn: TableauColumn): SimplexTableau = {
+  override def pivot(simplexPhase: SimplexPhase)(pivotColumn: TableauColumn): SimplexTableau = {
     this.copy(
-      columns = columns.map(_.pivot(pivotColumn)),
-      rhs = rhs.pivot(pivotColumn),
-      negativeColumn = negativeColumn.map(_.pivot(pivotColumn)))
+      columns = columns.map(_.pivot(simplexPhase)(pivotColumn)),
+      rhs = rhs.pivot(simplexPhase)(pivotColumn),
+      negativeColumn = negativeColumn.map(_.pivot(simplexPhase)(pivotColumn)))
   }
 
   /**
@@ -264,7 +264,7 @@ object PrimalTableau {
     val costSign = if (isMinimizing) -1.0 else 1.0
     val columns =
       (0 until n).map(i => TableauColumn(0.0, costSign * f(e(n, i)), Vector(), i))
-    val rhs = TableauColumn(0.0, 0.0, Vector(), n + 1)
+    val rhs = TableauColumn(0.0, 0.0, Vector(), -2)
     PrimalTableau(columns, rhs, Vector())
   }
 

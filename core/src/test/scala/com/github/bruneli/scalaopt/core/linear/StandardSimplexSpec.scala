@@ -16,10 +16,12 @@
 
 package com.github.bruneli.scalaopt.core.linear
 
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 import com.github.bruneli.scalaopt.core._
 import SeqDataSetConverter._
 import ConstraintOperator._
+
+import scala.collection.immutable.TreeSet
 
 /**
   * @author bruneli
@@ -177,22 +179,27 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
   it should "find the market clearing volumes from an electricity pool auction" in {
 
-    val nDemandOffers = electricityDemand("prices").size
-    val nSupplyOffers = electricitySupply("prices").size
+    val demand = electricityDemand
+    val supply = electricitySupply
+    //val demand = Map("prices" -> Vector(200.0), "energies" -> Vector(200.0))
+    //val supply = Map("prices" -> Vector(100.0, 150.0), "energies" -> Vector(100.0, 200.0))
+
+    val nDemandOffers = demand("prices").size
+    val nSupplyOffers = supply("prices").size
     val nOffers = nDemandOffers + nSupplyOffers
 
     // Electricity cannot be easily stored => total generation must be equal to the total load
     val balancing = LinearConstraint(ones(nDemandOffers) ++ vector(nSupplyOffers, -1.0), EQ, 0.0)
 
     // Upper bound on supplied energy per offer
-    val upperBounds = (electricityDemand("energies") ++ electricitySupply("energies")).zipWithIndex.map {
+    val upperBounds = (demand("energies") ++ supply("energies")).zipWithIndex.map {
       case (max, index) => LinearConstraint(e(nOffers, index), LE, max)
     }
 
     // maximize the social welfare defined as the area between consumption and generation bid ladders
     // given balancing and upper bound constraints
     val tableau = StandardSimplex.solve(
-      PrimalTableau.max(electricityDemand("prices") ++ (electricitySupply("prices") * -1.0))
+      PrimalTableau.max(demand("prices") ++ (supply("prices") * -1.0))
           .subjectTo(upperBounds.toSet + balancing))
 
     tableau shouldBe 'success
@@ -210,34 +217,43 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
   it should "find the market clearing prices from an electricity pool auction" in {
 
-    val nDemandOffers = electricityDemand("prices").size
-    val nSupplyOffers = electricitySupply("prices").size
+    //val demand = electricityDemand
+    //val supply = electricitySupply
+    val demand = Map("prices" -> Vector(200.0, 140.0), "energies" -> Vector(200.0, 50.0))
+    val supply = Map("prices" -> Vector(100.0, 150.0, 175.0), "energies" -> Vector(100.0, 150.0, 20.0))
+
+    val nDemandOffers = demand("prices").size
+    val nSupplyOffers = supply("prices").size
     val nOffers = nDemandOffers + nSupplyOffers
 
     // Electricity cannot be easily stored => total generation must be equal to the total load
     val balancing = LinearConstraint(ones(nDemandOffers) ++ vector(nSupplyOffers, -1.0), EQ, 0.0)
 
     // Upper bound on supplied energy per offer
-    val upperBounds = (electricityDemand("energies") ++ electricitySupply("energies")).zipWithIndex.map {
+    val upperBounds = (demand("energies") ++ supply("energies")).zipWithIndex.map {
       case (max, index) => LinearConstraint(e(nOffers, index), LE, max)
     }
 
     // maximize the social welfare defined as the area between consumption and generation bid ladders
     // given balancing and upper bound constraints
+    implicit val orderByVolume = Ordering.by[LinearConstraint, Double](_.b)
+    val constraints: TreeSet[LinearConstraint] = TreeSet(upperBounds :+ balancing: _*)
     val tableau = StandardSimplex.solve(
-      DualTableau.max(electricityDemand("prices") ++ (electricitySupply("prices") * -1.0))
-          .subjectTo(upperBounds.toSet + balancing))
+      DualTableau.max(demand("prices") ++ (supply("prices") * -1.0)).subjectTo(constraints))
 
     tableau shouldBe 'success
 
-    // Select all demand offers with prices >= 37.5 and supply offers with prices <= 37.5
-    // To match demand and supply, the last supply offer has only 55 MWh selected.
-    val expectedClearing =
-      Vector(250.0, 300.0, 120.0, 80.0, 40.0, 70.0, 60.0, 45.0, 30.0, 0.0, 0.0, 0.0,
-        120.0, 50.0, 200.0, 400.0, 60.0, 50.0, 60.0, 55.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    // Select all demand offers with prices >= 150.0 and supply offers with prices <= 150.0
+    // To match demand and supply, the last supply offer has only 100 MWh selected.
+    val expectedClearingVolumes = Vector(200.0, 0.0, 100.0, 100.0, 0.0)
+    // First price is the clearing price, next are income per offer ordered by increasing volume
+    val expectedClearingPrices = Vector(150.0, 0.0, 0.0, 50.0, 0.0, 50.0)
 
-    for ((selectedVolume, expectedVolume) <- tableau.get.solution.zip(expectedClearing)) {
+    for ((selectedVolume, expectedVolume) <- tableau.get.dual.zip(expectedClearingVolumes)) {
       selectedVolume shouldBe expectedVolume +- 1.0e-8
+    }
+    for ((actualPrice, expectedPrice) <- tableau.get.primal.zip(expectedClearingPrices)) {
+      actualPrice shouldBe expectedPrice +- 1.0e-8
     }
   }
 }

@@ -40,7 +40,7 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
    */
   def primal: Variables = {
     val offset = negativeColumn.map {
-      column: TableauColumn => if (column.isBasic) rhs.constrains(column.row) else 0.0
+      column: TableauColumn => if (column.isBasic) rhs.getConstraint(column.row) else 0.0
     }.getOrElse(0.0)
     columns
       .filter(isInitialColumn)
@@ -78,8 +78,8 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
    * @return constraint
    */
   override def constraint(i: Int): Constraint = {
-    val a = columns.map(_.constrains(i))
-    LinearConstraint(a, EQ, rhs.constrains(i)).toConstraint
+    val a = columns.map(_.getConstraint(i))
+    LinearConstraint(a, EQ, rhs.getConstraint(i)).toConstraint
   }
 
   /**
@@ -153,10 +153,11 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
    *
    * Pivot separately the variables A and the right hand side b.
    *
+   * @param simplexPhase simplex phase
    * @param pivotColumn pivot column with its row index specifying the pivot row
    * @return pivoted tableau
    */
-  def pivot(pivotColumn: TableauColumn): SimplexTableau
+  def pivot(simplexPhase: SimplexPhase)(pivotColumn: TableauColumn): SimplexTableau
 
   /**
    * Find a pivot column and row and perform a pivot of the tableau around it
@@ -165,13 +166,13 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
    * @return pivoted tableau or failure
    */
   def performPivot(simplexPhase: SimplexPhase): Try[SimplexTableau] = {
-    Try(pivotColumn(simplexPhase)).map(pivot)
+    Try(pivotColumn(simplexPhase)).map(pivot(simplexPhase))
   }
 
   /**
    * Find the column with the smallest cost and set its row index to the row with the smallest min ratio
    *
-   * @param phase   look at simplex phase 1 or phase 2 cost
+   * @param phase look at simplex phase 1 or phase 2 cost
    * @return column with the smallest cost
    */
   protected def pivotColumn(phase: SimplexPhase): TableauColumn = {
@@ -302,6 +303,17 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
       row = row)
   }
 
+  override def toString = {
+    val phase1Cost = f"z1|${columns.collect().map(_.phase1Cost.toString).map(formatStr).mkString("|")}|${rhs.phase1Cost}%3.1f\n"
+    val phase2Cost = f"z2|${columns.collect().map(_.phase2Cost.toString).map(formatStr).mkString("|")}|${rhs.phase2Cost}%3.1f\n"
+    rhs.constrains.indices.foldLeft(phase1Cost + phase2Cost) {
+      case (previous, index) =>
+        previous + f"c$index|${columns.collect().map(_.getConstraint(index).toString).map(formatStr).mkString("|")}|${rhs.getConstraint(index)}%3.1f\n"
+    }
+  }
+
+  private def formatStr(str: String): String = f"$str%6s"
+
 }
 
 /**
@@ -326,11 +338,23 @@ case class TableauColumn(
   isBasic: Boolean = false,
   isArtificial: Boolean = false) {
 
+  def getConstraints(n: Int = 0): Vector[Double] = {
+    if (constrains.isEmpty) e(Math.max(row, n), row).toVector else constrains
+  }
+
+  def getConstraint(index: Int): Double = {
+    if (constrains.isEmpty) {
+      if (index == row) 1.0 else 0.0
+    } else {
+      constrains(index)
+    }
+  }
+
   def +(that: TableauColumn): TableauColumn = {
     TableauColumn(
       this.phase1Cost + that.phase1Cost,
       this.phase2Cost + that.phase2Cost,
-      (this.constrains + that.constrains).toVector,
+      (this.getConstraints() + that.getConstraints()).toVector,
       0)
   }
 
@@ -340,7 +364,7 @@ case class TableauColumn(
   def *(multiplier: Double): TableauColumn = {
     this.copy(phase1Cost = phase1Cost * multiplier,
       phase2Cost = phase2Cost * multiplier,
-      constrains = constrains.map(_ * multiplier))
+      constrains = this.getConstraints().map(_ * multiplier))
   }
 
   /**
@@ -350,7 +374,7 @@ case class TableauColumn(
     this.copy(
       phase1Cost = -this.phase1Cost,
       phase2Cost = -this.phase2Cost,
-      constrains = this.constrains.map(_ * -1.0))
+      constrains = this.getConstraints().map(_ * -1.0))
   }
 
   /**
@@ -361,29 +385,28 @@ case class TableauColumn(
    * X_j := X_j / Y_j
    * with j the pivoting row
    *
+   * @param simplexPhase simplex phase
    * @param that pivot column
    * @return pivoted column
    */
-  def pivot(that: TableauColumn): TableauColumn = {
+  def pivot(simplexPhase: SimplexPhase)(that: TableauColumn): TableauColumn = {
     if (this.column == that.column) {
       // The entering column becomes a basic variable
-      this.toBasicVariable(that.row)
+      this.toBasicVariable(simplexPhase, that.row)
     } else if (this.isBasic && this.row != that.row) {
       // Basic variables are unchanged if their row index is different from the pivoting row
       this
     } else {
       // Column is rescaled according to the pivot column
-      val constrains0 = if (this.isBasic) {
-        e(that.constrains.size, this.row).toVector
-      } else {
-        this.constrains
-      }
-      val pivotValue = constrains0(that.row) / that.constrains(that.row)
+      val constrains0 = getConstraints(that.constrains.size)
+      val pivotValue = constrains0(that.row) / that.getConstraint(that.row)
       val phase1Cost = this.phase1Cost - that.phase1Cost * pivotValue
       val phase2Cost = this.phase2Cost - that.phase2Cost * pivotValue
+      //val phase1Cost = if (simplexPhase == PHASE1) this.phase1Cost - that.phase1Cost * pivotValue else this.phase1Cost
+      //val phase2Cost = if (simplexPhase == PHASE2) this.phase2Cost - that.phase2Cost * pivotValue else this.phase2Cost
       val constrains = constrains0.zipWithIndex.map {
         case (value, i) =>
-          if (i == that.row) pivotValue else value - that.constrains(i) * pivotValue
+          if (i == that.row) pivotValue else value - that.getConstraint(i) * pivotValue
       }
       val newColumn = this.copy(
         phase1Cost = phase1Cost,
@@ -405,10 +428,10 @@ case class TableauColumn(
   /**
    * Fill the column with 0 except for the row-th element equal to 1
    */
-  def toBasicVariable(row: Int) = {
+  def toBasicVariable(simplexPhase: SimplexPhase, row: Int) = {
     this.copy(
-      phase1Cost = 0.0,
-      phase2Cost = 0.0,
+      phase1Cost = if (simplexPhase == PHASE1) 0.0 else this.phase1Cost,
+      phase2Cost = if (simplexPhase == PHASE2) 0.0 else this.phase2Cost,
       constrains = Vector.empty[Double],
       row = row,
       isBasic = true)
