@@ -13,7 +13,7 @@ publishTo := {
 
 publishArtifact in Test := false
 
-pomExtra := (
+pomExtra :=
   <url>https://github.com/bruneli/scalaopt</url>
     <licenses>
       <license>
@@ -32,7 +32,7 @@ pomExtra := (
         <name>Renaud Bruneliere</name>
         <url>https://github.com/bruneli</url>
       </developer>
-    </developers>)
+    </developers>
 
 lazy val commonSettings = Seq(
   organization := "com.github.bruneli.scalaopt",
