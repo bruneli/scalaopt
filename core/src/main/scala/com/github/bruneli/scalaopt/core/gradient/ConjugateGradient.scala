@@ -19,7 +19,10 @@ package com.github.bruneli.scalaopt.core.gradient
 import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.core.linesearch.StrongWolfe
 import StrongWolfe.{StrongWolfeConfig, stepLength}
-import scala.util.{Try, Success, Failure}
+import com.github.bruneli.scalaopt.core.function.DifferentiableObjectiveFunction
+import com.github.bruneli.scalaopt.core.variable.{LineSearchPoint, UnconstrainedVariable}
+
+import scala.util.{Failure, Success, Try}
 
 /**
  * Implements the non-linear conjugate gradient method.
@@ -35,7 +38,7 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object ConjugateGradient extends Optimizer[ObjectiveFunction, CGConfig] {
+object ConjugateGradient extends GradientMethod[CGConfig] {
 
   implicit val defaultConfig: CGConfig = new CGConfig
 
@@ -48,9 +51,9 @@ object ConjugateGradient extends Optimizer[ObjectiveFunction, CGConfig] {
    * @return Variables at a local minimum
    */
   override def minimize(
-    f:  ObjectiveFunction,
-    x0: Variables)(
-    implicit pars: CGConfig): Try[Variables] = {
+    f:  DifferentiableObjectiveFunction[UnconstrainedVariable],
+    x0: UnconstrainedVariablesType)(
+    implicit pars: CGConfig): Try[UnconstrainedVariablesType] = {
 
     // Number of dimensions
     val n = x0.length
@@ -58,9 +61,9 @@ object ConjugateGradient extends Optimizer[ObjectiveFunction, CGConfig] {
     // Iterate until the gradient is lower than tol
     def iterate(
       k:  Int,
-      ptk: LineSearchPoint): Try[Variables] = {
+      ptk: LineSearchPoint): Try[UnconstrainedVariablesType] = {
       if (k >= pars.maxIter)
-        Failure(throw new MaxIterException(
+        Failure(throw MaxIterException(
         		"Maximum number of iterations reached."))
       
       // Try to find an approximate step length satisfying the strong
@@ -87,8 +90,8 @@ object ConjugateGradient extends Optimizer[ObjectiveFunction, CGConfig] {
   }
 
   def beta(
-    dfk: Variables,
-    dfkpp: Variables,
+    dfk: UnconstrainedVariablesType,
+    dfkpp: UnconstrainedVariablesType,
     method: String): Double = {
     val norm2dfk = dfk dot dfk
     method match {

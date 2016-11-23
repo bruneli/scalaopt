@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-package com.github.bruneli.scalaopt.core;
+package com.github.bruneli.scalaopt.core.linear
+
+import com.github.bruneli.scalaopt.core.ConfigPars
+import com.github.bruneli.scalaopt.core.constraint.CPSolver
 
 /**
- * Enumerate the different type of constraint operators i.e. equal, lower equal, greater equal
+ * Method used to solve a linear programming problem
  *
  * @author bruneli
  */
-public enum ConstraintOperator {
-
-    EQ, LE, GE
-
-}
+trait LPSolver[-C <: ConfigPars] extends CPSolver[LP, C]

@@ -17,6 +17,7 @@
 package com.github.bruneli.scalaopt.core
 
 import com.github.bruneli.scalaopt.core.linalg.{AugmentedRow, QR}
+import com.github.bruneli.scalaopt.core.variable.DataPoint
 
 import scala.util.Try
 
@@ -50,12 +51,13 @@ package object linear {
    * @param addOrigin add an origin to the linear formula
    * @return a successful solution Beta of the linear equation or failure
    */
-  def lm(data: DataSet[DataPoint], addOrigin: Boolean = true): Try[Variables] =
+  def lm(data: DataSet[DataPoint], addOrigin: Boolean = true): Try[UnconstrainedVariablesType] =
     Try {
       val n = if (addOrigin) data.head.x.size + 1 else data.head.x.size
       val ab = data.zipWithIndex.map {
         case (row, index) =>
-          val a = if (addOrigin) 1.0 +: row.x else row.x
+          val a: InputsType = row.x
+          // TODO if (addOrigin) Input(1.0) +: row.x else row.x
           AugmentedRow(a, row.y.head, index)
       }
       QR(ab, n).solution

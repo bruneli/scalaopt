@@ -16,28 +16,33 @@
 
 package com.github.bruneli.scalaopt.core
 
+import com.github.bruneli.scalaopt.core.function.ObjectiveFunction
+import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.variable.Variable
+
 import scala.util.Try
 
 /**
  * An optimizer should implement at least one minimize method.
  *
- * @tparam A objective function type
- * @tparam B configuration parameters type
+ * @tparam A optimization variable type
+ * @tparam B objective function type
+ * @tparam C configuration parameters type
  * @author bruneli
  */
-trait Optimizer[A <: ObjectiveFunction, B <: ConfigPars] {
+trait Optimizer[A <: Variable, B <: ObjectiveFunction[A], C <: ConfigPars] {
 
-  val defaultConfig: B
+  val defaultConfig: C
 
   /**
-   * Minimize an objective function acting on a vector of real values.
+   * Minimize an objective function acting on a vector of variables.
    *
    * @param f    real-valued objective function
    * @param x0   initial Variables
    * @param pars algorithm configuration parameters
    * @return Variables at a local minimum or failure
    */
-  def minimize(f: A, x0: Variables)(implicit pars: B): Try[Variables]
+  def minimize(f: B, x0: DenseVector[A])(implicit pars: C): Try[DenseVector[A]]
 
 }
 

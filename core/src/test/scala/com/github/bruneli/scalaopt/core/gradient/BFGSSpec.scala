@@ -17,20 +17,22 @@
 package com.github.bruneli.scalaopt.core.gradient
 
 import com.github.bruneli.scalaopt.core._
-import scala.util.{Success, Failure}
+import com.github.bruneli.scalaopt.core.variable.UnconstrainedVariables
+
+import scala.util.{Failure, Success}
 import org.scalatest._
 
 class BFGSSpec extends FlatSpec with Matchers {
   import BFGS._
   
-  val x0 = Vector(0.5, 2.0)
-  val fQuad = (x: Variables) => (x - x0) dot (x - x0)
-  val dfQuad = (x: Variables) => (x - x0) * 2.0
+  val x0 = UnconstrainedVariables(0.5, 2.0)
+  val fQuad = (x: UnconstrainedVariablesType) => (x - x0) dot (x - x0)
+  val dfQuad = (x: UnconstrainedVariablesType) => (x - x0) * 2.0
 
   val config = new BFGSConfig(tol = 1.0e-6)
 
   "minimize with exact derivatives" should "converge to x0" in {
-    val d = minimize((fQuad, dfQuad), Vector(0.0, 0.0)) match {
+    val d = minimize((fQuad, dfQuad), UnconstrainedVariables(0.0, 0.0)) match {
       case Success(xmin) => xmin - x0
       case Failure(e) => x0
     }
@@ -38,7 +40,7 @@ class BFGSSpec extends FlatSpec with Matchers {
   }
 
   "minimize with finite diff derivatives" should "converge to x0" in {
-    val d = minimize(fQuad, Vector(0.0, 0.0)) match {
+    val d = minimize(fQuad, UnconstrainedVariables(0.0, 0.0)) match {
       case Success(xmin) => xmin - x0
       case Failure(e) => x0
     }
@@ -47,7 +49,7 @@ class BFGSSpec extends FlatSpec with Matchers {
   
   "minimize" should "throw an error if reaching max number of iterations" in {
     a [MaxIterException] should be thrownBy {
-      minimize((x: Variables) => x(0) + x(1), Vector(0.0, 0.0))
+      minimize((x: UnconstrainedVariablesType) => x(0) + x(1), UnconstrainedVariables(0.0, 0.0))
     }
   }
 

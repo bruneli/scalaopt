@@ -19,6 +19,9 @@ package com.github.bruneli.scalaopt.core.gradient
 import com.github.bruneli.scalaopt.core.linesearch.StrongWolfe
 import com.github.bruneli.scalaopt.core._
 import StrongWolfe._
+import com.github.bruneli.scalaopt.core.function.DifferentiableObjectiveFunction
+import com.github.bruneli.scalaopt.core.variable.{LineSearchPoint, UnconstrainedVariable}
+import com.github.bruneli.scalaopt.core.linalg.DenseVector._
 
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
@@ -37,7 +40,7 @@ import scala.util.{Failure, Success, Try}
  *
  * @author bruneli
  */
-object NewtonCG extends Optimizer[ObjectiveFunction, CGConfig] {
+object NewtonCG extends GradientMethod[CGConfig] {
 
   implicit val defaultConfig: CGConfig = new CGConfig
 
@@ -50,18 +53,18 @@ object NewtonCG extends Optimizer[ObjectiveFunction, CGConfig] {
    * @return Variables at a local minimum or failure
    */
   override def minimize(
-    f: ObjectiveFunction,
-    x0: Variables)(
-    implicit pars: CGConfig): Try[Variables] = {
+    f: DifferentiableObjectiveFunction[UnconstrainedVariable],
+    x0: UnconstrainedVariablesType)(
+    implicit pars: CGConfig): Try[UnconstrainedVariablesType] = {
 
-    def iterate(k: Int, ptk: LineSearchPoint): Try[Variables] = {
+    def iterate(k: Int, ptk: LineSearchPoint): Try[UnconstrainedVariablesType] = {
       if (k >= pars.maxIter)
-        Failure(throw new MaxIterException(
+        Failure(throw MaxIterException(
           "Maximum number of iterations reached."))
 
       val dfxNorm = ptk.grad.norm
       val epsk = Math.min(0.5, Math.sqrt(dfxNorm)) * dfxNorm
-      val z0 = zeros(ptk.x.size)
+      val z0 = zeros[UnconstrainedVariable](ptk.x.size)
       val r0 = ptk.grad
       val d0 = -r0
       val ptkPrim = searchDirection(0, ptk.copy(d = d0), z0, r0, epsk)
@@ -75,15 +78,15 @@ object NewtonCG extends Optimizer[ObjectiveFunction, CGConfig] {
       }
     }
 
-    iterate(0, LineSearchPoint(x0, f, zeros(x0.size)))
+    iterate(0, LineSearchPoint(x0, f, zeros[UnconstrainedVariable](x0.size)))
   }
 
   @tailrec
   private def searchDirection(
     j: Int,
     ptk: LineSearchPoint,
-    zj: Variables,
-    rj: Variables,
+    zj: UnconstrainedVariablesType,
+    rj: UnconstrainedVariablesType,
     epsk: Double): LineSearchPoint = {
     if ((ptk.d dot ptk.d2fxd) <= 0.0) {
       if (j == 0) ptk.copy(d = -ptk.grad) else ptk.copy(d = zj)

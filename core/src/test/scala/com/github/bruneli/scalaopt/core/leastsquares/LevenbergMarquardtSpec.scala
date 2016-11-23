@@ -17,7 +17,9 @@
 package com.github.bruneli.scalaopt.core.leastsquares
 
 import com.github.bruneli.scalaopt.core._
-import org.scalatest.{TryValues, Matchers, FlatSpec}
+import com.github.bruneli.scalaopt.core.function.RegressionFunction
+import com.github.bruneli.scalaopt.core.variable._
+import org.scalatest.{FlatSpec, Matchers, TryValues}
 
 import scala.util.Random
 
@@ -25,53 +27,61 @@ import scala.util.Random
  * @author bruneli
  */
 class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
+
   import SeqDataSetConverter._
   import LevenbergMarquardt._
 
   val random = new Random(12345)
 
   "minimize" should "converge to its solution for a linear system" in {
-    /** Linear objective function */
-    val linear = (p: Variables, x: Variables) => Seq(p.head + p.tail.zip(x).map { case (p, x) => p * x }.sum[Double])
+    /** Linear regression, first variable is the intercept */
+    val linear: RegressionFunction = {
+      (p: UnconstrainedVariablesType, x: InputsType) => Outputs(p(0) + p.tail.inner(x))
+    }
 
     val tol = 0.5
     val n = 10
     val m = 1000
-    val p0 = 80.0 +: (0 until n).map(_.toDouble)
+    val p0 = new UnconstrainedVariables((80.0 +: (0 until n).map(_.toDouble)).toArray)
 
     val data: DataSet[DataPoint] =
       for (i <- 0 until m) yield {
         val x = randomVec(n, random)
-        val y = linear(p0, x) + Seq(random.nextGaussian())
+        val y = Output(linear(p0, x)(0) + random.nextGaussian())
         DataPoint(x, y)
       }
 
-    val popt = minimize((linear, data), p0)
-    popt should be a 'success
-    popt.get.size should be (n + 1)
-    for ((estimated, expected) <- popt.get.zip(p0)) estimated shouldBe expected +- tol
+    val pOpt = minimize((linear, data), p0)
+    pOpt should be a 'success
+    pOpt.get.size should be(n + 1)
+    for ((estimated, expected) <- pOpt.get.zip(p0)) estimated.x shouldBe expected.x +- tol
   }
 
   it should "converge to its solution for a non-linear objective function" in {
-    /** Exponential objective function */
-    val exponential = (x: Variables, t: Variables) => Seq(x(0) * Math.exp(x(1) * t(0)))
-
+    /** Exponential regression function */
+    val exponential: RegressionFunction = {
+      (x: UnconstrainedVariablesType, t: InputsType) => Outputs(x(0) * Math.exp(x(1) * t(0)))
+    }
     val tol = 0.2
     val n = 10
-    val x0 = Vector(2.0, 1.0)
+    val x0 = UnconstrainedVariables(2.0, 1.0)
     val sigma = 0.1
 
     val data: DataSet[DataPoint] = for (i <- 0 until n) yield {
-      val t = Seq(i.toDouble / n)
-      val y = exponential(x0, t) + Seq(sigma * random.nextGaussian())
+      val t = Inputs(i.toDouble / n)
+      val y = Output(exponential(x0, t)(0) + sigma * random.nextGaussian())
       DataPoint(t, y)
     }
 
-    val solution = minimize((exponential, data), Vector(4.0, 0.5))
+    val solution = minimize((exponential, data), UnconstrainedVariables(4.0, 0.5))
     solution should be a 'success
-    solution.get(0) shouldBe x0(0) +- tol
-    solution.get(1) shouldBe x0(1) +- tol
+    solution.get(0).x shouldBe x0(0).x +- tol
+    solution.get(1).x shouldBe x0(1).x +- tol
+
   }
 
-  private def randomVec(n: Int, random: Random) = for (i <- 0 until n) yield random.nextDouble()
+  private def randomVec(n: Int, random: Random): Inputs = {
+    val randomSeq = for (i <- 0 until n) yield random.nextDouble()
+    new Inputs(randomSeq.toArray)
+  }
 }

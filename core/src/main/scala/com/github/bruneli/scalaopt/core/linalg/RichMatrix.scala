@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package com.github.bruneli.scalaopt.core
+package com.github.bruneli.scalaopt.core.linalg
 
-import org.apache.commons.math3.linear.{ArrayRealVector, RealMatrix}
+import com.github.bruneli.scalaopt.core._
+import org.apache.commons.math3.linear.RealMatrix
 
 /**
  * Enrich apache math3 RealMatrix with operators.
@@ -71,9 +72,9 @@ class RichMatrix(m: RealMatrix) {
     }
 
   /** Matrix-Vector multiplication */
-  def * (that: Variables): Variables =
+  def * (that: UnconstrainedVariablesType): UnconstrainedVariablesType =
     if (m.getColumnDimension == that.length) {
-      m.operate(that.toArray)
+      m.operate(that.raw)
     } else {
       throw new IllegalArgumentException(
         s"Number of columms ${m.getColumnDimension} != vector dimension ${that.length}")

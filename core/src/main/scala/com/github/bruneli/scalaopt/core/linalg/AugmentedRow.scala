@@ -16,8 +16,8 @@
 
 package com.github.bruneli.scalaopt.core.linalg
 
-import com.github.bruneli.scalaopt.core
 import com.github.bruneli.scalaopt.core._
+import com.github.bruneli.scalaopt.core.variable.{Input, Output, VariableFromDouble}
 
 /**
  * Row to represent an augmented matrix used to solve a linear system AX = B
@@ -28,21 +28,25 @@ import com.github.bruneli.scalaopt.core._
  *
  * @author bruneli
  */
-case class AugmentedRow(a: Variables, b: Double, i: Long) {
+case class AugmentedRow(a: InputsType, b: Output, i: Long) extends VariableFromDouble {
 
-  def +(that: AugmentedRow): AugmentedRow =
-    AugmentedRow(that.a + this.a, that.b + this.b, i)
+  def +(that: AugmentedRow): AugmentedRow = {
+    AugmentedRow(that.a + this.a, that.b.x + this.b.x, i)
+  }
 
   override def toString = s"row $i (${a.mkString(", ")} | $b)"
 
 }
 
-object AugmentedRow {
+object AugmentedRow extends VariableFromDouble {
 
-  def apply(ab: (Variables, Double), i: Long): AugmentedRow =
+  def apply(ab: (InputsType, Output),
+    i: Long): AugmentedRow = {
     AugmentedRow(ab._1, ab._2, i)
+  }
 
-  def zeros(n: Int): AugmentedRow =
-    AugmentedRow(core.zeros(n), 0.0, 0)
+  def zeros(n: Int): AugmentedRow = {
+    AugmentedRow(DenseVector.zeros[Input](n), 0.0, 0)
+  }
 
 }

@@ -17,7 +17,11 @@
 package com.github.bruneli.scalaopt.core.linesearch
 
 import com.github.bruneli.scalaopt.core._
-import scala.util.{Try, Success, Failure}
+import com.github.bruneli.scalaopt.core.function.ObjectiveFunctionWithGradient
+import com.github.bruneli.scalaopt.core.linalg.{DenseVector, SimpleDenseVector}
+import com.github.bruneli.scalaopt.core.variable.{LineSearchPoint, UnconstrainedVariable, VariableFromDouble}
+
+import scala.util.{Failure, Success, Try}
 
 /**
  * Line search algorithm satisfying the strong Wolfe conditions.
@@ -31,7 +35,7 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object StrongWolfe {
+object StrongWolfe extends VariableFromDouble {
   /**
    * Configuration parameters for the Strong Wolfe step length search.
    *
@@ -63,14 +67,17 @@ object StrongWolfe {
    * @return step length alphaStar or a Failure
    */
   def findStepLength(
-    f:  Double => Double,
-    df: Double => Double)(
-    implicit pars: StrongWolfeConfig): Try[Double] = {
+    f:  UnconstrainedVariable => Double,
+    df: UnconstrainedVariable => Double)(
+    implicit pars: StrongWolfeConfig): Try[UnconstrainedVariable] = {
 
-    val fVec = (x: Variables) => f(x(0))
-    val dfVec = (x: Variables) => Seq(df(x(0)))
+    val fVec = (x: UnconstrainedVariablesType) => f(x(0))
+    val dfVec = (x: UnconstrainedVariablesType) => SimpleDenseVector[UnconstrainedVariable](df(x(0)))
 
-    stepLength(LineSearchPoint(Seq(0.0), (fVec, dfVec), Seq(1.0)))(pars).map(_.x(0))
+    stepLength(LineSearchPoint(
+      SimpleDenseVector[UnconstrainedVariable](0.0),
+      (fVec, dfVec),
+      SimpleDenseVector[UnconstrainedVariable](1.0)))(pars).map(_.x(0))
   }
 
   /**
@@ -90,7 +97,7 @@ object StrongWolfe {
       val pt1 = pt0.copy(x = ptInit.x + ptInit.d * a1)
       val (f1, df1) = (pt1.fx, pt1.dfx)
       if (iter >= pars.line.maxIter)
-        Failure(throw new MaxIterException(
+        Failure(throw MaxIterException(
         		"Maximum number of iterations reached."))
       // Test the sufficient decrease condition.
       // If it fails, zoom within that interval

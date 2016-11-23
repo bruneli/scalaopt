@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com.github.bruneli.scalaopt.core
+package com.github.bruneli.scalaopt.core.linalg
 
+import com.github.bruneli.scalaopt.core._
 import org.apache.commons.math3.linear.Array2DRowRealMatrix
 import org.scalatest._
-import org.scalatest.Matchers._
 
 /**
  * @author bruneli

@@ -19,8 +19,10 @@ package com.github.bruneli.scalaopt.stdapps.learning.nnet
 import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.core.linalg.AugmentedRow
 import SeqDataSetConverter._
+import com.github.bruneli.scalaopt.core.function.MSEFunction
+import com.github.bruneli.scalaopt.core.variable.DataPoint
 
-import scala.util.{Try, Random}
+import scala.util.{Random, Try}
 
 /**
  * Feed-forward neural network.

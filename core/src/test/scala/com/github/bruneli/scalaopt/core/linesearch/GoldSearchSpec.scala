@@ -18,9 +18,8 @@ package com.github.bruneli.scalaopt.core.linesearch
 
 import com.github.bruneli.scalaopt.core.MaxIterException
 
-import scala.util.{Try, Success, Failure}
+import scala.util.{Success, Failure}
 import org.scalatest._
-import org.scalatest.Matchers._
 
 class GoldSearchSpec extends FlatSpec with Matchers {
   import GoldSearch._

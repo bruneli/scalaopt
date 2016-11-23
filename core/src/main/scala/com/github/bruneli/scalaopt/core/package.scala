@@ -16,6 +16,11 @@
 
 package com.github.bruneli.scalaopt
 
+import com.github.bruneli.scalaopt.core.constraint.GeneralConstraintBuilder
+import com.github.bruneli.scalaopt.core.function._
+import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions.{FromDouble, ToDouble}
+import com.github.bruneli.scalaopt.core.linalg.{DenseVector, RichMatrix, SimpleDenseVector}
+import com.github.bruneli.scalaopt.core.variable._
 import org.apache.commons.math3.linear.RealMatrix
 
 /**
@@ -33,51 +38,77 @@ import org.apache.commons.math3.linear.RealMatrix
  *
  * @author bruneli
  */
-package object core {
+package object core extends VariableFromDouble {
 
-  /** Define the vector of variables as a sequence of Double values */
-  type Variables = Seq[Double]
+  /** Define the vector of variables as an Array of abstract Variable objects */
+  type UnconstrainedVariablesType = DenseVector[UnconstrainedVariable]
+  type PositiveVariablesType = DenseVector[PositiveVariable]
+  type ContinuousVariablesType = DenseVector[ContinuousVariable]
+  type InputsType = DenseVector[Input]
+  type OutputsType = DenseVector[Output]
 
-  /** Function taking as input p unknown parameters and x observed values to give estimates of y dependent variables */
-  type RegressionFunction = (Variables, Variables) => Variables
+  /** Implicit conversion from a ToDouble derived class to its Double value */
+  implicit def DoubleFromToDouble[A <: ToDouble](x: A): Double = x.x
+
+  /** Implicit conversion of an array of double to a dense vector of variables */
+  implicit def toUnconstrainedVariables(raw: Array[Double]): UnconstrainedVariablesType = {
+    new SimpleDenseVector[UnconstrainedVariable](raw)
+  }
+  implicit def toInputs(raw: Array[Double]): InputsType = {
+    new SimpleDenseVector[Input](raw)
+  }
+  implicit def toOutputs(raw: Array[Double]): OutputsType = {
+    new SimpleDenseVector[Output](raw)
+  }
 
   /** Implicit conversion of a (function, gradient) tuple to an objective function */
-  implicit def toFunctionWithGradient(f: (Variables => Double, Variables => Variables)): ObjectiveFunction = {
-    new SimpleFunctionWithGradient(f)
+  implicit def toFunctionWithGradient(
+    f: (UnconstrainedVariablesType => Double,
+      UnconstrainedVariablesType => UnconstrainedVariablesType)): DifferentiableObjectiveFunction[UnconstrainedVariable] = {
+    ObjectiveFunctionWithGradient(f)
   }
 
   /** Implicit conversion of a function to an objective function with finite differences derivatives */
-  implicit def toFunctionWoGradient(f: Variables => Double): ObjectiveFunction = new SimpleFunctionFiniteDiffGradient(f)
-
-  /** Implicit conversion of a regression function with set of data points to an MSE objective function */
-  implicit def toMSEFunctionWoGradient(funcAndData: (RegressionFunction, DataSet[DataPoint])): MSEFunction = {
-    new SimpleMSEFunction(funcAndData._1, funcAndData._2)
+  implicit def toFunctionWoGradient(
+    f: UnconstrainedVariablesType => Double): DifferentiableObjectiveFunction[UnconstrainedVariable] = {
+    ObjectiveFunctionFiniteDiffDerivatives(f)
   }
 
-  /** Implicit conversion of Seq[Double] to RichVariables */
-  implicit def toRichVariables(v: Variables): RichVariables = new RichVariables(v)
+  /** Implicit conversion of a function acting on parameters and inputs to a regression function */
+  implicit def toRegressionFunction(
+    f: (UnconstrainedVariablesType, InputsType) => OutputsType): RegressionFunction = {
+    GeneralRegressionFunction(f)
+  }
+
+  /** Implicit conversion of a regression function with a set of data points to an MSE objective function */
+  implicit def toMSEFunctionWoGradient(funcAndData: (RegressionFunction, DataSet[DataPoint])): MSEFunction = {
+    SimpleMSEFunction(funcAndData._1, funcAndData._2)
+  }
+
+  /** Implicit conversion of a function to a linear objective function */
+  implicit def toLinearObjectiveFunction[A <: ContinuousVariable : FromDouble](
+    f: DenseVector[A] => Double): LinearObjectiveFunction[A] = {
+    LinearObjectiveFunction(f)
+  }
+  implicit def toLinearObjectiveFunction(
+    f: ContinuousVariablesType => Double): LinearObjectiveFunction[ContinuousVariable] = {
+    LinearObjectiveFunction(f)(ContinuousVariableFromDouble)
+  }
 
   /** Implicit conversion of RealMatrix to RichMatrix */
   implicit def toRichMatrix(m: RealMatrix): RichMatrix = new RichMatrix(m)
 
-  /** Implicit conversion of a real-valued function to the left hand side of a constraint */
-  implicit def toLHConstraint(c: Variables => Double): LHConstraint = new LHConstraint(c)
+  /** Implicit conversion of a real-valued function to the left operand of a constraint */
+  implicit def toConstraintBuilder[A <: Variable : FromDouble](c: DenseVector[A] => Double): GeneralConstraintBuilder[A] = {
+    new GeneralConstraintBuilder[A](c)
+  }
+  implicit def toConstraintBuilder(c: ContinuousVariablesType => Double): GeneralConstraintBuilder[ContinuousVariable] = {
+    new GeneralConstraintBuilder[ContinuousVariable](c)(ContinuousVariableFromDouble)
+  }
 
   /** Implicit conversion of a tuple (x, y) to a DataPoint */
-  implicit def toDataPointYVector(xy: (Variables, Variables)): DataPoint = DataPoint(xy._1, xy._2)
+  implicit def toDataPointYVector(xy: (InputsType, OutputsType)): DataPoint = DataPoint(xy._1, xy._2)
 
-  implicit def toDataPointYScalar(xy: (Variables, Double)): DataPoint = DataPoint(xy._1, Vector(xy._2))
-
-  /** Create an n-vector of Variables filled with a constant value */
-  def vector(n: Int, value: Double): Variables = (1 to n).map(i => value)
-
-  /** Create a n-vector of Variables filled with zeros */
-  def zeros(n: Int): Variables = vector(n, 0.0)
-
-  /** Create an n-vector of Variables filled with ones */
-  def ones(n: Int): Variables = vector(n, 1.0)
-
-  /** Create an n-dimensional basis vector with i-th element set to 1 */
-  def e(n: Int, i: Int): Variables = zeros(n).updated(i, 1.0)
+  implicit def toDataPointYScalar(xy: (InputsType, Output)): DataPoint = DataPoint(xy._1, xy._2)
 
 }

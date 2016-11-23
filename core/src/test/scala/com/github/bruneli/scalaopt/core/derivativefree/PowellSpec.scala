@@ -17,19 +17,21 @@
 package com.github.bruneli.scalaopt.core.derivativefree
 
 import com.github.bruneli.scalaopt.core._
-import scala.util.{Success, Failure}
+import com.github.bruneli.scalaopt.core.variable.UnconstrainedVariables
+
+import scala.util.{Failure, Success}
 import org.scalatest._
 
 class PowellSpec extends FlatSpec with Matchers {
   import Powell._
   
-  val x0 = Vector(0.5, 2.0)
-  val fQuad = (x: Variables) => (x - x0) dot (x - x0)
+  val x0 = UnconstrainedVariables(0.5, 2.0)
+  val fQuad = (x: UnconstrainedVariablesType) => (x - x0) dot (x - x0)
 
   val config = new PowellConfig(tol = 1.0e-6)
     
   "minimize" should "be close to x0" in {
-    val d = minimize(fQuad, Vector(0.0, 0.0)) match {
+    val d = minimize(fQuad, UnconstrainedVariables(0.0, 0.0)) match {
       case Success(xmin) => xmin - x0
       case Failure(e) => x0
     }
@@ -38,7 +40,7 @@ class PowellSpec extends FlatSpec with Matchers {
 
   it should "throw an error if reaching max number of iterations" in {
     a [MaxIterException] should be thrownBy {
-      minimize((x: Variables) => x(0) + x(1), Vector(0.0, 0.0))
+      minimize((x: UnconstrainedVariablesType) => x(0) + x(1), UnconstrainedVariables(0.0, 0.0))
     }
   }
 

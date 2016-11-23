@@ -17,9 +17,12 @@
 package com.github.bruneli.scalaopt.core.gradient
 
 import com.github.bruneli.scalaopt.core._
+import com.github.bruneli.scalaopt.core.function.DifferentiableObjectiveFunction
+import com.github.bruneli.scalaopt.core.variable.{LineSearchPoint, UnconstrainedVariable, VariableFromDouble}
+import com.github.bruneli.scalaopt.core.linalg.DenseVector._
 
 import scala.annotation.tailrec
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 /**
  * Trust region Newton Conjugate Gradient method from Steihaug.
@@ -33,7 +36,7 @@ import scala.util.{Success, Failure, Try}
  *
  * @author bruneli
  */
-object SteihaugCG extends Optimizer[ObjectiveFunction, SteihaugCGConfig] {
+object SteihaugCG extends GradientMethod[SteihaugCGConfig] with VariableFromDouble {
 
   implicit val defaultConfig: SteihaugCGConfig = new SteihaugCGConfig()
 
@@ -46,18 +49,18 @@ object SteihaugCG extends Optimizer[ObjectiveFunction, SteihaugCGConfig] {
    * @return Variables at a local minimum or failure
    */
   override def minimize(
-    f: ObjectiveFunction,
-    x0: Variables)(
-    implicit pars: SteihaugCGConfig): Try[Variables] = {
+    f: DifferentiableObjectiveFunction[UnconstrainedVariable],
+    x0: UnconstrainedVariablesType)(
+    implicit pars: SteihaugCGConfig): Try[UnconstrainedVariablesType] = {
 
-    def iterate(k: Int, deltak: Double, ptk: LineSearchPoint): Try[Variables] = {
+    def iterate(k: Int, deltak: Double, ptk: LineSearchPoint): Try[UnconstrainedVariablesType] = {
       if (k >= pars.maxIter)
         Failure(throw new MaxIterException(
           "Maximum number of iterations reached."))
 
       val dfxNorm = ptk.grad.norm
       val epsk = Math.min(0.5, Math.sqrt(dfxNorm)) * dfxNorm
-      val z0 = zeros(ptk.x.size)
+      val z0 = zeros[UnconstrainedVariable](ptk.x.size)
       val r0 = ptk.grad
       val d0 = -r0
       val ptkpp = searchDirection(0, ptk.copy(d = d0), z0, r0, deltak, epsk)
@@ -84,15 +87,15 @@ object SteihaugCG extends Optimizer[ObjectiveFunction, SteihaugCGConfig] {
       }
     }
 
-    iterate(0, pars.delta0, LineSearchPoint(x0, f, zeros(x0.size)))
+    iterate(0, pars.delta0, LineSearchPoint(x0, f, zeros[UnconstrainedVariable](x0.size)))
   }
 
   @tailrec
   private def searchDirection(
     j: Int,
     ptk: LineSearchPoint,
-    zj: Variables,
-    rj: Variables,
+    zj: UnconstrainedVariablesType,
+    rj: UnconstrainedVariablesType,
     deltak: Double,
     epsk: Double): LineSearchPoint = {
     if ((ptk.d dot ptk.d2fxd) <= 0.0) {
@@ -125,7 +128,10 @@ object SteihaugCG extends Optimizer[ObjectiveFunction, SteihaugCGConfig] {
    * In practice use (zj + tau dj)T (zj + tau dj) = deltak * deltak
    * to solve a second order equation.
    */
-  def pkFromTrustRegionEdge(zj: Variables, ptk: LineSearchPoint, deltak: Double) = {
+  def pkFromTrustRegionEdge(
+    zj: UnconstrainedVariablesType,
+    ptk: LineSearchPoint,
+    deltak: Double) = {
     val dj = ptk.d
     val a = dj dot dj
     val b = zj dot dj

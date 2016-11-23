@@ -18,9 +18,12 @@ package com.github.bruneli.scalaopt.core.gradient
 
 import com.github.bruneli.scalaopt.core.linesearch.StrongWolfe
 import com.github.bruneli.scalaopt.core._
-import org.apache.commons.math3.linear.{RealMatrix, MatrixUtils}
+import org.apache.commons.math3.linear.{MatrixUtils, RealMatrix}
 import StrongWolfe.{StrongWolfeConfig, stepLength}
-import scala.util.{Try, Success, Failure}
+import com.github.bruneli.scalaopt.core.function.DifferentiableObjectiveFunction
+import com.github.bruneli.scalaopt.core.variable.{LineSearchPoint, UnconstrainedVariable}
+
+import scala.util.{Failure, Success, Try}
 
 /**
  * Implements the quasi-Newton BFGS method.
@@ -39,7 +42,7 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object BFGS extends Optimizer[ObjectiveFunction, BFGSConfig] {
+object BFGS extends GradientMethod[BFGSConfig] {
 
   implicit val defaultConfig: BFGSConfig = new BFGSConfig
 
@@ -52,9 +55,9 @@ object BFGS extends Optimizer[ObjectiveFunction, BFGSConfig] {
    * @return Variables at a local minimum
    */
   def minimize(
-    f:  ObjectiveFunction,
-    x0: Variables)(
-    implicit pars: BFGSConfig): Try[Variables] = {
+    f:  DifferentiableObjectiveFunction[UnconstrainedVariable],
+    x0: UnconstrainedVariablesType)(
+    implicit pars: BFGSConfig): Try[UnconstrainedVariablesType] = {
 
     // Number of dimensions
     val n = x0.length
@@ -80,9 +83,9 @@ object BFGS extends Optimizer[ObjectiveFunction, BFGSConfig] {
     def iterate(
       k:   Int,
       ptk: LineSearchPoint,
-      iHk: RealMatrix): Try[Variables] = {
+      iHk: RealMatrix): Try[UnconstrainedVariablesType] = {
       if (k >= pars.maxIter)
-        Failure(throw new MaxIterException(
+        Failure(throw MaxIterException(
         		"Maximum number of iterations reached."))
 
       // Try to get an approximate step length satisfying the strong

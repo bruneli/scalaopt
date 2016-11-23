@@ -19,7 +19,11 @@ package com.github.bruneli.scalaopt.core.derivativefree
 import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.core.linesearch.GoldSearch
 import GoldSearch.GoldSearchConfig
-import scala.util.{Try, Success, Failure}
+import com.github.bruneli.scalaopt.core.function.ContinuousObjectiveFunction
+import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.variable.{UnconstrainedVariable, VariableFromDouble}
+
+import scala.util.{Failure, Success, Try}
 
 /**
  * Implements the Powell optimization algorithm.
@@ -43,29 +47,29 @@ import scala.util.{Try, Success, Failure}
  * 
  * @author bruneli
  */
-object Powell extends Optimizer[ObjectiveFunction, PowellConfig] {
+object Powell extends DerivativeFreeMethod[PowellConfig] with VariableFromDouble {
 
   implicit val defaultConfig: PowellConfig = new PowellConfig
   
   /**
-   * Minimize an objective function acting on a vector of real values.
+   * Minimize a real-valued continuous objective function acting on a vector of unconstrained variables.
    * 
-   * @param f    real-valued objective function
+   * @param f    real-valued continuous objective function
    * @param x0   initial coordinates
    * @param pars algorithm configuration parameters
    * @return coordinates at a local minimum
    */
   override def minimize(
-    f:  ObjectiveFunction,
-    x0: Variables)(
-    implicit pars: PowellConfig): Try[Variables] = {
+    f:  ContinuousObjectiveFunction[UnconstrainedVariable],
+    x0: UnconstrainedVariablesType)(
+    implicit pars: PowellConfig): Try[UnconstrainedVariablesType] = {
 
     val n = x0.length // Store number of dimensions
     
     def stoppingRule(
       iter: Int,
-      xnpp: Variables,
-      x0: Variables): Boolean = {
+      xnpp: UnconstrainedVariablesType,
+      x0: UnconstrainedVariablesType): Boolean = {
       val d = xnpp - x0
       (d dot d) < pars.tol * pars.tol
     }
@@ -73,17 +77,17 @@ object Powell extends Optimizer[ObjectiveFunction, PowellConfig] {
     // Cycle till the stopping rule is reached
     def iterate(
       iter: Int, 
-      xOld: Variables,
-      vOld: Vector[Variables]): Try[Variables] = {
+      xOld: UnconstrainedVariablesType,
+      vOld: Vector[UnconstrainedVariablesType]): Try[UnconstrainedVariablesType] = {
       
       def lineSearch(
-        xi: Variables, 
-        vi: Variables): Try[(Variables, Double)] = {
-        def fLine(s: Double): Double = f(xi + vi * s)
+        xi: UnconstrainedVariablesType,
+        vi: UnconstrainedVariablesType): Try[(UnconstrainedVariablesType, Double)] = {
+        def fLine(s: Double): Double = f(xi + (vi * s))
         GoldSearch.bracket(fLine, 0.0)(pars.goldSearch) match {
           case Success((a, b)) => {
         	val (s, fMin) = GoldSearch.minimize(fLine, a, b)(pars.goldSearch)
-            Success((xi + vi * s, fMin - fLine(0.0)))
+            Success((xi + (vi * s), fMin - fLine(0.0)))
           }
           case Failure(e) => Failure(e)
         }
@@ -93,10 +97,10 @@ object Powell extends Optimizer[ObjectiveFunction, PowellConfig] {
         i: Int, 
         iMaxOld: Int, 
         dfOld: Double,
-        xi: Variables
-        ): Try[(Variables, Vector[Variables])] = {
+        xi: UnconstrainedVariablesType
+        ): Try[(UnconstrainedVariablesType, Vector[UnconstrainedVariablesType])] = {
         // At the last iteration, try new direction v(n) = x(n-1) - x(0)
-        val vi = if (i < n) vOld(i) else (xi - xOld)
+        val vi = if (i < n) vOld(i) else xi - xOld
         lineSearch(xi, vi) match {
           case Success((xipp, df)) => {
             if (i == n) {
@@ -115,7 +119,7 @@ object Powell extends Optimizer[ObjectiveFunction, PowellConfig] {
       }
       
       if (iter >= pars.maxIter)
-        Failure(throw new MaxIterException(
+        Failure(throw MaxIterException(
         		"Maximum number of iterations reached."))
 
       // At each iteration perform a search in every direction
@@ -128,12 +132,8 @@ object Powell extends Optimizer[ObjectiveFunction, PowellConfig] {
       }
     }
     
-    def unitVectors: Vector[Variables] = {
-      def unitVector(i: Int): Variables = {
-        for (j <- 0 until n)
-          yield (if (i == j) 1.0 else 0.0)
-      }.toVector
-      ((0 until n) map (i => unitVector(i))).toVector
+    def unitVectors: Vector[UnconstrainedVariablesType] = {
+      ((0 until n) map (i => DenseVector.e[UnconstrainedVariable](n, i))).toVector
     }
     
     iterate(0, x0, unitVectors)

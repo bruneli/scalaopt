@@ -1,3 +1,19 @@
+/*
+ * Copyright 2016 Renaud Bruneliere
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.github.bruneli.scalaopt.core.linear
 
 import com.github.bruneli.scalaopt.core.SimplexPhase._
@@ -22,34 +38,20 @@ import scala.util.{Failure, Success, Try}
  *
  * @author bruneli
  */
-object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] {
+object StandardSimplex extends LPSolver[StandardSimplexConfig] {
 
   implicit val defaultConfig: StandardSimplexConfig = StandardSimplexConfig()
 
   /**
-   * Minimize an objective function acting on a vector of real values.
-   *
-   * @param tableau real-valued objective function that is in this case a linear program
-   * @param x0      initial Variables
-   * @param pars    algorithm configuration parameters
-   * @return Variables at a local minimum or failure
-   */
-  override def minimize(
-    tableau: SimplexTableau, x0: Variables)(
-    implicit pars: StandardSimplexConfig): Try[Variables] = {
-    solve(tableau)(pars).map(_.solution)
-  }
-
-  /**
    * Solve a linear program expressed in a tableau form.
    *
-   * @param tableau real-valued objective function that is in this case a linear program
-   * @param pars    algorithm configuration parameters
+   * @param lp   linear program
+   * @param pars algorithm configuration parameters
    * @return Tableau at a local minimum or failure
    */
-  def solve(tableau: SimplexTableau)(
-    implicit pars: StandardSimplexConfig): Try[SimplexTableau] = {
-    solvePhase1(pars)(tableau).flatMap(solvePhase2(pars))
+  override def solve(lp: LP)(
+    implicit pars: StandardSimplexConfig): Try[LP] = {
+    solvePhase1(pars)(lp.toTableau).flatMap(solvePhase2(pars))
   }
 
   /**
@@ -86,13 +88,13 @@ object StandardSimplex extends Optimizer[SimplexTableau, StandardSimplexConfig] 
     if (tableau.isOptimal(pars.eps, simplexPhase)) {
       // If tableau is optimal (all costs are negative), stop iteration loop
       if (simplexPhase == PHASE1 && Math.abs(tableau.cost(PHASE1)) > pars.eps) {
-        Failure(throw new NoSolutionException("Simplex phase1 failed to find a solution at zero cost"))
+        Failure(throw NoSolutionException("Simplex phase1 failed to find a solution at zero cost"))
       } else {
         Success(tableau)
       }
     } else if (i >= pars.maxIter) {
       // If maximum number of iterations is reached, stop iteration loop
-      Failure(throw new MaxIterException(s"Simplex $simplexPhase: number of iterations exceeds ${pars.maxIter}"))
+      Failure(throw MaxIterException(s"Simplex $simplexPhase: number of iterations exceeds ${pars.maxIter}"))
     } else {
       // If tableau is not optimal, try to find a pivot column (might fail if problem is unbounded)
       // and perform a pivoting operation

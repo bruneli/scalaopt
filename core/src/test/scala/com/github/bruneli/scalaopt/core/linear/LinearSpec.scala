@@ -16,10 +16,11 @@
 
 package com.github.bruneli.scalaopt.core.linear
 
-import com.github.bruneli.scalaopt.core.{DataPoint, SeqDataSetConverter}
-import org.scalatest.{Matchers, FlatSpec}
+import com.github.bruneli.scalaopt.core._
+import com.github.bruneli.scalaopt.core.variable.{DataPoint, Inputs, Output, UnconstrainedVariables}
+import org.scalatest.{FlatSpec, Matchers}
 
-import scala.util.{Failure, Success, Random}
+import scala.util.{Failure, Random, Success}
 
 /**
  * @author bruneli
@@ -33,21 +34,27 @@ class LinearSpec extends FlatSpec with Matchers {
     val tol = 0.5
     val n = 10
     val m = 1000
-    val par0 = 80.0
-    val pars = for (j <- 0 until n) yield (j / 1).toDouble
+    val par: List[Double] = (for (j <- 0 until n) yield (j / 1).toDouble).toList
+    val pars = new UnconstrainedVariables((80.0 :: par).toArray)
     val data = for (i <- 0 until m) yield {
       val x = randomVec(n, random)
-      val y = par0 + x.zip(pars).map { case (x, p) => x*p }.sum + random.nextGaussian()
-      DataPoint(x, Seq(y))
+      val y = Output(pars(0).x + x.inner(pars.tail) + random.nextGaussian())
+      DataPoint(x, y)
     }
     lm(data) match {
       case Success(solution) => {
         solution.size shouldBe (n + 1)
-        for ((estimated, expected) <- solution.zip(par0 +: pars)) estimated shouldBe expected +- tol
+        for ((estimated, expected) <- solution.zip(pars)) {
+          estimated.x shouldBe expected.x +- tol
+        }
       }
       case Failure(e) => assert(false)
     }
   }
 
-  private def randomVec(n: Int, random: Random) = for (i <- 0 until n) yield random.nextDouble()
+  private def randomVec(n: Int, random: Random): Inputs = {
+    val raw = for (i <- 0 until n) yield random.nextDouble()
+    new Inputs(raw.toArray)
+  }
+
 }

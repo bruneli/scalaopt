@@ -43,7 +43,7 @@ scalaopt Usage
 
 Add the following dependency to your `build.sbt`
 
-    libraryDependencies += "com.github.bruneli.scalaopt" % "scalaopt-core_2.10" % "0.1"
+    libraryDependencies += "com.github.bruneli.scalaopt" % "scalaopt-core_2.11" % "0.2"
 
 ### Maven
 
@@ -51,6 +51,6 @@ Add the following dependency to your `pom` file
 
     <dependency>
         <groupId>com.github.bruneli.scalaopt</groupId>
-        <artifactId>scalaopt-core_2.10</artifactId>
-        <version>0.1</version>
+        <artifactId>scalaopt-core_2.11</artifactId>
+        <version>0.2</version>
     </dependency>

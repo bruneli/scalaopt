@@ -16,19 +16,22 @@
 
 package com.github.bruneli.scalaopt.core.linear
 
-import com.github.bruneli.scalaopt.core.ConstraintOperator._
 import com.github.bruneli.scalaopt.core.SimplexPhase._
 import com.github.bruneli.scalaopt.core._
 import SeqDataSetConverter._
+import com.github.bruneli.scalaopt.core.constraint._
+import com.github.bruneli.scalaopt.core.function.LinearObjectiveFunction
+import com.github.bruneli.scalaopt.core.linalg.{DenseVector, SimpleDenseVector}
+import com.github.bruneli.scalaopt.core.variable._
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /**
  * Define a generic simplex tableau implemented either for the primal or the dual simplex method
  *
  * @author bruneli
  */
-trait SimplexTableau extends ConstrainedObjectiveFunction {
+trait SimplexTableau extends LP {
 
   val columns: DataSet[TableauColumn]
   val rhs: TableauColumn
@@ -38,33 +41,40 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
   /**
    * Extract the primal solution vector of this tableau
    */
-  def primal: Variables = {
+  def primal: DenseVector[ContinuousVariable] = {
     val offset = negativeColumn.map {
       column: TableauColumn => if (column.isBasic) rhs.getConstraint(column.row) else 0.0
     }.getOrElse(0.0)
-    columns
+    val primalSolutions = columns
       .filter(isInitialColumn)
       .collect()
       .map(_.solution(rhs) - offset)
+      .toArray
+    new SimpleDenseVector[UnconstrainedVariable](primalSolutions)
   }
 
   /**
    * Extract the dual solution vector of this tableau
    */
-  def dual: Variables = {
-    columns
+  def dual: DenseVector[ContinuousVariable] = {
+    val dualSolutions = columns
       .filter(_.isSlack)
       .map(_.phase2Cost * -1.0)
       .collect()
+      .toArray
+    new SimpleDenseVector[UnconstrainedVariable](dualSolutions)
   }
 
   /**
-   * Evaluate the objective function for a given vector of variables
+   * Get the objective function
    *
-   * @param x vector of variables
-   * @return real-valued objective function at x
+   * @return linear objective function
    */
-  override def apply(x: Variables): Double = columns.aggregate(0.0)(addColumnCost, _ + _)
+  override def objectiveFunction: LinearObjectiveFunction[ContinuousVariable] = {
+    val phase1Costs = columns.map(_.phase1Cost).collect().toArray
+    LinearObjectiveFunction[ContinuousVariable](
+      new Constants(phase1Costs))(ContinuousVariableFromDouble)
+  }
 
   /**
    * Return the number of constraints
@@ -77,23 +87,11 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
    * @param i index of the constraint
    * @return constraint
    */
-  override def constraint(i: Int): Constraint = {
-    val a = columns.map(_.getConstraint(i))
-    LinearConstraint(a, EQ, rhs.getConstraint(i)).toConstraint
-  }
-
-  /**
-   * Solve the current tableau with specified method
-   *
-   * @param method method used to solve the linear programming problem
-   * @param pars   parameters associated to the method
-   * @tparam B type of class holding method configuration parameters
-   * @return values of the decision variables at their optimum or failure
-   */
-  def solveWith[B <: ConfigPars](
-    method: Optimizer[SimplexTableau, B])(
-    implicit pars: B): Try[Variables] = {
-    method.minimize(this, Vector.empty[Double])(pars)
+  override def constraint(i: Int): LinearConstraint[ContinuousVariable] = {
+    val a = columns.map(_.getConstraint(i)).collect().toArray
+    val left = LinearLeftOperand[ContinuousVariable](
+      new UnconstrainedVariables(a))(ContinuousVariableFromDouble)
+    LinearConstraint(left, EqualityOperator(), rhs.getConstraint(i))(ContinuousVariableFromDouble)
   }
 
   /**
@@ -114,11 +112,6 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
       columns.filter(_.phase2Cost > epsilon).size == 0 &&
         negativeColumn.forall(_.phase2Cost < epsilon)
   }
-
-  /**
-   * Extract the primal solution vector of this tableau
-   */
-  def solution: Variables
 
   protected def isInitialColumn(column: TableauColumn) = {
     !(column.isSlack || column.isArtificial)
@@ -211,14 +204,21 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
     if (pivotColumn.isBasic) {
       pivotColumn
     } else {
-      val (minRatioValue, minRatioIdx) = pivotColumn
+      val ratioVector = pivotColumn
         .constrains
-        .zip(rhs.constrains)
-        .map(computeRatio)
-        .zipWithIndex
-        .minBy(_._1)
+        .zipAndMap(rhs.constrains, computeRatio)
+      val (minRatioValue, minRatioIdx, _) = ratioVector
+        .foldLeft((Double.PositiveInfinity, 0, 0)) {
+          case (previous, ratio) =>
+            val (minRatio, minRatioIdx, idx) = previous
+            if (ratio.x < minRatio) {
+              (ratio.x, idx, idx + 1)
+            } else {
+              (minRatio, minRatioIdx, idx + 1)
+            }
+        }
       if (minRatioValue >= Double.PositiveInfinity) {
-        throw new UnboundedProgramException("Linear program is unbounded")
+        throw UnboundedProgramException("Linear program is unbounded")
       } else {
         pivotColumn.copy(row = minRatioIdx)
       }
@@ -228,18 +228,18 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
   /**
    * Compute the ratio b_i / A_(i,j) except if b_i is negative as it leads to unbounded solutions
    *
-   * @param values (b_i, A_(i,j))
+   * @param row A_(i,j)
+   * @param rhs b_i
    * @return b_i / A_(i,j)
    */
-  private def computeRatio(values: (Double, Double)): Double = {
-    val (row, rhs) = values
+  private def computeRatio(row: Double, rhs: Double): Double = {
     if (row <= 0.0) Double.PositiveInfinity else rhs / row
   }
 
   protected def addArtificialVariables(tableau0: SimplexTableau) = {
     val m = tableau0.rhs.constrains.size
     val artificialConstraints =
-      tableau0.constraintTypes.zipWithIndex.filter(_._1 != LE)
+      tableau0.constraintTypes.zipWithIndex.filter(_._1 != LowerOrEqualOperator)
     val artificialConstraintIdx = artificialConstraints.map(_._2)
     val n0 = tableau0.columns.size.toInt
     val n = n0 + artificialConstraints.size
@@ -256,13 +256,13 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
   protected def scaleCost(indices: Vector[Int])(column: TableauColumn): TableauColumn = {
     val scaledPhase1Cost = column.constrains.zipWithIndex.foldLeft(0.0) {
       case (previous, (cost, idx)) =>
-        if (indices.contains(idx)) previous + cost else previous
+        if (indices.contains(idx)) previous + cost.x else previous
     }
     column.copy(phase1Cost = scaledPhase1Cost)
   }
 
   protected def getNegativeColumn(columns: DataSet[TableauColumn]): TableauColumn = {
-    val initialColumn = TableauColumn(0.0, 0.0, zeros(constraintTypes.size).toVector, 0)
+    val initialColumn = TableauColumn(0.0, 0.0, DenseVector.zeros(constraintTypes.size), 0)
     val isPositiveColumn = (column: TableauColumn) => !column.isSlack && !column.isArtificial
     val seqOp = (previous: TableauColumn, current: TableauColumn) => {
       previous + current.negate
@@ -277,12 +277,11 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
     previousCost + column.phase2Cost
   }
 
-  protected def toLinearConstraint(constraint: Constraint, n0: Int): LinearConstraint = {
-    def iterate(n: Int): LinearConstraint = LinearConstraint(constraint, n) match {
-      case Success(linearConstraint) => linearConstraint
-      case Failure(e) => iterate(n + 1)
-    }
-    iterate(n0)
+  protected def toLinearConstraint(
+    constraint: Constraint[ContinuousVariable],
+    n0: Int): LinearConstraint[ContinuousVariable] = {
+    constraint.toLinearConstraint(Some(n0))
+      .getOrElse(throw new IllegalArgumentException(s"could not express constraint $constraint as a linear constraint"))
   }
 
   protected def addSlackVariable(
@@ -290,13 +289,13 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
     m0: Int,
     op: ConstraintOperator)(
     i: Int): TableauColumn = {
-    val isSlack = i == (n - 1) && op != EQ
-    val isBasic = isSlack && op == LE
+    val isSlack = i == (n - 1) && (op == LowerOrEqualOperator || op == GreaterOrEqualOperator)
+    val isBasic = isSlack && op == LowerOrEqualOperator
     val row = if (isBasic) m0 else -1
     TableauColumn(
       0.0,
       0.0,
-      zeros(m0).toVector,
+      DenseVector.zeros[Constant](m0),
       i,
       isSlack = isSlack,
       isBasic = isBasic,
@@ -331,22 +330,26 @@ trait SimplexTableau extends ConstrainedObjectiveFunction {
 case class TableauColumn(
   phase1Cost: Double,
   phase2Cost: Double,
-  constrains: Vector[Double],
+  constrains: DenseVector[Constant],
   column: Long,
   row: Int = -1,
   isSlack: Boolean = false,
   isBasic: Boolean = false,
   isArtificial: Boolean = false) {
 
-  def getConstraints(n: Int = 0): Vector[Double] = {
-    if (constrains.isEmpty) e(Math.max(row, n), row).toVector else constrains
+  def getConstraints(n: Int = 0): DenseVector[Constant] = {
+    if (constrains.isEmpty) {
+      DenseVector.e[Constant](Math.max(row, n), row)
+    } else {
+      constrains
+    }
   }
 
   def getConstraint(index: Int): Double = {
     if (constrains.isEmpty) {
       if (index == row) 1.0 else 0.0
     } else {
-      constrains(index)
+      constrains(index).x
     }
   }
 
@@ -354,7 +357,7 @@ case class TableauColumn(
     TableauColumn(
       this.phase1Cost + that.phase1Cost,
       this.phase2Cost + that.phase2Cost,
-      (this.getConstraints() + that.getConstraints()).toVector,
+      this.getConstraints() + that.getConstraints(),
       0)
   }
 
@@ -362,9 +365,10 @@ case class TableauColumn(
    * Multiply the content of a column by a constant factor
    */
   def *(multiplier: Double): TableauColumn = {
-    this.copy(phase1Cost = phase1Cost * multiplier,
+    this.copy(
+      phase1Cost = phase1Cost * multiplier,
       phase2Cost = phase2Cost * multiplier,
-      constrains = this.getConstraints().map(_ * multiplier))
+      constrains = this.getConstraints() * multiplier)
   }
 
   /**
@@ -374,7 +378,7 @@ case class TableauColumn(
     this.copy(
       phase1Cost = -this.phase1Cost,
       phase2Cost = -this.phase2Cost,
-      constrains = this.getConstraints().map(_ * -1.0))
+      constrains = -this.getConstraints())
   }
 
   /**
@@ -399,13 +403,13 @@ case class TableauColumn(
     } else {
       // Column is rescaled according to the pivot column
       val constrains0 = getConstraints(that.constrains.size)
-      val pivotValue = constrains0(that.row) / that.getConstraint(that.row)
+      val pivotValue = constrains0(that.row).x / that.getConstraint(that.row)
       val phase1Cost = this.phase1Cost - that.phase1Cost * pivotValue
       val phase2Cost = this.phase2Cost - that.phase2Cost * pivotValue
       //val phase1Cost = if (simplexPhase == PHASE1) this.phase1Cost - that.phase1Cost * pivotValue else this.phase1Cost
       //val phase2Cost = if (simplexPhase == PHASE2) this.phase2Cost - that.phase2Cost * pivotValue else this.phase2Cost
-      val constrains = constrains0.zipWithIndex.map {
-        case (value, i) =>
+      val constrains = constrains0.mapWithIndex {
+        (value, i) =>
           if (i == that.row) pivotValue else value - that.getConstraint(i) * pivotValue
       }
       val newColumn = this.copy(
@@ -422,7 +426,7 @@ case class TableauColumn(
    * Get the current solution
    */
   def solution(rhs: TableauColumn): Double = {
-    if (isBasic) rhs.constrains(row) else 0.0
+    if (isBasic) rhs.constrains(row).x else 0.0
   }
 
   /**
@@ -432,7 +436,7 @@ case class TableauColumn(
     this.copy(
       phase1Cost = if (simplexPhase == PHASE1) 0.0 else this.phase1Cost,
       phase2Cost = if (simplexPhase == PHASE2) 0.0 else this.phase2Cost,
-      constrains = Vector.empty[Double],
+      constrains = Constants(),
       row = row,
       isBasic = true)
   }
@@ -442,11 +446,18 @@ case class TableauColumn(
 object TableauColumn {
 
   def costOnlyColumn(column: Long, phase2Cost: Double): TableauColumn = {
-    TableauColumn(0.0, phase2Cost, Vector(), column)
+    TableauColumn(0.0, phase2Cost, Constants(), column)
   }
 
   def artificialVariable(column: Long, i: Int, n: Int): TableauColumn = {
-    TableauColumn(0.0, 0.0, e(n, i).toVector, column, -1, isArtificial = true, isBasic = true)
+    TableauColumn(
+      0.0,
+      0.0,
+      DenseVector.e[Constant](n, i),
+      column,
+      -1,
+      isArtificial = true,
+      isBasic = true)
   }
 
 }

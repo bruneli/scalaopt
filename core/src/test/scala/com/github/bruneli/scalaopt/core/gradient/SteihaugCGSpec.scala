@@ -17,7 +17,8 @@
 package com.github.bruneli.scalaopt.core.gradient
 
 import com.github.bruneli.scalaopt.core._
-import org.scalatest.{Matchers, FlatSpec}
+import com.github.bruneli.scalaopt.core.variable.UnconstrainedVariables
+import org.scalatest.{FlatSpec, Matchers}
 
 /**
  * @author bruneli
@@ -25,21 +26,21 @@ import org.scalatest.{Matchers, FlatSpec}
 class SteihaugCGSpec extends FlatSpec with Matchers {
   import SteihaugCG._
 
-  val x0 = Vector(0.5, 2.0)
-  val fQuad = (x: Variables) => (x - x0) dot (x - x0)
-  val dfQuad = (x: Variables) => (x - x0) * 2.0
+  val x0 = UnconstrainedVariables(0.5, 2.0)
+  val fQuad = (x: UnconstrainedVariablesType) => (x - x0) dot (x - x0)
+  val dfQuad = (x: UnconstrainedVariablesType) => (x - x0) * 2.0
 
   val config = new SteihaugCGConfig(tol = 1.0e-6)
 
   "SteihaugCG method" should "converge with fQuad and exact derivatives" in {
-    val xOpt = minimize((fQuad, dfQuad), Vector(0.0, 0.0))
+    val xOpt = minimize((fQuad, dfQuad), UnconstrainedVariables(0.0, 0.0))
     xOpt shouldBe 'success
     val d = xOpt.get - x0
     (d dot d) should be < (config.tol * config.tol)
   }
 
   it should "converge with fQuad and approximate derivatives" in {
-    val xOpt = minimize(fQuad, Vector(0.0, 0.0))
+    val xOpt = minimize(fQuad, UnconstrainedVariables(0.0, 0.0))
     xOpt shouldBe 'success
     val d = xOpt.get - x0
     (d dot d) should be < (config.tol * config.tol)
@@ -47,7 +48,7 @@ class SteihaugCGSpec extends FlatSpec with Matchers {
 
   it should "throw an exception when reaching max number of iterations" in {
     a [MaxIterException] should be thrownBy {
-      minimize((x: Variables) => x(0) + x(1), Vector(0.0, 0.0))
+      minimize((x: UnconstrainedVariablesType) => x(0) + x(1), UnconstrainedVariables(0.0, 0.0))
     }
   }
 

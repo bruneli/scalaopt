@@ -17,39 +17,39 @@
 package com.github.bruneli.scalaopt.core.derivativefree
 
 import com.github.bruneli.scalaopt.core._
-import scala.util.{Success, Failure}
+import com.github.bruneli.scalaopt.core.variable.UnconstrainedVariables
+
+import scala.util.{Failure, Success}
 import org.scalatest._
 
 class NelderMeadSpec extends FlatSpec with Matchers {
   import NelderMead._
 
-  val x0 = Vector(0.5, 2.0)
-  val fQuad = (x: Variables) => (x - x0) dot (x - x0)
+  val x0 = UnconstrainedVariables(0.5, 2.0)
+  val fQuad = (x: UnconstrainedVariablesType) => (x - x0) dot (x - x0)
 
-  val x1 = Vector(1.0, -1.0)
+  val x1 = UnconstrainedVariables(1.0, -1.0)
   val v1 = Vertex(x1, fQuad)
   val fx1 = fQuad(x1)
   
   "A Vertex" should "return fx equal to fx1" in {
-    (v1.fx) should === (fx1)
+    v1.fx should === (fx1)
   }
 
-  val c  = new NelderMeadConfig(relDelta = 2.0)
+  val c  = NelderMeadConfig(relDelta = 2.0)
   val s0 = Simplex(fQuad, x1)(c)
   
   "starting simplex" should "provide a list of shifted vertices" in {
-    (s0.vertices(0).x) should === (v1.x)
-    (s0.vertices(0).fx) should === (v1.fx)
-    (s0.vertices(1).x) should === (Vector(v1.x(0) * c.relDelta, v1.x(1)))
-    (s0.vertices(2).x) should === (Vector(v1.x(0), v1.x(1) * c.relDelta))
+    s0.vertices(0).x shouldBe v1.x
+    s0.vertices(0).fx shouldBe v1.fx
+    s0.vertices(1).x shouldBe UnconstrainedVariables(v1.x(0) * c.relDelta, v1.x(1))
+    s0.vertices(2).x shouldBe UnconstrainedVariables(v1.x(0), v1.x(1) * c.relDelta)
   }
   
   "minimum of fQuad" should "have converged" in {
     minimize(fQuad, x1) match {
       case Success(xmin) =>
-        val d2 = (xmin zip x0).foldLeft(0.0) { 
-          case (r, (xmin, x0)) => r + (xmin - x0) * (xmin - x0) 
-        }
+        val d2 = (xmin - x0).norm2
         d2 should be < (c.tol * c.tol)
       case Failure(e) => assert(false)
     }
@@ -57,7 +57,7 @@ class NelderMeadSpec extends FlatSpec with Matchers {
   
   it should "throw a MaxIterException when max number of iterations is reached" in {
     a [MaxIterException] should be thrownBy {
-      minimize((x: Variables) => x(0) + x(1), x1)
+      minimize((x: UnconstrainedVariablesType) => x(0) + x(1), x1)
     }
   }
 

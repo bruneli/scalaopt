@@ -14,21 +14,25 @@
  * limitations under the License.
  */
 
-package com.github.bruneli.scalaopt.core
+package com.github.bruneli.scalaopt.core.variable
+
+import com.github.bruneli.scalaopt.core._
+import com.github.bruneli.scalaopt.core.function.DifferentiableObjectiveFunction
+import com.github.bruneli.scalaopt.core.linalg.{DenseVector, SimpleDenseVector}
 
 /**
  * Data point representation
  *
- * @param x independent variables X
- * @param y dependent variables Y
+ * @param x independent inputs X
+ * @param y dependent outputs Y
  */
-case class DataPoint(x: Variables, y: Variables)
+case class DataPoint(x: InputsType, y: OutputsType)
 
 object DataPoint {
 
-  def apply(x: Variables, y: Double): DataPoint = DataPoint(x, Seq(y))
+  def apply(x: InputsType, y: Output): DataPoint = DataPoint(x, SimpleDenseVector(y))
 
-  def apply(x: Double, y: Double): DataPoint = DataPoint(Seq(x), Seq(y))
+  def apply(x: Input, y: Output): DataPoint = DataPoint(SimpleDenseVector(x), SimpleDenseVector(y))
 
 }
 
@@ -42,9 +46,9 @@ object DataPoint {
  * @author bruneli
  */
 case class LineSearchPoint(
-  x: Variables,
-  f: ObjectiveFunction,
-  d: Variables) {
+  x: UnconstrainedVariablesType,
+  f: DifferentiableObjectiveFunction[UnconstrainedVariable],
+  d: UnconstrainedVariablesType) {
 
   /** real-valued function f evaluated at x */
   lazy val fx = f(x)
@@ -64,7 +68,7 @@ case class LineSearchPoint(
    * mk(p) = fx + gk p + pT Bk p
    * with Bk an approximate Hessian in x.
    */
-  def m(p: Variables, eps: Double = 1.0e-8): Double = {
+  def m(p: UnconstrainedVariablesType, eps: Double = 1.0e-8): Double = {
     if (p.norm < eps) {
       fx
     } else {

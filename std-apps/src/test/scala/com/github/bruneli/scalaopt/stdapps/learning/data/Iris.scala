@@ -16,8 +16,9 @@
 
 package com.github.bruneli.scalaopt.stdapps.learning.data
 
-import com.github.bruneli.scalaopt.core.{zeros, DataSet, DataPoint, SeqDataSetConverter}
+import com.github.bruneli.scalaopt.core.{DataSet, SeqDataSetConverter, zeros}
 import SeqDataSetConverter._
+import com.github.bruneli.scalaopt.core.variable.DataPoint
 
 /**
  * @author bruneli

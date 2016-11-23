@@ -18,7 +18,8 @@ package com.github.bruneli.scalaopt.stdapps
 
 import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.core.derivativefree.NelderMead
-import com.github.bruneli.scalaopt.core.leastsquares.{LevenbergMarquardtConfig, LevenbergMarquardt}
+import com.github.bruneli.scalaopt.core.function.MSEFunction
+import com.github.bruneli.scalaopt.core.leastsquares.{LevenbergMarquardt, LevenbergMarquardtConfig}
 
 /**
  * Statistics package using optimization algorithms to fit and predict set of data.

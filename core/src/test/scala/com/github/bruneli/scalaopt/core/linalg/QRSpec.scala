@@ -17,7 +17,8 @@
 package com.github.bruneli.scalaopt.core.linalg
 
 import com.github.bruneli.scalaopt.core.SeqDataSetConverter
-import org.scalatest.{Matchers, FlatSpec}
+import com.github.bruneli.scalaopt.core.variable.{Inputs, Output, Outputs, UnconstrainedVariables}
+import org.scalatest.{FlatSpec, Matchers}
 
 /**
  * @author bruneli
@@ -30,15 +31,15 @@ class QRSpec extends FlatSpec with Matchers {
 
   // Augmented matrix representing the linear system AX=B to solve
   val ab = List(
-    List(2.0, 3.0, 1.0, 2.0),
-    List(3.0, 8.0, 1.0, 1.0),
-    List(4.0, 2.0, 9.0, 0.5))
+    Inputs(2.0, 3.0, 1.0) -> Output(2.0),
+    Inputs(3.0, 8.0, 1.0) -> Output(1.0),
+    Inputs(4.0, 2.0, 9.0) -> Output(0.5))
 
   // Solution X
-  val sol = List(2.5, -0.7, -0.9)
+  val sol = UnconstrainedVariables(2.5, -0.7, -0.9)
 
   val m = ab.zipWithIndex.map {
-    case (row, i) => AugmentedRow(row.init, row.last, i.toLong)
+    case ((inputs, output), row) => AugmentedRow(inputs, output, row.toLong)
   }
 
   /**
@@ -67,28 +68,28 @@ class QRSpec extends FlatSpec with Matchers {
       List(0.0, -5.2160231, 4.740036),
       List(0.0, 0.0, -1.602042))
 
-    val qtb = List(-1.6712580, -0.6148164, 1.4418382)
+    val qtb = Outputs(-1.6712580, -0.6148164, 1.4418382)
 
     // Check no pivoting has occurred
-    (0 until 3).zip(qr.ipvt).map {
+    (0 until 3).zip(qr.ipvt).foreach {
       case (i, j) => i shouldBe j
     }
 
     // Check R matrix agrees with R result (up to a sign)
     for (i <- 0 until 3) {
       for (j <- 0 until 3) {
-        qr.R(i, j) shouldBe r(i)(j) +- tol
+        qr.R(i, j).x shouldBe r(i)(j) +- tol
       }
     }
 
     // Check qtb is same (up to a sign)
-    qtb.zip(qr.qtb).map {
-      case (x, y) => x shouldBe y +- tol
+    qtb.zip(qr.qtb).foreach {
+      case (x, y) => x.x shouldBe y.x +- tol
     }
 
     // Check solution is same
-    sol.zip(qr.solution).map {
-      case (x, y) => x shouldBe y +- tol
+    sol.zip(qr.solution).foreach {
+      case (x, y) => x.x shouldBe y.x +- tol
     }
   }
 
@@ -121,28 +122,28 @@ class QRSpec extends FlatSpec with Matchers {
       List(0.0, -8.1772532, -2.8951896),
       List(0.0, 0.0, 0.6040404))
 
-    val qtb = List(-0.8232319, -1.5138969, 1.5101011)
+    val qtb = Outputs(-0.8232319, -1.5138969, 1.5101011)
 
     // Check pivoting
-    List(3, 2, 1).zip(qr.ipvt).map {
+    List(3, 2, 1).zip(qr.ipvt).foreach {
       case (i, j) => (i - 1) shouldBe j
     }
 
     // Check R matrix agrees with R result (up to a sign)
     for (i <- 0 until 3) {
       for (j <- 0 until 3) {
-        qr.R(i, j) shouldBe r(i)(j) +- tol
+        qr.R(i, j).x shouldBe r(i)(j) +- tol
       }
     }
 
     // Check qtb is same (up to a sign)
-    qtb.zip(qr.qtb).map {
-      case (x, y) => x shouldBe y +- tol
+    qtb.zip(qr.qtb).foreach {
+      case (x, y) => x.x shouldBe y.x +- tol
     }
 
     // Check solution is same
-    sol.zip(qr.solution).map {
-      case (x, y) => x shouldBe y +- tol
+    sol.zip(qr.solution).foreach {
+      case (x, y) => x.x shouldBe y.x +- tol
     }
   }
 
@@ -153,8 +154,8 @@ class QRSpec extends FlatSpec with Matchers {
     }
   }
 
-  "QR decomposition" should "fail if number of rows provided is insuffient" in {
-    val mat = List(AugmentedRow(List(1.0, 2.0, 3.0), 0.0, 0l))
+  "QR decomposition" should "fail if number of rows provided is insufficient" in {
+    val mat = List(AugmentedRow(Inputs(1.0, 2.0, 3.0), Output(0.0), 0l))
     a [IllegalArgumentException] should be thrownBy {
       QR(mat, 3)
     }

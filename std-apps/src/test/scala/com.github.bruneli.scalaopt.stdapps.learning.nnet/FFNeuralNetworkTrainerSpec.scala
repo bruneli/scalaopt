@@ -20,9 +20,11 @@ import com.github.bruneli.scalaopt.core.gradient.{BFGS, SteihaugCG}
 import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.core.leastsquares.LevenbergMarquardt
 import com.github.bruneli.scalaopt.stdapps.learning.data.Iris
-import com.github.bruneli.scalaopt.stdapps.learning.nnet.{LossType, FFNeuralNetwork}
+import com.github.bruneli.scalaopt.stdapps.learning.nnet.{FFNeuralNetwork, LossType}
 import com.github.bruneli.scalaopt.stdapps.learning.nnet.activation.{LinearFunction, LogisticFunction, SoftMaxFunction}
 import LossType._
+import com.github.bruneli.scalaopt.core.function.SimpleMSEFunction
+import com.github.bruneli.scalaopt.core.variable.DataPoint
 import org.scalatest._
 
 import scala.util.Random
