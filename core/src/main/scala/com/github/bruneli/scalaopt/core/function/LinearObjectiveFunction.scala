@@ -34,8 +34,7 @@ import scala.util.{Failure, Success, Try}
  * @author bruneli
  */
 case class LinearObjectiveFunction[A <: ContinuousVariable](
-  cost: DenseVector[Constant])(
-  implicit val fromDouble: FromDouble[A]) extends DifferentiableObjectiveFunction[A] {
+  cost: DenseVector[Constant]) extends DifferentiableObjectiveFunction[A] {
 
   /**
    * Evaluate the objective function for a given vector of variables
@@ -56,7 +55,7 @@ case class LinearObjectiveFunction[A <: ContinuousVariable](
    * @return gradient of f in x
    */
   override def gradient(x: DenseVector[A]): DenseVector[A] = {
-    cost.asVectorOf[A]
+    x.withValues(cost.raw)
   }
 
   /**
@@ -80,7 +79,8 @@ case class LinearObjectiveFunction[A <: ContinuousVariable](
    * @return product of the Hessian in x times d
    */
   override def dirHessian(x: DenseVector[A], d: DenseVector[A]): DenseVector[A] = {
-    DenseVector.zeros[A](cost.length)
+    val zeros = Array.fill(cost.length)(0.0)
+    d.withValues(zeros)
   }
 
 }

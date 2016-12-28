@@ -17,6 +17,7 @@
 package com.github.bruneli.scalaopt.core.constraint
 
 import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions.FromDouble
 import com.github.bruneli.scalaopt.core.variable.Variable
 
 import scala.util.Try
@@ -28,7 +29,7 @@ import scala.util.Try
  *
  * @author bruneli
  */
-trait LeftOperand[A <: Variable] {
+trait LeftOperand[-A <: Variable] {
 
   /**
    * Evaluate the constraint left operand in x
@@ -44,6 +45,7 @@ trait LeftOperand[A <: Variable] {
    * @param n size of the linear constraint (optional)
    * @return a linear constraint left operand (of size n if specified) or a failure
    */
-  def toLinearConstraint(n: Option[Int] = None): Try[LinearLeftOperand[A]]
+  def toLinearConstraint(n: Option[Int] = None)(
+    implicit fromDouble: FromDouble[A]): Try[LinearLeftOperand[A]]
 
 }

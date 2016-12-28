@@ -17,7 +17,7 @@
 package com.github.bruneli.scalaopt.core.linalg
 
 import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions._
-import com.github.bruneli.scalaopt.core.variable.{Constants, ConversionsFromDouble}
+import com.github.bruneli.scalaopt.core.variable._
 import org.apache.commons.math3.linear.Array2DRowRealMatrix
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -44,7 +44,17 @@ class SimpleDenseVectorSpec extends FlatSpec with Matchers {
 
   "v1 ++ v2" should "concatenate the two vectors" in {
 
-    v1 ++ v2 shouldBe SimpleDenseVector(RealValue(3.0), RealValue(2.0), RealValue(2.0), RealValue(1.0))
+    val v = v1 ++ v2
+    v shouldBe SimpleDenseVector(RealValue(3.0), RealValue(2.0), RealValue(2.0), RealValue(1.0))
+
+  }
+
+  "concatenating unconstrained variables with positive variables" should "produce a vector of continuous variables" in {
+
+    val v = UnconstrainedVariables(-1.0, 2.0) ++ PositiveVariables(0.0, 3.0)
+
+    v(0) shouldBe a[ContinuousVariable]
+    v(2) shouldBe a[ContinuousVariable]
 
   }
 

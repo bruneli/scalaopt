@@ -19,7 +19,7 @@ package com.github.bruneli.scalaopt.core.constraint
 import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions.FromDouble
 import com.github.bruneli.scalaopt.core.linalg.{DenseVector, SimpleDenseVector}
-import com.github.bruneli.scalaopt.core.variable.{Variable, VariableFromDouble}
+import com.github.bruneli.scalaopt.core.variable.{Constants, Variable, VariableFromDouble}
 
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
@@ -31,9 +31,8 @@ import scala.util.{Failure, Success, Try}
  * @tparam A optimization variable type
  * @author bruneli
  */
-case class GeneralLeftOperand[A <: Variable](
-  f: DenseVector[A] => Double)(
-  implicit fromDouble: FromDouble[A]) extends LeftOperand[A] with VariableFromDouble {
+case class GeneralLeftOperand[-A <: Variable](
+  f: DenseVector[A] => Double) extends LeftOperand[A] with VariableFromDouble {
 
   val MaxLinearConstraintRandomSize = 1000
 
@@ -51,12 +50,13 @@ case class GeneralLeftOperand[A <: Variable](
    * @param n size of the linear constraint (optional)
    * @return a linear constraint left operand (of size n if specified) or a failure
    */
-  override def toLinearConstraint(n: Option[Int] = None): Try[LinearLeftOperand[A]] = n match {
+  override def toLinearConstraint(n: Option[Int] = None)(
+    implicit fromDouble: FromDouble[A]): Try[LinearLeftOperand[A]] = n match {
     case Some(length) =>
       Try(f(DenseVector.ones[A](length))).map {
         value =>
           val a = (0 until length).map(i => f(DenseVector.e[A](length, i)))
-          LinearLeftOperand(SimpleDenseVector[A](a.toArray))
+          LinearLeftOperand[A](new Constants(a.toArray))
       }
     case None =>
       @tailrec
@@ -68,7 +68,7 @@ case class GeneralLeftOperand[A <: Variable](
           Try(f(DenseVector.ones[A](size))) match {
             case Success(value) =>
               val a = (0 until size).map(i => f(DenseVector.e[A](size, i)))
-              Success(LinearLeftOperand(SimpleDenseVector[A](a.toArray)))
+              Success(LinearLeftOperand[A](new Constants(a.toArray)))
             case Failure(e) => iterate(size + 1)
           }
         }

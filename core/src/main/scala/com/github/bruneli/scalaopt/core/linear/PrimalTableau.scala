@@ -59,6 +59,7 @@ import com.github.bruneli.scalaopt.core.variable.{Constant, ContinuousVariable}
  * @author bruneli
  */
 case class PrimalTableau(
+  variables: ContinuousVariablesType,
   objective: ObjectiveType,
   columns: DataSet[TableauColumn],
   rhs: TableauColumn,
@@ -70,7 +71,7 @@ case class PrimalTableau(
    * Extract the solution vector of this tableau
    */
   override def solution: DenseVector[ContinuousVariable] = {
-    primal
+    variables.withValues(primal.raw)
   }
 
   /**
@@ -191,7 +192,7 @@ case class PrimalTableau(
       // Recompute the negative column
       val negativeColumn = this.negativeColumn.map(column => getNegativeColumn(modifiedColumns))
       // Build the new tableau with modified information
-      PrimalTableau(objective, modifiedColumns, rhs, constraintTypes, negativeColumn)
+      PrimalTableau(variables, objective, modifiedColumns, rhs, constraintTypes, negativeColumn)
     } else {
       // If constraint has a negative right-hand side, invert it
       addLinearConstraint(constraint.withPositiveRhs)
@@ -203,24 +204,54 @@ case class PrimalTableau(
 object PrimalTableau extends CPBuilder[ContinuousVariable, LinearObjectiveFunction[ContinuousVariable], PrimalTableau] {
 
   /**
-   * Minimize an objective function
+   * Minimize an objective function acting on a set of optimization variables
    */
-  override def min(objectiveFunction: LinearObjectiveFunction[ContinuousVariable]): PrimalTableau = {
-    objective(MINIMIZE, objectiveFunction.cost.toVector, -1.0) // negative cost when minimizing
+  override def min(
+    objectiveFunction: LinearObjectiveFunction[ContinuousVariable],
+    variables: ContinuousVariablesType): PrimalTableau = {
+    objective(MINIMIZE, objectiveFunction.cost.toVector, -1.0, variables) // negative cost when minimizing
   }
 
   /**
-   * Maximize an objective function
+   * Maximize an objective function acting on a set of optimization variables
    */
-  override def max(objectiveFunction: LinearObjectiveFunction[ContinuousVariable]): PrimalTableau = {
-    objective(MAXIMIZE, objectiveFunction.cost.toVector, 1.0)
+  override def max(
+    objectiveFunction: LinearObjectiveFunction[ContinuousVariable],
+    variables: ContinuousVariablesType): PrimalTableau = {
+    objective(MAXIMIZE, objectiveFunction.cost.toVector, 1.0, variables)
   }
 
-  private def objective(objectiveType: ObjectiveType, costVector: Vector[Constant], sign: Double): PrimalTableau = {
+  private def objective(
+    objectiveType: ObjectiveType,
+    costVector: Vector[Constant],
+    sign: Double,
+    variables: ContinuousVariablesType): PrimalTableau = {
+    require(costVector.length == variables.length,
+      s"Optimization variables size ${variables.length} != linear coefficients ${costVector.length} size")
+    // Prepare the columns, one per variable
     val columns = costVector.zipWithIndex.map {
       case (cost, index) => TableauColumn.costOnlyColumn(index, cost.x * sign)
     }
-    PrimalTableau(objectiveType, columns, TableauColumn.costOnlyColumn(costVector.length, 0.0), Vector())
+    val rhs = TableauColumn.costOnlyColumn(costVector.length, 0.0)
+    // Add contraints to the tableau if some of the variable have lower or upper bounds
+    val initialTableau = PrimalTableau(variables, objectiveType, columns, rhs, Vector())
+    variables.zipWithIndex.foldLeft(initialTableau)(addVariableConstraints)
+  }
+
+  private def addVariableConstraints(
+    tableau: PrimalTableau,
+    variableAndIndex: (ContinuousVariable, Int)): PrimalTableau = {
+    val (variable, index) = variableAndIndex
+    val n = tableau.columns.size.toInt
+    def addLowerBound(lowerBound: Double): LinearConstraint[ContinuousVariable] = {
+      LinearConstraintBuilder(DenseVector.e[Constant](n, index)).ge(lowerBound)
+    }
+    def addUpperBound(upperBound: Double): LinearConstraint[ContinuousVariable] = {
+      LinearConstraintBuilder(DenseVector.e[Constant](n, index)).le(upperBound)
+    }
+    (variable.lower.toList.filterNot(_ == 0.0).map(addLowerBound) ++
+      variable.upper.toList.filterNot(_ == 0.0).map(addUpperBound))
+      .foldLeft(tableau)(_.addLinearConstraint(_))
   }
 
 }

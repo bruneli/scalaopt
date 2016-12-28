@@ -17,6 +17,7 @@
 package com.github.bruneli.scalaopt.core.constraint
 
 import com.github.bruneli.scalaopt.core.function.ObjectiveFunction
+import com.github.bruneli.scalaopt.core.linalg.DenseVector
 import com.github.bruneli.scalaopt.core.variable.Variable
 
 /**
@@ -27,13 +28,13 @@ import com.github.bruneli.scalaopt.core.variable.Variable
 trait CPBuilder[A <: Variable, B <: ObjectiveFunction[A], C <: CP[A, B, _]] {
 
   /**
-   * Minimize an objective function
+   * Minimize an objective function acting on a set of optimization variables
    */
-  def min(objectiveFunction: B): C
+  def min(objectiveFunction: B, variables: DenseVector[A]): C
 
   /**
-   * Maximize an objective function
+   * Maximize an objective function acting on a set of optimization variables
    */
-  def max(objectiveFunction: B): C
+  def max(objectiveFunction: B, variables: DenseVector[A]): C
 
 }

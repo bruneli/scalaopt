@@ -37,7 +37,7 @@ class Variables[+A <: Variable](variables: Vector[A]) extends DenseVector[A] {
     Variables.newBuilder
   }
 
-  override protected def build(updated: Array[Double]): DenseVector[A] = {
+  override def withValues(updated: Array[Double]): DenseVector[A] = {
     new Variables[A](variables.zipWithIndex.map(
       tuple => tuple._1.build(updated(tuple._2)).asInstanceOf[A]))
   }

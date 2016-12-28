@@ -103,7 +103,7 @@ package object core extends VariableFromDouble {
     new GeneralConstraintBuilder[A](c)
   }
   implicit def toConstraintBuilder(c: ContinuousVariablesType => Double): GeneralConstraintBuilder[ContinuousVariable] = {
-    new GeneralConstraintBuilder[ContinuousVariable](c)(ContinuousVariableFromDouble)
+    new GeneralConstraintBuilder[ContinuousVariable](c)
   }
 
   /** Implicit conversion of a tuple (x, y) to a DataPoint */

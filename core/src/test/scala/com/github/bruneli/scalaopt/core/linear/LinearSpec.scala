@@ -48,7 +48,8 @@ class LinearSpec extends FlatSpec with Matchers {
           estimated.x shouldBe expected.x +- tol
         }
       }
-      case Failure(e) => assert(false)
+      case Failure(e) =>
+        assert(false)
     }
   }
 

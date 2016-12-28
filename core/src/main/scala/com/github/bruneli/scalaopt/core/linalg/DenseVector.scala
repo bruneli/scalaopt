@@ -32,8 +32,10 @@ import scala.collection.immutable.IndexedSeq
 trait DenseVector[+A <: ToDouble]
   extends IndexedSeq[A]
     with IndexedSeqLike[A, DenseVector[A]]
-    with VectorAlgebraOps[DenseVector[A]] {
+    with VectorAlgebraOps[A] {
   self =>
+
+  type V[+T <: ToDouble] = DenseVector[T]
 
   /** Representation of the vector as an array of double for quick operations */
   val raw: Array[Double]
@@ -44,7 +46,8 @@ trait DenseVector[+A <: ToDouble]
     self.newBuilder
   }
 
-  protected def build(updated: Array[Double]): DenseVector[A]
+  /** Update the values of the vector elements */
+  def withValues(updated: Array[Double]): DenseVector[A]
 
   /** Directly update the underlying raw value of a vector */
   def updated(index: Int, elem: Double): DenseVector[A] = {
@@ -58,7 +61,7 @@ trait DenseVector[+A <: ToDouble]
       }
       idx += 1
     }
-    build(updated)
+    withValues(updated)
   }
 
   /** Map a function directly on raw values of the vector */
@@ -69,7 +72,7 @@ trait DenseVector[+A <: ToDouble]
       updated(idx) = f(raw(idx))
       idx += 1
     }
-    build(updated)
+    withValues(updated)
   }
 
   /** Map a function acting on tuple (value, index) of vector elements */
@@ -80,7 +83,7 @@ trait DenseVector[+A <: ToDouble]
       updated(idx) = f(raw(idx), idx)
       idx += 1
     }
-    build(updated)
+    withValues(updated)
   }
 
   /**
@@ -99,7 +102,7 @@ trait DenseVector[+A <: ToDouble]
       result(idx) = f(this.raw(idx), that.raw(idx))
       idx += 1
     }
-    that.build(result)
+    that.withValues(result)
   }
 
   /** Build a new vector with values corresponding to indices i and j swapped */
@@ -116,7 +119,7 @@ trait DenseVector[+A <: ToDouble]
       }
       idx += 1
     }
-    build(updated)
+    withValues(updated)
   }
 
   /** Change type of vector elements */
@@ -125,25 +128,25 @@ trait DenseVector[+A <: ToDouble]
   }
 
   /** Element wise addition */
-  def +[B >: A <: ToDouble](that: DenseVector[B]): DenseVector[B] = {
+  def +[B <: ToDouble](that: DenseVector[B]): DenseVector[B] = {
     val sum = new Array[Double](this.length)
     var idx = 0
     while (idx < sum.length) {
       sum(idx) = this.raw(idx) + that.raw(idx)
       idx += 1
     }
-    that.build(sum)
+    that.withValues(sum)
   }
 
   /** Element wise subtraction */
-  def -[B >: A <: ToDouble](that: DenseVector[B]): DenseVector[B] = {
+  def -[B <: ToDouble](that: DenseVector[B]): DenseVector[B] = {
     val difference = new Array[Double](this.length)
     var idx = 0
     while (idx < difference.length) {
       difference(idx) = this.raw(idx) - that.raw(idx)
       idx += 1
     }
-    that.build(difference)
+    that.withValues(difference)
   }
 
   /** Add a constant value */
@@ -154,7 +157,7 @@ trait DenseVector[+A <: ToDouble]
       sum(idx) = this.raw(idx) + offset
       idx += 1
     }
-    build(sum)
+    withValues(sum)
   }
 
   /** Subtract a constant value */
@@ -168,7 +171,7 @@ trait DenseVector[+A <: ToDouble]
       negative(idx) = -this.raw(idx)
       idx += 1
     }
-    build(negative)
+    withValues(negative)
   }
 
   /** Multiplication by scalar */
@@ -179,7 +182,7 @@ trait DenseVector[+A <: ToDouble]
       product(idx) = this.raw(idx) * scalar
       idx += 1
     }
-    build(product)
+    withValues(product)
   }
 
   /** Division by scalar */
@@ -190,7 +193,7 @@ trait DenseVector[+A <: ToDouble]
       division(idx) = this.raw(idx) / scalar
       idx += 1
     }
-    build(division)
+    withValues(division)
   }
 
   /** Multiplication by scalar */
@@ -288,7 +291,7 @@ object DenseVector {
       grad(idx) = (f(xPlusDx) - fx) / eps
       idx += 1
     }
-    x.build(grad)
+    x.withValues(grad)
   }
 
   /**
@@ -334,7 +337,7 @@ object DenseVector {
     x: DenseVector[A]): DenseVector[A] = {
     val xPivoted = new Array[Double](x.length)
     for (j <- 0 until x.length) xPivoted(ipvt(j)) = x.raw(j)
-    x.build(xPivoted)
+    x.withValues(xPivoted)
   }
 
   /**
@@ -352,7 +355,7 @@ object DenseVector {
     x: DenseVector[A]): DenseVector[A] = {
     val xUnpivoted = new Array[Double](x.length)
     for (j <- 0 until x.length) xUnpivoted(j) = x.raw(ipvt(j))
-    x.build(xUnpivoted)
+    x.withValues(xUnpivoted)
   }
 
 }

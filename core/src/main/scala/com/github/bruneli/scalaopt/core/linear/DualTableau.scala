@@ -40,11 +40,49 @@ import scala.util.{Failure, Success}
  * @author bruneli
  */
 case class DualTableau(
+  variables: ContinuousVariablesType,
   objective: ObjectiveType,
   columns: DataSet[TableauColumn],
   rhs: TableauColumn,
   constraintTypes: Vector[ConstraintOperator],
   negativeColumn: Option[TableauColumn] = None) extends SimplexTableau {
+
+  /**
+   * Extract the solution vector of this tableau
+   */
+  override def solution: ContinuousVariablesType = {
+    variables.withValues(dual.raw)
+  }
+
+  /**
+   * Add a set of constraints to the tableau
+   *
+   * @param constraints comma separated list of constraints
+   * @return extended tableau
+   */
+  override def subjectTo(constraints: Constraint[ContinuousVariable]*): DualTableau = {
+    if (constraints.isEmpty) {
+      this
+    } else {
+      val n = rhs.constrains.size
+      val headConstraint = this.toLinearConstraint(constraints.head, n)
+      constraints.tail.foldLeft(this.addLinearConstraint(headConstraint)) {
+        case (previousTableau, constraint) =>
+          val linearConstraint = this.toLinearConstraint(constraint, n)
+          previousTableau.addLinearConstraint(linearConstraint)
+      }
+    }
+  }
+
+  /**
+   * Add a constraint to the problem to solve
+   *
+   * @param constraint constraint
+   * @return problem augmented of one additional constraint
+   */
+  override def addConstraint(constraint: Constraint[ContinuousVariable]): LP = {
+    this.addLinearConstraint(constraint.toLinearConstraint()(ContinuousVariableFromDouble).get)
+  }
 
   override def toTableau: SimplexTableau = this
 
@@ -69,7 +107,7 @@ case class DualTableau(
       val m = Math.max(m0, constraint.a.size)
       val n = n0 + 1
       // Transform the constraint into an equality constraint and then a column
-      val signedConstraint = constraint.toLinearConstraint(Some(m)) match {
+      val signedConstraint = constraint.toLinearConstraint(Some(m))(ContinuousVariableFromDouble) match {
         case Success(resizedConstraint) =>
           resizedConstraint.a.asVectorOf[Constant].mapWithIndex {
             (value, i) =>
@@ -98,38 +136,11 @@ case class DualTableau(
       // Recompute the negative column
       val negativeColumn = this.negativeColumn.map(column => getNegativeColumn(modifiedColumns))
       // Build the new tableau with modified information
-      DualTableau(objective, modifiedColumns, rhs, constraintTypes, negativeColumn)
+      DualTableau(variables, objective, modifiedColumns, rhs, constraintTypes, negativeColumn)
     } else {
       // If constraint has a negative right-hand side, invert it
       addLinearConstraint(constraint.withPositiveRhs)
     }
-  }
-
-  /**
-   * Add a set of constraints to the tableau
-   *
-   * @param constraints comma separated list of constraints
-   * @return extended tableau
-   */
-  override def subjectTo(constraints: Constraint[ContinuousVariable]*): DualTableau = {
-    if (constraints.isEmpty) {
-      this
-    } else {
-      val n = rhs.constrains.size
-      val headConstraint = this.toLinearConstraint(constraints.head, n)
-      constraints.tail.foldLeft(this.addLinearConstraint(headConstraint)) {
-        case (previousTableau, constraint) =>
-          val linearConstraint = this.toLinearConstraint(constraint, n)
-          previousTableau.addLinearConstraint(linearConstraint)
-      }
-    }
-  }
-
-  /**
-   * Extract the solution vector of this tableau
-   */
-  override def solution: ContinuousVariablesType = {
-    dual
   }
 
   /**
@@ -150,6 +161,10 @@ case class DualTableau(
   override def withArtificialVariables: SimplexTableau = {
     val (newColumns, newRhs) = addArtificialVariables(this.withoutArtificialVariables)
     this.copy(columns = newColumns, rhs = newRhs)
+  }
+
+  override def withNegativeVariables: DualTableau = {
+    this
   }
 
   def withPositiveRhs: SimplexTableau = {
@@ -191,37 +206,34 @@ case class DualTableau(
       negativeColumn = negativeColumn.map(_.pivot(simplexPhase)(pivotColumn)))
   }
 
-  /**
-   * Add a constraint to the problem to solve
-   *
-   * @param constraint constraint
-   * @return problem augmented of one additional constraint
-   */
-  override def addConstraint(constraint: Constraint[ContinuousVariable]): LP = {
-    this.addLinearConstraint(constraint.toLinearConstraint().get)
-  }
-
 }
 
 object DualTableau extends CPBuilder[ContinuousVariable, LinearObjectiveFunction[ContinuousVariable], DualTableau] {
 
   /**
-   * Minimize an objective function
+   * Minimize an objective function acting on a set of optimization variables
    */
-  override def min(objectiveFunction: LinearObjectiveFunction[ContinuousVariable]): DualTableau = {
-    objective(MINIMIZE, objectiveFunction.cost)
+  override def min(
+    objectiveFunction: LinearObjectiveFunction[ContinuousVariable],
+    variables: ContinuousVariablesType): DualTableau = {
+    objective(MINIMIZE, objectiveFunction.cost, variables)
   }
 
   /**
-   * Maximize an objective function
+   * Maximize an objective function acting on a set of optimization variables
    */
-  override def max(objectiveFunction: LinearObjectiveFunction[ContinuousVariable]): DualTableau = {
-    objective(MAXIMIZE, objectiveFunction.cost)
+  override def max(
+    objectiveFunction: LinearObjectiveFunction[ContinuousVariable],
+    variables: ContinuousVariablesType): DualTableau = {
+    objective(MAXIMIZE, objectiveFunction.cost, variables)
   }
 
   private def objective(
     objectiveType: ObjectiveType,
-    cost: DenseVector[Constant]): DualTableau = {
+    cost: DenseVector[Constant],
+    variables: ContinuousVariablesType): DualTableau = {
+    require(cost.length == variables.length,
+      s"Optimization variables size ${variables.length} != linear coefficients ${cost.length} size")
     val constraintTypes = cost.toVector.map {
       value => objectiveType match {
         case MINIMIZE => if (value.x >= 0.0) LowerOrEqualOperator else GreaterOrEqualOperator
@@ -230,7 +242,7 @@ object DualTableau extends CPBuilder[ContinuousVariable, LinearObjectiveFunction
       }
     }
     val rhs = TableauColumn(0.0, 0.0, cost.mapValues(Math.abs), -2)
-    DualTableau(objectiveType, Vector(), rhs, constraintTypes)
+    DualTableau(variables, objectiveType, Vector(), rhs, constraintTypes)
   }
 
 }

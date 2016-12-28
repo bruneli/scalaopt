@@ -23,7 +23,9 @@ import com.github.bruneli.scalaopt.core.variable.Variable
  *
  * @author bruneli
  */
-trait ConstraintBuilder[A <: Variable, B <: Constraint[A]] {
+trait ConstraintBuilder[A <: Variable] {
+
+  type B <: Constraint[A]
 
   /**
    * Build an equality constraint

@@ -26,11 +26,13 @@ import scala.util.Try
  * Operations used to build a constrained optimization problem
  *
  * @tparam A variable type
- * @tparam P constrained optimization problem type
  *
  * @author bruneli
  */
-trait CPBuilderOps[A <: Variable, P <: CP[A, _, _]] {
+trait CPBuilderOps[A <: Variable] {
+
+  /** Constrained optimization problem type */
+  type P <: CP[A, _, _]
 
   /**
    * Solve the constrained optimization problem

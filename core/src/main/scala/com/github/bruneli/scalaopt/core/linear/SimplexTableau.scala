@@ -50,7 +50,7 @@ trait SimplexTableau extends LP {
       .collect()
       .map(_.solution(rhs) - offset)
       .toArray
-    new SimpleDenseVector[UnconstrainedVariable](primalSolutions)
+    new UnconstrainedVariables(primalSolutions)
   }
 
   /**
@@ -62,7 +62,7 @@ trait SimplexTableau extends LP {
       .map(_.phase2Cost * -1.0)
       .collect()
       .toArray
-    new SimpleDenseVector[UnconstrainedVariable](dualSolutions)
+    new UnconstrainedVariables(dualSolutions)
   }
 
   /**
@@ -72,8 +72,7 @@ trait SimplexTableau extends LP {
    */
   override def objectiveFunction: LinearObjectiveFunction[ContinuousVariable] = {
     val phase1Costs = columns.map(_.phase1Cost).collect().toArray
-    LinearObjectiveFunction[ContinuousVariable](
-      new Constants(phase1Costs))(ContinuousVariableFromDouble)
+    LinearObjectiveFunction[ContinuousVariable](new Constants(phase1Costs))
   }
 
   /**
@@ -89,9 +88,8 @@ trait SimplexTableau extends LP {
    */
   override def constraint(i: Int): LinearConstraint[ContinuousVariable] = {
     val a = columns.map(_.getConstraint(i)).collect().toArray
-    val left = LinearLeftOperand[ContinuousVariable](
-      new UnconstrainedVariables(a))(ContinuousVariableFromDouble)
-    LinearConstraint(left, EqualityOperator(), rhs.getConstraint(i))(ContinuousVariableFromDouble)
+    val left = LinearLeftOperand[ContinuousVariable](new Constants(a))
+    LinearConstraint(left, EqualityOperator(), rhs.getConstraint(i))
   }
 
   /**
@@ -142,6 +140,11 @@ trait SimplexTableau extends LP {
   def withoutArtificialVariables: SimplexTableau
 
   /**
+   * Add negative variables if relevant
+   */
+  def withNegativeVariables: SimplexTableau
+
+  /**
    * Pivot the tableau columns given a pivot column and row
    *
    * Pivot separately the variables A and the right hand side b.
@@ -160,6 +163,18 @@ trait SimplexTableau extends LP {
    */
   def performPivot(simplexPhase: SimplexPhase): Try[SimplexTableau] = {
     Try(pivotColumn(simplexPhase)).map(pivot(simplexPhase))
+  }
+
+  /**
+   * Check if there are variables that can take negative values. If so, split them into x = x+ - x-
+   */
+  def checkNegativeVariables: SimplexTableau = {
+    val isOnlyPositive = variables.forall(variable => variable.lower.isDefined && variable.lower.get >= 0.0)
+    if (isOnlyPositive) {
+      this
+    } else {
+      this.withNegativeVariables
+    }
   }
 
   /**
@@ -280,7 +295,7 @@ trait SimplexTableau extends LP {
   protected def toLinearConstraint(
     constraint: Constraint[ContinuousVariable],
     n0: Int): LinearConstraint[ContinuousVariable] = {
-    constraint.toLinearConstraint(Some(n0))
+    constraint.toLinearConstraint(Some(n0))(ContinuousVariableFromDouble)
       .getOrElse(throw new IllegalArgumentException(s"could not express constraint $constraint as a linear constraint"))
   }
 

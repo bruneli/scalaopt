@@ -23,11 +23,11 @@ import scala.util.Try
 /**
  * Method used to solve a constrained optimization problem
  *
- * @tparam A constrained optimization problem type handled by this method
+ * @tparam P constrained optimization problem type handled by this method
  * @tparam C configuration parameters type
  * @author bruneli
  */
-trait CPSolver[A <: CP[_, _, _], -C <: ConfigPars] {
+trait CPSolver[P <: CP[_, _, _], -C <: ConfigPars] {
 
   /**
    * Try to solve a constrained optimization problem
@@ -36,6 +36,6 @@ trait CPSolver[A <: CP[_, _, _], -C <: ConfigPars] {
    * @param pars solver configuration parameters
    * @return solution of the problem or failure
    */
-  def solve(program: A)(implicit pars: C): Try[A]
+  def solve(program: P)(implicit pars: C): Try[P]
 
 }

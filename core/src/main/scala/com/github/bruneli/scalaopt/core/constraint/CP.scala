@@ -34,6 +34,11 @@ import com.github.bruneli.scalaopt.core.variable.Variable
 trait CP[A <: Variable, +B <: ObjectiveFunction[A], +C <: Constraint[A]] {
 
   /**
+   * Description of the optimization variables used by this program
+   */
+  def variables: DenseVector[A]
+
+  /**
    * Get the problem objective: minimize or maximize
    */
   def objective: ObjectiveType

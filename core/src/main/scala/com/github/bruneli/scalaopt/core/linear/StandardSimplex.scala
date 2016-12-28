@@ -38,9 +38,7 @@ import scala.util.{Failure, Success, Try}
  *
  * @author bruneli
  */
-object StandardSimplex extends LPSolver[StandardSimplexConfig] {
-
-  implicit val defaultConfig: StandardSimplexConfig = StandardSimplexConfig()
+case class StandardSimplex() extends LPSolver[StandardSimplexConfig] {
 
   /**
    * Solve a linear program expressed in a tableau form.
@@ -51,7 +49,8 @@ object StandardSimplex extends LPSolver[StandardSimplexConfig] {
    */
   override def solve(lp: LP)(
     implicit pars: StandardSimplexConfig): Try[LP] = {
-    solvePhase1(pars)(lp.toTableau).flatMap(solvePhase2(pars))
+    val tableau = lp.toTableau.checkNegativeVariables
+    solvePhase1(pars)(tableau).flatMap(solvePhase2(pars))
   }
 
   /**
@@ -106,6 +105,12 @@ object StandardSimplex extends LPSolver[StandardSimplexConfig] {
       }
     }
   }
+
+}
+
+object StandardSimplex {
+
+  implicit val defaultConfig: StandardSimplexConfig = StandardSimplexConfig()
 
 }
 

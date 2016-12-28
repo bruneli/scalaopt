@@ -22,37 +22,45 @@ import org.apache.commons.math3.linear.RealMatrix
 /**
  * Define operations on real-valued vector
  *
- * @tparam A vector type
  * @author bruneli
  */
-trait VectorAlgebraOps[+A] {
+trait VectorAlgebraOps[+A <: ToDouble] {
+
+  /** Vector type */
+  type V[+T <: ToDouble]
+
+  /** Element wise addition */
+  def + [B <: ToDouble](that: V[B]): V[B]
+
+  /** Element wise subtraction */
+  def - [B <: ToDouble](that: V[B]): V[B]
 
   /** Add a constant value */
-  def + (offset: Double): A
+  def + (offset: Double): V[A]
 
   /** Subtract a constant value */
-  def - (offset: Double): A
+  def - (offset: Double): V[A]
 
   /** Negative of a vector */
-  def unary_- : A
+  def unary_- : V[A]
 
   /** Multiplication by scalar */
-  def * (scalar: Double): A
+  def * (scalar: Double): V[A]
 
   /** Division by scalar */
-  def / (scalar: Double): A
+  def / (scalar: Double): V[A]
 
   /** Multiplication by scalar */
-  def *[B <: ToDouble] (scalar: B): A
+  def *[B <: ToDouble] (scalar: B): V[A]
 
   /** Division by scalar */
-  def /[B <: ToDouble] (scalar: B): A
+  def /[B <: ToDouble] (scalar: B): V[A]
 
   /** Inner product of two vectors */
-  def inner[B <: ToDouble](that: DenseVector[B]): Double
+  def inner[B <: ToDouble](that: V[B]): Double
 
   /** Dot product of two vectors */
-  def dot[B <: ToDouble](that: DenseVector[B]): Double
+  def dot[B <: ToDouble](that: V[B]): Double
 
   /** L2 norm */
   def norm: Double = math.sqrt(norm2)
@@ -67,6 +75,6 @@ trait VectorAlgebraOps[+A] {
   def t: RealMatrix
 
   /** Outer product of two vectors */
-  def outer[B <: ToDouble](that: DenseVector[B]): RealMatrix
+  def outer[B <: ToDouble](that: V[B]): RealMatrix
 
 }

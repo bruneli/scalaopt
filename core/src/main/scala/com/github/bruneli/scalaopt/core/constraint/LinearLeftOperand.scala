@@ -18,7 +18,7 @@ package com.github.bruneli.scalaopt.core.constraint
 
 import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions.FromDouble
 import com.github.bruneli.scalaopt.core.linalg.{DenseVector, SimpleDenseVector}
-import com.github.bruneli.scalaopt.core.variable.Variable
+import com.github.bruneli.scalaopt.core.variable.{Constant, Constants, Variable}
 
 import scala.util.{Failure, Success, Try}
 
@@ -29,9 +29,8 @@ import scala.util.{Failure, Success, Try}
  * @tparam A optimization variable type
  * @author bruneli
  */
-case class LinearLeftOperand[A <: Variable](
-  a: DenseVector[A])(
-  implicit val fromDouble: FromDouble[A]) extends LeftOperand[A] {
+case class LinearLeftOperand[-A <: Variable](
+  a: DenseVector[Constant]) extends LeftOperand[A] {
 
   /**
    * Evaluate the constraint left operand in x
@@ -47,7 +46,8 @@ case class LinearLeftOperand[A <: Variable](
    * @param n size of the linear constraint (optional)
    * @return a linear constraint left operand (of size n if specified) or a failure
    */
-  override def toLinearConstraint(n: Option[Int] = None): Try[LinearLeftOperand[A]] = n match {
+  override def toLinearConstraint(n: Option[Int] = None)(
+    implicit fromDouble: FromDouble[A]): Try[LinearLeftOperand[A]] = n match {
     case Some(length) =>
       if (length < a.length) {
         Failure(throw new IllegalArgumentException(
@@ -63,7 +63,7 @@ case class LinearLeftOperand[A <: Variable](
           }
           idx += 1
         }
-        Success(LinearLeftOperand(SimpleDenseVector[A](extended)))
+        Success(LinearLeftOperand(new Constants(extended)))
       }
     case None => Success(this)
   }

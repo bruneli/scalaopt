@@ -36,7 +36,7 @@ case class SimpleDenseVector[+A <: ToDouble](
     SimpleDenseVector.newBuilder
   }
 
-  override protected def build(updated: Array[Double]): DenseVector[A] = {
+  override def withValues(updated: Array[Double]): DenseVector[A] = {
     SimpleDenseVector(updated)
   }
 
@@ -48,7 +48,7 @@ object SimpleDenseVector {
     new SimpleDenseVector[A](points.map(_.x).toArray)
   }
 
-  def newBuilder[A <: ToDouble : FromDouble]: scala.collection.mutable.Builder[A, SimpleDenseVector[A]] = {
+  def newBuilder[A <: ToDouble : FromDouble]: mutable.Builder[A, SimpleDenseVector[A]] = {
     Vector.newBuilder[A].mapResult(vector => new SimpleDenseVector[A](vector.map(_.x).toArray))
   }
 

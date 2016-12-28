@@ -17,15 +17,15 @@
 package com.github.bruneli.scalaopt.core.constraint
 
 import com.github.bruneli.scalaopt.core.linalg.DenseVector
-import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions.FromDouble
-import com.github.bruneli.scalaopt.core.variable.Variable
+import com.github.bruneli.scalaopt.core.variable.{Constant, Variable}
 
 /**
  * @author bruneli
  */
 case class LinearConstraintBuilder[A <: Variable](
-  coefficients: DenseVector[A])(
-  implicit fromDouble: FromDouble[A]) extends ConstraintBuilder[A, LinearConstraint[A]] {
+  coefficients: DenseVector[Constant]) extends ConstraintBuilder[A] {
+
+  type B = LinearConstraint[A]
 
   override protected def build(operator: ConstraintOperator, right: Double): LinearConstraint[A] = {
     LinearConstraint(LinearLeftOperand[A](coefficients), operator, right)

@@ -32,7 +32,9 @@ import scala.util.Try
  */
 trait LP
   extends CP[ContinuousVariable, LinearObjectiveFunction[ContinuousVariable], LinearConstraint[ContinuousVariable]]
-    with CPBuilderOps[ContinuousVariable, LP] {
+    with CPBuilderOps[ContinuousVariable] {
+
+  type P = LP
 
   /**
    * Solve the constrained optimization problem
@@ -42,7 +44,9 @@ trait LP
    * @tparam C type of class holding method configuration parameters
    * @return problem solution of failure
    */
-  override def solveWith[C <: ConfigPars, B >: LP <: CP[ContinuousVariable, _, _], S <: CPSolver[B, C]](method: S)(implicit pars: C): Try[DenseVector[ContinuousVariable]] = {
+  override def solveWith[C <: ConfigPars, B >: P <: CP[ContinuousVariable, _, _], S <: CPSolver[B, C]](
+    method: S)(
+    implicit pars: C): Try[DenseVector[ContinuousVariable]] = {
     method.solve(this)(pars).map(_.solution)
   }
 

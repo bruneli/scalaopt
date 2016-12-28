@@ -29,7 +29,7 @@ import scala.util.Try
  * @tparam A optimization variable type
  * @author bruneli
  */
-case class GeneralConstraint[A <: Variable : FromDouble](
+case class GeneralConstraint[-A <: Variable](
   left: GeneralLeftOperand[A],
   operator: ConstraintOperator,
   right: Double) extends Constraint[A] {
@@ -40,8 +40,9 @@ case class GeneralConstraint[A <: Variable : FromDouble](
    * @param n size of the linear constraint (optional)
    * @return a linear constraint (of size n if specified) or a failure
    */
-  override def toLinearConstraint(n: Option[Int]): Try[LinearConstraint[A]] = {
-    left.toLinearConstraint(n).map(left => LinearConstraint(left, operator, right))
+  override def toLinearConstraint(n: Option[Int])(
+    implicit fromDouble: FromDouble[A]): Try[LinearConstraint[A]] = {
+    left.toLinearConstraint(n)(fromDouble).map(left => LinearConstraint(left, operator, right))
   }
 
 }

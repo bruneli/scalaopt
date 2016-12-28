@@ -27,8 +27,9 @@ import com.github.bruneli.scalaopt.core.variable.Variable
  * @author bruneli
  */
 case class GeneralConstraintBuilder[A <: Variable](
-  function: DenseVector[A] => Double)(
-  implicit fromDouble: FromDouble[A]) extends ConstraintBuilder[A, GeneralConstraint[A]] {
+  function: DenseVector[A] => Double) extends ConstraintBuilder[A] {
+
+  type B = GeneralConstraint[A]
 
   override protected def build(operator: ConstraintOperator, right: Double): GeneralConstraint[A] = {
     GeneralConstraint(GeneralLeftOperand(function), operator, right)

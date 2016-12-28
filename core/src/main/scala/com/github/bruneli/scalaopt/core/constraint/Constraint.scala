@@ -17,6 +17,7 @@
 package com.github.bruneli.scalaopt.core.constraint
 
 import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions.FromDouble
 import com.github.bruneli.scalaopt.core.variable.Variable
 
 import scala.util.Try
@@ -31,7 +32,7 @@ import scala.util.Try
  *
  * @author bruneli
  */
-trait Constraint[A <: Variable] {
+trait Constraint[-A <: Variable] {
 
   /**
    * Check if constraint is satisfied in x
@@ -62,6 +63,7 @@ trait Constraint[A <: Variable] {
    * @param n size of the linear constraint (optional)
    * @return a linear constraint (of size n if specified) or a failure
    */
-  def toLinearConstraint(n: Option[Int] = None): Try[LinearConstraint[A]]
+  def toLinearConstraint(n: Option[Int] = None)(
+    implicit fromDouble: FromDouble[A]): Try[LinearConstraint[A]]
 
 }

@@ -17,8 +17,8 @@
 package com.github.bruneli.scalaopt.core.constraint
 
 import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions.FromDouble
-import com.github.bruneli.scalaopt.core.linalg.{DenseVector, SimpleDenseVector}
-import com.github.bruneli.scalaopt.core.variable.Variable
+import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.variable.{Constant, Constants, Variable}
 
 import scala.util.{Success, Try}
 
@@ -31,14 +31,13 @@ import scala.util.{Success, Try}
  * @tparam A optimization variable type
  * @author bruneli
  */
-case class LinearConstraint[A <: Variable](
+case class LinearConstraint[-A <: Variable](
   left: LinearLeftOperand[A],
   operator: ConstraintOperator,
-  right: Double)(
-  implicit val fromDouble: FromDouble[A]) extends Constraint[A] {
+  right: Double) extends Constraint[A] {
 
   /** Alias for the linear coefficients */
-  def a: DenseVector[A] = left.a
+  def a: DenseVector[Constant] = left.a
 
   /** Alias for the real-valued constant linked to the right operand of the constraint */
   def b: Double = right
@@ -51,7 +50,8 @@ case class LinearConstraint[A <: Variable](
    * @param n size of the linear constraint (optional)
    * @return a linear constraint (of size n if specified) or a failure
    */
-  override def toLinearConstraint(n: Option[Int] = None): Try[LinearConstraint[A]] = n match {
+  override def toLinearConstraint(n: Option[Int] = None)(
+    implicit fromDouble: FromDouble[A]): Try[LinearConstraint[A]] = n match {
     case Some(length) =>
       this.left.toLinearConstraint(n).map(left => LinearConstraint(left, operator, right))
     case None =>
@@ -96,7 +96,7 @@ case class LinearConstraint[A <: Variable](
       }
       idx += 1
     }
-    val left = LinearLeftOperand(new SimpleDenseVector[A](a))
+    val left = LinearLeftOperand[A](new Constants(a))
     LinearConstraint(left, EqualityOperator(), b)
   }
 
