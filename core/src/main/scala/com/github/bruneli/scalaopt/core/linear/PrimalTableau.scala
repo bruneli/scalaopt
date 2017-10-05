@@ -21,7 +21,7 @@ import com.github.bruneli.scalaopt.core.ObjectiveType._
 import SeqDataSetConverter._
 import com.github.bruneli.scalaopt.core.constraint._
 import com.github.bruneli.scalaopt.core.function.LinearObjectiveFunction
-import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.linalg.{DenseVector, DenseVectorLike}
 import com.github.bruneli.scalaopt.core.variable.{Constant, ContinuousVariable}
 
 /**
@@ -70,8 +70,8 @@ case class PrimalTableau(
   /**
    * Extract the solution vector of this tableau
    */
-  override def solution: DenseVector[ContinuousVariable] = {
-    variables.withValues(primal.raw)
+  override def solution: DenseVectorLike[ContinuousVariable] = {
+    variables.withValues(primal.coordinates)
   }
 
   /**
@@ -235,7 +235,7 @@ object PrimalTableau extends CPBuilder[ContinuousVariable, LinearObjectiveFuncti
     val rhs = TableauColumn.costOnlyColumn(costVector.length, 0.0)
     // Add contraints to the tableau if some of the variable have lower or upper bounds
     val initialTableau = PrimalTableau(variables, objectiveType, columns, rhs, Vector())
-    variables.zipWithIndex.foldLeft(initialTableau)(addVariableConstraints)
+    variables.force.zipWithIndex.foldLeft(initialTableau)(addVariableConstraints)
   }
 
   private def addVariableConstraints(

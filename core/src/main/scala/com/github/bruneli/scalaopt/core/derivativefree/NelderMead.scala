@@ -98,7 +98,11 @@ object NelderMead extends DerivativeFreeMethod[NelderMeadConfig] {
       i: Int,
       relDelta: Double,
       absDelta: Double): Vertex = {
-      val xNew = if (x(i).x == 0.0) x(i).x + absDelta else x(i).x * relDelta
+      val xNew = if (x.coordinate(i) == 0.0) {
+        x.coordinate(i) + absDelta
+      } else {
+        x.coordinate(i) * relDelta
+      }
       Vertex(x.updated(i, xNew), f)
     }
   }
@@ -268,8 +272,9 @@ object NelderMead extends DerivativeFreeMethod[NelderMeadConfig] {
     /**
      * Compute the barycenter of a set of vertices.
      */
-    def barycenter(vertices: Vector[Vertex]) = {
-      vertices.tail.foldLeft(vertices.head.x / (vertices.head.length + 1)) {
+    def barycenter(vertices: Vector[Vertex]): UnconstrainedVariablesType = {
+      vertices.tail.foldLeft[UnconstrainedVariablesType](
+        vertices.head.x / (vertices.head.length + 1)) {
         case (r, c) => r + c.x / (c.length + 1.0)
       }
     }

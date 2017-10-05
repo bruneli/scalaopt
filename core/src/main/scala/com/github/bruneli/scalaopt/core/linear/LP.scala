@@ -19,7 +19,7 @@ package com.github.bruneli.scalaopt.core.linear
 import com.github.bruneli.scalaopt.core.ConfigPars
 import com.github.bruneli.scalaopt.core.constraint.{CP, CPBuilderOps, CPSolver, LinearConstraint}
 import com.github.bruneli.scalaopt.core.function.LinearObjectiveFunction
-import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.linalg.{DenseVector, DenseVectorLike}
 import com.github.bruneli.scalaopt.core.variable.ContinuousVariable
 
 import scala.util.Try
@@ -46,7 +46,7 @@ trait LP
    */
   override def solveWith[C <: ConfigPars, B >: P <: CP[ContinuousVariable, _, _], S <: CPSolver[B, C]](
     method: S)(
-    implicit pars: C): Try[DenseVector[ContinuousVariable]] = {
+    implicit pars: C): Try[DenseVectorLike[ContinuousVariable]] = {
     method.solve(this)(pars).map(_.solution)
   }
 

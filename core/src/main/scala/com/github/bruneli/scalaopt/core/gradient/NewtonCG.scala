@@ -64,7 +64,7 @@ object NewtonCG extends GradientMethod[CGConfig] {
 
       val dfxNorm = ptk.grad.norm
       val epsk = Math.min(0.5, Math.sqrt(dfxNorm)) * dfxNorm
-      val z0 = zeros[UnconstrainedVariable](ptk.x.size)
+      val z0 = zeros[UnconstrainedVariable](ptk.x.length)
       val r0 = ptk.grad
       val d0 = -r0
       val ptkPrim = searchDirection(0, ptk.copy(d = d0), z0, r0, epsk)
@@ -78,7 +78,7 @@ object NewtonCG extends GradientMethod[CGConfig] {
       }
     }
 
-    iterate(0, LineSearchPoint(x0, f, zeros[UnconstrainedVariable](x0.size)))
+    iterate(0, LineSearchPoint(x0, f, zeros[UnconstrainedVariable](x0.length)))
   }
 
   @tailrec

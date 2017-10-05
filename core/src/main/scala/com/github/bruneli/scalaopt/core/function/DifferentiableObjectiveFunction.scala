@@ -16,7 +16,7 @@
 
 package com.github.bruneli.scalaopt.core.function
 
-import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.linalg.DenseVectorLike
 import com.github.bruneli.scalaopt.core.variable.ContinuousVariable
 
 /**
@@ -35,7 +35,7 @@ trait DifferentiableObjectiveFunction[A <: ContinuousVariable] extends Continuou
    * @param x vector of variables
    * @return gradient of f in x
    */
-  def gradient(x: DenseVector[A]): DenseVector[A]
+  def gradient(x: DenseVectorLike[A]): DenseVectorLike[A]
 
   /**
    * Evaluate the directional derivative of f in x
@@ -46,7 +46,7 @@ trait DifferentiableObjectiveFunction[A <: ContinuousVariable] extends Continuou
    * @param d directional vector
    * @return directional derivative of f along d in x
    */
-  def dirder(x: DenseVector[A], d: DenseVector[A]): Double
+  def dirder(x: DenseVectorLike[A], d: DenseVectorLike[A]): Double
 
   /**
    * Evaluate the vector product of the Hessian evaluated at x and a direction d
@@ -55,6 +55,6 @@ trait DifferentiableObjectiveFunction[A <: ContinuousVariable] extends Continuou
    * @param d directional vector
    * @return product of the Hessian in x times d
    */
-  def dirHessian(x: DenseVector[A], d: DenseVector[A]): DenseVector[A]
+  def dirHessian(x: DenseVectorLike[A], d: DenseVectorLike[A]): DenseVectorLike[A]
 
 }

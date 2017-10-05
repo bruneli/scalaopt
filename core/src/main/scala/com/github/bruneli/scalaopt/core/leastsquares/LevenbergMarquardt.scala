@@ -19,7 +19,7 @@ package com.github.bruneli.scalaopt.core.leastsquares
 import com.github.bruneli.scalaopt.core.linalg.{DenseVector, QR}
 import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.core.function.MSEFunction
-import com.github.bruneli.scalaopt.core.variable.{Input, UnconstrainedVariable, VariableFromDouble}
+import com.github.bruneli.scalaopt.core.variable.{Input, UnconstrainedVariable, UnconstrainedVariables, VariableFromDouble}
 
 import scala.util.{Success, Try}
 
@@ -118,7 +118,7 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
     def iterate(
       outer: Int,
       x0: UnconstrainedVariablesType,
-      diag0: UnconstrainedVariablesType,
+      diag0: RealVectorType,
       xNorm0: Double,
       delta0: Double): UnconstrainedVariablesType = {
       val qr = QR(f.jacobianAndResidualsMatrix(x0), x0.length, pars.usePivoting)
@@ -128,12 +128,12 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
 
       // norm of the scaled gradient
       def scaledGradientNorm(gNorm0: Double, j: Int): Double = {
-        val acNormj = qr.acNorms(qr.ipvt(j)).x
+        val acNormj = qr.acNorms.coordinate(qr.ipvt(j))
         if (acNormj == 0.0) {
           gNorm0
         } else {
           val sum = (0 until j).foldLeft(0.0) {
-            case (acc, i) => acc + qr.R(i, j).x * qr.qtb(i).x / fNorm0
+            case (acc, i) => acc + qr.R(i, j).x * qr.qtb.coordinate(i) / fNorm0
           }
           Math.max(gNorm0, Math.abs(sum / acNormj))
         }
@@ -153,7 +153,7 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
       inner: Int,
       x0: UnconstrainedVariablesType,
       qr: QR,
-      diag: UnconstrainedVariablesType,
+      diag: RealVectorType,
       delta0: Double,
       par0: Double,
       fNorm0: Double): (UnconstrainedVariablesType, Double, Double, Boolean) = {
@@ -164,11 +164,11 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
       val fNorm = Math.sqrt(f(x))
 
       // Scaled predicted reduction and scaled directional derivative
-      def multiply(predicted0: InputsType, j: Int): InputsType = {
+      def multiply(predicted0: RealVectorType, j: Int): RealVectorType = {
         if (j == predicted0.length) {
           predicted0
         } else {
-          val predicted = predicted0 - qr.R(j) * pk(qr.ipvt(j)).x
+          val predicted = predicted0 - qr.R(j) * pk.coordinate(qr.ipvt(j))
           multiply(predicted, j + 1)
         }
       }
@@ -222,56 +222,57 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
       }
     }
 
-    Success(iterate(0, x0, DenseVector.zeros[UnconstrainedVariable](x0.length), 0.0, 0.0))
+    Success(iterate(0, x0, DenseVector.zeros[Input](x0.length), 0.0, 0.0))
   }
 
   private def updateDiagNormDelta(
     iteration: Int,
-    x: UnconstrainedVariablesType,
-    diag0: UnconstrainedVariablesType,
+    x: RealVectorType,
+    diag0: RealVectorType,
     xNorm0: Double,
     delta0: Double,
     qr: QR,
-    stepBound: Double): (UnconstrainedVariablesType, Double, Double) =
+    stepBound: Double): (RealVectorType, Double, Double) = {
     if (iteration == 0) {
       val diag = qr.acNorms.mapValues {
         norm => if (norm > 0.0) norm else 1.0
-      }.asVectorOf[UnconstrainedVariable]
+      }
       val xNorm = Math.sqrt(diag dot x)
       val delta = if (xNorm == 0.0) stepBound else stepBound * xNorm
       (diag, xNorm, delta)
     } else {
-      val diag = DenseVector.max(diag0, qr.acNorms.asVectorOf[UnconstrainedVariable])
+      val diag = DenseVector.max(diag0, qr.acNorms)
       (diag, xNorm0, delta0)
     }
+  }
 
   // Determine the Levenberg-Marquardt parameter
   def lmPar(
     qr: QR,
-    diag: UnconstrainedVariablesType,
+    diag: RealVectorType,
     delta: Double,
     par0: Double,
-    maxStepLengthIter: Int): (Double, UnconstrainedVariablesType, UnconstrainedVariablesType) = {
+    maxStepLengthIter: Int): (Double, UnconstrainedVariablesType, RealVectorType) = {
     val n = diag.length
     val p1 = 0.1
 
-    def gaussNewtonDirection(qtb0: UnconstrainedVariablesType) = {
-      // Take QtB values till first null R diagonal element
-      val firstIdxZero = qr.rDiag.indexWhere(_ == 0.0)
+    def gaussNewtonDirection(qtb0: RealVectorType): (RealVectorType, Int) = {
+      // Take QtB values until first zero R diagonal element
+      val firstIdxZero = qr.rDiag.force.indexWhere(_ == 0.0)
       val nsing = if (firstIdxZero == -1) qr.rDiag.length - 1 else firstIdxZero - 1
       val qtb = qtb0.mapWithIndex {
         (value: Double, col: Int) => if (col <= nsing) value else 0.0
       }
 
-      def qtbMinusR(x: UnconstrainedVariablesType, j: Int): UnconstrainedVariablesType = {
-        if (j == -1 || x(j).x == 0.0) {
+      def qtbMinusR(x: RealVectorType, j: Int): RealVectorType = {
+        if (j == -1 || x.coordinate(j) == 0.0) {
           x
         } else {
-          val alpha = x(j).x / qr.rDiag(j).x
+          val alpha = x.coordinate(j) / qr.rDiag.coordinate(j)
           val rj = qr.R(j)
           //val xNew = (x - rj * alpha).updated(j, alpha)
           val xNew = x.updated(j, alpha).mapWithIndex {
-            (v: Double, i: Int) => if (i < j) v - rj(i).x * alpha else v
+            (v: Double, i: Int) => if (i < j) v - rj.coordinate(i) * alpha else v
           }
           qtbMinusR(xNew, j - 1)
         }
@@ -281,13 +282,13 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
       (DenseVector.permute(qr.ipvt)(xUnpivoted), nsing)
     }
 
-    val (x, nsing) = gaussNewtonDirection(qr.qtb.asVectorOf[UnconstrainedVariable])
+    val (x, nsing) = gaussNewtonDirection(qr.qtb)
     val xdi = diag.zipAndMap(x, _ * _)
     val dxNorm = eNorm(xdi)
     val fp = dxNorm - delta
 
     if (fp <= p1 * delta) {
-      (par0, x, xdi)
+      (par0, UnconstrainedVariables(x), xdi)
     } else {
       val unpermutedDiag = DenseVector.unpermute(qr.ipvt)(diag)
       val parLow =
@@ -295,13 +296,12 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
           val unpermutedXdi = DenseVector.unpermute(qr.ipvt)(xdi)
           val aux0 = unpermutedDiag
             .zipAndMap(unpermutedXdi, (l, r) => l * r / dxNorm)
-            .asVectorOf[Input]
-          def mul(aux: InputsType, j: Int): InputsType = {
+          def mul(aux: RealVectorType, j: Int): RealVectorType = {
             if (j == n) {
               aux
             } else {
-              val sum = aux.take(j - 1) inner qr.R(j).take(j - 1)
-              mul(aux.updated(j, (aux(j).x - sum) / qr.rDiag(j).x), j + 1)
+              val sum = aux.force.take(j - 1) inner qr.R(j).force.take(j - 1)
+              mul(aux.force.updated(j, (aux.coordinate(j) - sum) / qr.rDiag.coordinate(j)), j + 1)
             }
           }
           val aux = mul(aux0, 0)
@@ -310,7 +310,7 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
           0.0
         }
       val aux = unpermutedDiag.mapWithIndex {
-        (diag, i) => (qr.R(i).take(i) inner qr.qtb.take(i)) / diag
+        (diag, i) => (qr.R(i).force.take(i) inner qr.qtb.force.take(i)) / diag
       }
       val parUp = eNorm(aux) / delta
 
@@ -318,7 +318,7 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
         iter: Int,
         par0: (Double, Double, Double),
         fp0: Double,
-        maxStepLengthIter: Int): (Double, UnconstrainedVariablesType, UnconstrainedVariablesType) = {
+        maxStepLengthIter: Int): (Double, UnconstrainedVariablesType, RealVectorType) = {
         val (x, sDiag) = qrSolve(qr, diag)
         val xDiag = x.zipAndMap(sDiag, _ * _)
         val dxNorm = eNorm(xDiag)
@@ -326,23 +326,23 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
         if ((Math.abs(fp) <= p1 * delta) ||
           (par0._1 == 0.0 && fp <= fp0 && fp0 < 0.0) ||
           (iter == maxStepLengthIter)) {
-          (par0._2, x, xDiag)
+          (par0._2, UnconstrainedVariables(x), xDiag)
         } else {
           val pivotedAux0 = diag.zipAndMap(xDiag, (x, y) => x * y / dxNorm)
           val aux0 = DenseVector.unpermute(qr.ipvt)(pivotedAux0)
-          def multiply(j: Int, aux: UnconstrainedVariablesType): UnconstrainedVariablesType = {
+          def multiply(j: Int, aux: RealVectorType): RealVectorType = {
             if (j == n) {
               aux
             } else {
-              val auxj = aux(j).x / sDiag(j).x
-              val rUpper = qr.R(j).drop(j + 1)
+              val auxj = aux.coordinate(j) / sDiag.coordinate(j)
+              val rUpper = qr.R(j).force.drop(j + 1)
               val rUpperNorm2 = rUpper.norm2
               val auxUpdated = aux.mapWithIndex {
                 (x, i) =>
                   if (i == j) {
                     auxj
                   } else if (x > j && rUpperNorm2 != 0.0) {
-                    x - rUpper(i - j - 1).x / auxj
+                    x - rUpper.coordinate(i - j - 1) / auxj
                   } else {
                     x
                   }
@@ -397,30 +397,30 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
    */
   def qrSolve(
     qr: QR,
-    diag: UnconstrainedVariablesType): (UnconstrainedVariablesType, UnconstrainedVariablesType) = {
+    diag: RealVectorType): (RealVectorType, RealVectorType) = {
     val n = diag.length
 
     def diagonalElimination(
-      previous: (IndexedSeq[InputsType], InputsType, OutputsType),
-      j: Int): (IndexedSeq[InputsType], InputsType, OutputsType) = {
+      previous: (IndexedSeq[RealVectorType], RealVectorType, RealVectorType),
+      j: Int): (IndexedSeq[RealVectorType], RealVectorType, RealVectorType) = {
       val (s0, sDiag0, qtb0) = previous
       val jpvt = qr.ipvt(j)
       if (diag(jpvt).x == 0.0) {
         (s0.updated(j, s0(j).updated(j, qr.R(j, j).x)), sDiag0.updated(j, s0(j)(j).x), qtb0)
       } else {
         // Fill with zeros elements of sDiag where index is greater than j
-        val sDiagInit: InputsType = sDiag0.updated(j, diag(jpvt).x).mapWithIndex {
+        val sDiagInit: RealVectorType = sDiag0.updated(j, diag(jpvt).x).mapWithIndex {
           (v, i) => if (i > j) 0.0 else v
         }
         val (sj, sDiag, qtb, qtbpj) =
           (j until n).foldLeft((s0(j), sDiagInit, qtb0, 0.0))(rotation)
-        (s0.updated(j, sj.updated(j, qr.R(j, j).x)), sDiag.updated(j, sj(j).x), qtb)
+        (s0.updated(j, sj.updated(j, qr.R(j, j).x)), sDiag.updated(j, sj.coordinate(j)), qtb)
       }
     }
 
     def rotation(
-      previous: (InputsType, InputsType, OutputsType, Double),
-      k: Int): (InputsType, InputsType, OutputsType, Double) = {
+      previous: (RealVectorType, RealVectorType, RealVectorType, Double),
+      k: Int): (RealVectorType, RealVectorType, RealVectorType, Double) = {
       val (sk0, sDiag0, qtb0, qtbpj0) = previous
       if (sDiag0(k).x == 0.0) {
         previous
@@ -450,32 +450,33 @@ object LevenbergMarquardt extends LeastSquaresMethod[LevenbergMarquardtConfig] w
     // Eliminate the row of p^T*d*p*z = 0 with rotations
     // While doing it, update accordingly the matrix R and vector QtB
     // Resulting version of R is stored in S and QtB
-    val s0: IndexedSeq[InputsType] = for (j <- 0 until n) yield qr.R(j)
+    val s0: IndexedSeq[RealVectorType] = for (j <- 0 until n) yield qr.R(j)
     val (s, sDiag, qtb) =
-      (0 until n).foldLeft((s0, DenseVector.zeros[Input](n), qr.qtb))(diagonalElimination)
+      (0 until n).foldLeft[(IndexedSeq[RealVectorType], RealVectorType, RealVectorType)](
+        (s0, DenseVector.zeros[Input](n), qr.qtb))(diagonalElimination)
 
     // Solve the modified triangular system s*z = qtb
     // If the system is singular, obtain a least square solution
-    val firstIdxZero = sDiag.indexWhere(_ == 0.0)
+    val firstIdxZero = sDiag.force.indexWhere(_ == 0.0)
     val nsing = if (firstIdxZero == -1) n - 1 else firstIdxZero - 1
     val qtbSingular = qtb.mapWithIndex {
       (value, col) => if (col <= nsing) value else 0.0
     }
-    def solve(x0: UnconstrainedVariablesType, j: Int): UnconstrainedVariablesType = {
+    def solve(x0: RealVectorType, j: Int): RealVectorType = {
       if (j < 0) {
         x0
       } else {
-        val sum = x0.drop(j + 1) inner s(j).drop(j + 1)
+        val sum = x0.force.drop(j + 1) inner s(j).force.drop(j + 1)
         val x = x0.updated(j, (x0(j).x - sum) / sDiag(j).x)
         solve(x, j - 1)
       }
     }
-    val xUnpivoted = solve(qtbSingular.asVectorOf[UnconstrainedVariable], nsing)
-    (DenseVector.permute(qr.ipvt)(xUnpivoted), sDiag.asVectorOf[UnconstrainedVariable])
+    val xUnpivoted = solve(qtbSingular, nsing)
+    (DenseVector.permute(qr.ipvt)(xUnpivoted), sDiag)
   }
 
   /** Euclidean norm of vector */
-  def eNorm(v: UnconstrainedVariablesType): Double = v.norm
+  def eNorm(v: RealVectorType): Double = v.norm
 
 }
 

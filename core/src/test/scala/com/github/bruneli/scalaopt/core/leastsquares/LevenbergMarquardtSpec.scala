@@ -36,7 +36,7 @@ class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
   "minimize" should "converge to its solution for a linear system" in {
     /** Linear regression, first variable is the intercept */
     val linear: RegressionFunction = {
-      (p: UnconstrainedVariablesType, x: InputsType) => Outputs(p(0) + p.tail.inner(x))
+      (p: UnconstrainedVariablesType, x: InputsType) => Outputs(p(0) + p.force.tail.inner(x))
     }
 
     val tol = 0.5
@@ -53,8 +53,8 @@ class LevenbergMarquardtSpec extends FlatSpec with Matchers with TryValues {
 
     val pOpt = minimize((linear, data), p0)
     pOpt should be a 'success
-    pOpt.get.size should be(n + 1)
-    for ((estimated, expected) <- pOpt.get.zip(p0)) estimated.x shouldBe expected.x +- tol
+    pOpt.get.length should be(n + 1)
+    for ((estimated, expected) <- pOpt.get.force.zip(p0)) estimated.x shouldBe expected.x +- tol
   }
 
   it should "converge to its solution for a non-linear objective function" in {

@@ -16,7 +16,7 @@
 
 package com.github.bruneli.scalaopt.core.function
 
-import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.linalg.DenseVectorLike
 import com.github.bruneli.scalaopt.core.variable.{Variable, VariableFromDouble}
 
 /**
@@ -35,6 +35,6 @@ trait ObjectiveFunction[-A <: Variable] extends VariableFromDouble {
    * @param x vector of variables
    * @return real-valued objective function at x
    */
-  def apply(x: DenseVector[A]): Double
+  def apply(x: DenseVectorLike[A]): Double
 
 }

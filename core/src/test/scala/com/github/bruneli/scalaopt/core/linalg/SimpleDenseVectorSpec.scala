@@ -111,7 +111,7 @@ class SimpleDenseVectorSpec extends FlatSpec with Matchers {
   }
 
   "vector(3, 2.0)" should "create a vector of size 3 filled with 2" in {
-    DenseVector.vector[RealValue](3, 2.0) shouldBe SimpleDenseVector(RealValue(2.0), RealValue(2.0), RealValue(2.0))
+    DenseVector.fill[RealValue](3)(2.0) shouldBe SimpleDenseVector(RealValue(2.0), RealValue(2.0), RealValue(2.0))
   }
 
   "zeros(3)" should "create a vector of size 3 filled with zeros" in {
@@ -127,17 +127,17 @@ class SimpleDenseVectorSpec extends FlatSpec with Matchers {
   }
 
   "gradient" should "compute the gradient of f in x" in {
-    val f = (x: DenseVector[RealValue]) => (x dot x) + (x dot v2) + 2.0
-    val df = (x: DenseVector[RealValue]) => x * 2.0 + v2
+    val f = (x: DenseVectorLike[RealValue]) => (x dot x) + (x dot v2) + 2.0
+    val df = (x: DenseVectorLike[RealValue]) => x * 2.0 + v2
 
     // Gradient from finite differences in v1
-    val grad1 = DenseVector.gradient(f, v1)
+    val grad1 = DenseVector.gradient[RealValue](f, v1)
     // Analytics gradient in v1
     val grad2 = df(v1)
 
     grad1.length shouldBe 2
-    grad1(0).x shouldBe grad2(0).x +- 1.0e-6
-    grad1(1).x shouldBe grad2(1).x +- 1.0e-6
+    grad1.coordinate(0) shouldBe grad2.coordinate(0) +- 1.0e-6
+    grad1.coordinate(1) shouldBe grad2.coordinate(1) +- 1.0e-6
   }
 
   "min" should "build a new vector from two vectors with the minimum of each pair of elements" in {

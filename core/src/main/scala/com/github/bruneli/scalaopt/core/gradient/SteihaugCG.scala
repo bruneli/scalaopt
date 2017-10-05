@@ -60,7 +60,7 @@ object SteihaugCG extends GradientMethod[SteihaugCGConfig] with VariableFromDoub
 
       val dfxNorm = ptk.grad.norm
       val epsk = Math.min(0.5, Math.sqrt(dfxNorm)) * dfxNorm
-      val z0 = zeros[UnconstrainedVariable](ptk.x.size)
+      val z0 = zeros[UnconstrainedVariable](ptk.x.length)
       val r0 = ptk.grad
       val d0 = -r0
       val ptkpp = searchDirection(0, ptk.copy(d = d0), z0, r0, deltak, epsk)
@@ -87,7 +87,7 @@ object SteihaugCG extends GradientMethod[SteihaugCGConfig] with VariableFromDoub
       }
     }
 
-    iterate(0, pars.delta0, LineSearchPoint(x0, f, zeros[UnconstrainedVariable](x0.size)))
+    iterate(0, pars.delta0, LineSearchPoint(x0, f, zeros[UnconstrainedVariable](x0.length)))
   }
 
   @tailrec

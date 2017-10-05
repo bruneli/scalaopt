@@ -44,7 +44,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xOpt = lp.solveWith(StandardSimplex())(defaultConfig)
 
     xOpt shouldBe 'success
-    for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
+    for ((xObs, xExp) <- xOpt.get.force.zip(xMin)) {
       xObs.x shouldBe xExp.x +- 1.0e-8
     }
 
@@ -60,7 +60,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
         .solveWith(StandardSimplex())(defaultConfig)
 
     xOpt shouldBe 'success
-    for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
+    for ((xObs, xExp) <- xOpt.get.force.zip(xMin)) {
       xObs.x shouldBe xExp.x +- 1.0e-8
     }
 
@@ -75,7 +75,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
       .solveWith(StandardSimplex())(defaultConfig)
 
     xOpt shouldBe 'success
-    for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
+    for ((xObs, xExp) <- xOpt.get.force.zip(xMin)) {
       xObs.x shouldBe xExp +- 1.0e-8
     }
 
@@ -93,7 +93,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
       .solveWith(StandardSimplex())(defaultConfig)
 
     xOpt shouldBe 'success
-    for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
+    for ((xObs, xExp) <- xOpt.get.force.zip(xMin)) {
       xObs.x shouldBe xExp +- 1.0e-8
     }
 
@@ -113,7 +113,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
       .solveWith(StandardSimplex())(defaultConfig)
 
     xOpt shouldBe 'success
-    for ((xObs, xExp) <- xOpt.get.zip(xMin)) {
+    for ((xObs, xExp) <- xOpt.get.force.zip(xMin)) {
       xObs.x shouldBe xExp +- 1.0e-8
     }
 
@@ -130,7 +130,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
       .solveWith(StandardSimplex())(defaultConfig)
 
     xOpt shouldBe 'success
-    for ((xObs, xExp) <- xOpt.get.zip(xMax)) {
+    for ((xObs, xExp) <- xOpt.get.force.zip(xMax)) {
       xObs.x shouldBe xExp +- 1.0e-8
     }
 
@@ -149,7 +149,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
       .solveWith(StandardSimplex())(defaultConfig)
 
     xOpt shouldBe 'success
-    for ((xObs, xExp) <- xOpt.get.zip(xMax)) {
+    for ((xObs, xExp) <- xOpt.get.force.zip(xMax)) {
       xObs.x shouldBe xExp +- 1.0e-8
     }
 
@@ -223,7 +223,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
       Vector(250.0, 300.0, 120.0, 80.0, 40.0, 70.0, 60.0, 45.0, 30.0, 0.0, 0.0, 0.0,
         120.0, 50.0, 200.0, 400.0, 60.0, 50.0, 60.0, 55.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-    for ((selectedVolume, expectedVolume) <- tableauOpt.get.solution.zip(expectedClearing)) {
+    for ((selectedVolume, expectedVolume) <- tableauOpt.get.solution.force.zip(expectedClearing)) {
       selectedVolume.x shouldBe expectedVolume +- 1.0e-8
     }
   }

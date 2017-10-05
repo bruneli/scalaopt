@@ -57,7 +57,7 @@ case class LinearLeftOperand[-A <: Variable](
         var idx = 0
         while (idx < length) {
           if (idx < a.length) {
-            extended(idx) = a.raw(idx)
+            extended(idx) = a.coordinates(idx)
           } else {
             extended(idx) = 0.0
           }

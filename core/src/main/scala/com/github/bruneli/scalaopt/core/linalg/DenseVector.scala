@@ -32,209 +32,191 @@ import scala.collection.immutable.IndexedSeq
 trait DenseVector[+A <: ToDouble]
   extends IndexedSeq[A]
     with IndexedSeqLike[A, DenseVector[A]]
-    with VectorAlgebraOps[A] {
+    with DenseVectorLike[A] {
   self =>
 
-  type V[+T <: ToDouble] = DenseVector[T]
+  type V <: DenseVector[A]
 
   /** Representation of the vector as an array of double for quick operations */
-  val raw: Array[Double]
+  val coordinates: Array[Double]
 
-  override def length: Int = raw.length
+  def length: Int = {
+    coordinates.length
+  }
+
+  def coordinate(i: Int): Double = {
+    coordinates(i)
+  }
+
+  def force: DenseVector[A] = {
+    this
+  }
 
   override protected[this] def newBuilder: mutable.Builder[A, DenseVector[A]] = {
     self.newBuilder
   }
 
-  /** Update the values of the vector elements */
-  def withValues(updated: Array[Double]): DenseVector[A]
+  override def newDenseVectorBuilder: DenseVectorBuilder[V] = {
+    self.newDenseVectorBuilder
+  }
+
+  /** Element wise addition */
+  def +[B >: A <: ToDouble](that: DenseVectorLike[B]): DenseVector[B] = {
+    val sum = new Array[Double](this.length)
+    var idx = 0
+    while (idx < sum.length) {
+      sum(idx) = this.coordinate(idx) + that.coordinate(idx)
+      idx += 1
+    }
+    newDenseVectorBuilder.withValues(sum)
+  }
+
+  /** Element wise subtraction */
+  def -[B >: A <: ToDouble](that: DenseVectorLike[B]): DenseVector[B] = {
+    val difference = new Array[Double](this.length)
+    var idx = 0
+    while (idx < difference.length) {
+      difference(idx) = this.coordinate(idx) - that.coordinate(idx)
+      idx += 1
+    }
+    newDenseVectorBuilder.withValues(difference)
+  }
+
+  /** Add a constant value */
+  override def +(offset: Double): V = {
+    val sum = new Array[Double](this.length)
+    var idx = 0
+    while (idx < sum.length) {
+      sum(idx) = this.coordinates(idx) + offset
+      idx += 1
+    }
+    newDenseVectorBuilder.withValues(sum)
+  }
+
+  /** Subtract a constant value */
+  override def -(offset: Double): V = {
+    this + (-offset)
+  }
+
+  /** Negative of a vector */
+  override def unary_- : V = {
+    val opposite = new Array[Double](this.length)
+    var idx = 0
+    while (idx < opposite.length) {
+      opposite(idx) = -this.coordinates(idx)
+      idx += 1
+    }
+    newDenseVectorBuilder.withValues(opposite)
+  }
+
+  /** Multiplication by scalar */
+  override def *(scalar: Double): V = {
+    val product = new Array[Double](this.length)
+    var idx = 0
+    while (idx < product.length) {
+      product(idx) = this.coordinates(idx) * scalar
+      idx += 1
+    }
+    newDenseVectorBuilder.withValues(product)
+  }
+
+  /** Division by scalar */
+  override def /(scalar: Double): V = {
+    val division = new Array[Double](this.length)
+    var idx = 0
+    while (idx < division.length) {
+      division(idx) = this.coordinates(idx) / scalar
+      idx += 1
+    }
+    newDenseVectorBuilder.withValues(division)
+  }
+
+  /** Multiplication by scalar */
+  override def *[B >: A <: ToDouble](scalar: B): DenseVectorLike[B] = {
+    this * scalar.x
+  }
+
+  /** Division by scalar */
+  override def /[B >: A <: ToDouble](scalar: B): DenseVectorLike[B] = {
+    this / scalar.x
+  }
+
+  /** Conversion to a column matrix */
+  override def toMatrix: RealMatrix = MatrixUtils.createColumnRealMatrix(coordinates)
 
   /** Directly update the underlying raw value of a vector */
-  def updated(index: Int, elem: Double): DenseVector[A] = {
-    val updated = new Array[Double](raw.length)
+  def updated(index: Int, elem: Double): V = {
+    val updated = new Array[Double](coordinates.length)
     var idx = 0
     while (idx < updated.length) {
       if (idx == index) {
         updated(idx) = elem
       } else {
-        updated(idx) = raw(idx)
+        updated(idx) = coordinates(idx)
       }
       idx += 1
     }
-    withValues(updated)
+    newDenseVectorBuilder.withValues(updated)
   }
 
   /** Map a function directly on raw values of the vector */
-  def mapValues(f: Double => Double): DenseVector[A] = {
-    val updated = new Array[Double](raw.length)
+  def mapValues(f: Double => Double): V = {
+    val updated = new Array[Double](coordinates.length)
     var idx = 0
     while (idx < updated.length) {
-      updated(idx) = f(raw(idx))
+      updated(idx) = f(coordinates(idx))
       idx += 1
     }
-    withValues(updated)
+    newDenseVectorBuilder.withValues(updated)
   }
 
   /** Map a function acting on tuple (value, index) of vector elements */
-  def mapWithIndex(f: (Double, Int) => Double): DenseVector[A] = {
-    val updated = new Array[Double](raw.length)
+  def mapWithIndex(f: (Double, Int) => Double): V = {
+    val updated = new Array[Double](coordinates.length)
     var idx = 0
     while (idx < updated.length) {
-      updated(idx) = f(raw(idx), idx)
+      updated(idx) = f(coordinates(idx), idx)
       idx += 1
     }
-    withValues(updated)
+    newDenseVectorBuilder.withValues(updated)
   }
 
   /**
-   * Zip two vectors and map their pair of values into a new vector
-   *
-   * The size of the vector returned is the minimum size between this and that vectors
-   *
-   * @param that a vector of variable identical to the source vector
-   * @param f a real-valued function acting on pairs of (this, that) vector elements
-   * @return a vector of variable
-   */
-  def zipAndMap[B >: A <: ToDouble](that: DenseVector[B], f: (Double, Double) => Double): DenseVector[B] = {
+    * Zip two vectors and map their pair of values into a new vector
+    *
+    * The size of the vector returned is the minimum size between this and that vectors
+    *
+    * @param that a vector of variable identical to the source vector
+    * @param f a real-valued function acting on pairs of (this, that) vector elements
+    * @return a vector of variable
+    */
+  def zipAndMap[B >: A <: ToDouble](that: DenseVectorLike[B],
+                                    f: (Double, Double) => Double): DenseVector[B] = {
     val result = new Array[Double](Math.min(this.length, that.length))
     var idx = 0
     while (idx < result.length) {
-      result(idx) = f(this.raw(idx), that.raw(idx))
+      result(idx) = f(this.coordinate(idx), that.coordinate(idx))
       idx += 1
     }
-    that.withValues(result)
+    newDenseVectorBuilder.withValues(result)
   }
 
   /** Build a new vector with values corresponding to indices i and j swapped */
-  def swap(i: Int, j: Int): DenseVector[A] = {
-    val updated = new Array[Double](raw.length)
+  def swap(i: Int, j: Int): V = {
+    val updated = new Array[Double](coordinates.length)
     var idx = 0
     while (idx < updated.length) {
       if (idx == i) {
-        updated(idx) = raw(j)
+        updated(idx) = coordinates(j)
       } else if (idx == j) {
-        updated(idx) = raw(i)
+        updated(idx) = coordinates(i)
       } else {
-        updated(idx) = raw(idx)
+        updated(idx) = coordinates(idx)
       }
       idx += 1
     }
-    withValues(updated)
+    newDenseVectorBuilder.withValues(updated)
   }
-
-  /** Change type of vector elements */
-  def asVectorOf[B <: ToDouble : FromDouble]: DenseVector[B] = {
-    SimpleDenseVector[B](raw)
-  }
-
-  /** Element wise addition */
-  def +[B <: ToDouble](that: DenseVector[B]): DenseVector[B] = {
-    val sum = new Array[Double](this.length)
-    var idx = 0
-    while (idx < sum.length) {
-      sum(idx) = this.raw(idx) + that.raw(idx)
-      idx += 1
-    }
-    that.withValues(sum)
-  }
-
-  /** Element wise subtraction */
-  def -[B <: ToDouble](that: DenseVector[B]): DenseVector[B] = {
-    val difference = new Array[Double](this.length)
-    var idx = 0
-    while (idx < difference.length) {
-      difference(idx) = this.raw(idx) - that.raw(idx)
-      idx += 1
-    }
-    that.withValues(difference)
-  }
-
-  /** Add a constant value */
-  override def +(offset: Double): DenseVector[A] = {
-    val sum = new Array[Double](this.length)
-    var idx = 0
-    while (idx < sum.length) {
-      sum(idx) = this.raw(idx) + offset
-      idx += 1
-    }
-    withValues(sum)
-  }
-
-  /** Subtract a constant value */
-  override def -(offset: Double): DenseVector[A] = this + (-offset)
-
-  /** Negative of a vector */
-  override def unary_- : DenseVector[A] = {
-    val negative = new Array[Double](this.length)
-    var idx = 0
-    while (idx < negative.length) {
-      negative(idx) = -this.raw(idx)
-      idx += 1
-    }
-    withValues(negative)
-  }
-
-  /** Multiplication by scalar */
-  override def *(scalar: Double): DenseVector[A] = {
-    val product = new Array[Double](this.length)
-    var idx = 0
-    while (idx < product.length) {
-      product(idx) = this.raw(idx) * scalar
-      idx += 1
-    }
-    withValues(product)
-  }
-
-  /** Division by scalar */
-  override def /(scalar: Double): DenseVector[A] = {
-    val division = new Array[Double](this.length)
-    var idx = 0
-    while (idx < division.length) {
-      division(idx) = this.raw(idx) / scalar
-      idx += 1
-    }
-    withValues(division)
-  }
-
-  /** Multiplication by scalar */
-  override def *[B <: ToDouble](scalar: B): DenseVector[A] = this * scalar.x
-
-  /** Division by scalar */
-  override def /[B <: ToDouble](scalar: B): DenseVector[A] = this / scalar.x
-
-  /** Inner product of two vectors */
-  override def inner[B <: ToDouble](that: DenseVector[B]): Double = {
-    var acc = 0.0
-    var idx = 0
-    while (idx < this.length) {
-      acc += this.raw(idx) * that.raw(idx)
-      idx += 1
-    }
-    acc
-  }
-
-  /** Dot product of two vectors */
-  override def dot[B <: ToDouble](that: DenseVector[B]): Double = this.inner(that)
-
-  /** L2 norm squared */
-  override def norm2: Double = {
-    var acc = 0.0
-    var idx = 0
-    while (idx < this.length) {
-      acc += this.raw(idx) * this.raw(idx)
-      idx += 1
-    }
-    acc
-  }
-
-  /** Conversion to a column matrix */
-  override def toMatrix: RealMatrix = MatrixUtils.createColumnRealMatrix(raw)
-
-  /** Transpose, conversion to a row matrix */
-  override def t: RealMatrix = this.toMatrix.transpose()
-
-  /** Outer product of two vectors */
-  override def outer[B <: ToDouble](that: DenseVector[B]): RealMatrix = this.toMatrix * that.t
 
 }
 
@@ -249,15 +231,15 @@ object DenseVector {
   }
 
   /** Create an n-vector of Variables filled with a constant value */
-  def vector[A <: ToDouble : FromDouble](n: Int, value: Double): DenseVector[A] = {
+  def fill[A <: ToDouble : FromDouble](n: Int)(value: Double): DenseVector[A] = {
     SimpleDenseVector(Array.fill(n)(value))
   }
 
   /** Create a n-vector of Variables filled with zeros */
-  def zeros[A <: ToDouble : FromDouble](n: Int): DenseVector[A] = vector(n, 0.0)
+  def zeros[A <: ToDouble : FromDouble](n: Int): DenseVector[A] = fill(n)(0.0)
 
   /** Create an n-vector of Variables filled with ones */
-  def ones[A <: ToDouble : FromDouble](n: Int): DenseVector[A] = vector(n, 1.0)
+  def ones[A <: ToDouble : FromDouble](n: Int): DenseVector[A] = fill(n)(1.0)
 
   /** Create an n-dimensional basis vector with i-th element set to 1 */
   def e[A <: ToDouble : FromDouble](n: Int, i: Int): DenseVector[A] = {
@@ -280,18 +262,11 @@ object DenseVector {
    * @return gradient of f in x
    */
   def gradient[A <: ToDouble](
-    f: DenseVector[A] => Double,
-    x: DenseVector[A],
-    eps: Double = 1.0e-8): DenseVector[A] = {
-    val grad = new Array[Double](x.length)
+    f: DenseVectorLike[A] => Double,
+    x: DenseVectorLike[A],
+    eps: Double = 1.0e-8): DenseVectorLike[A] = {
     val fx = f(x)
-    var idx: Int = 0
-    while (idx < x.length) {
-      val xPlusDx = x.updated(idx, x.raw(idx) + eps)
-      grad(idx) = (f(xPlusDx) - fx) / eps
-      idx += 1
-    }
-    x.withValues(grad)
+    x.mapWithIndex((xi, i) => (f(x.updated(i, xi + eps)) - fx) / eps)
   }
 
   /**
@@ -303,8 +278,8 @@ object DenseVector {
    * @return element-wise minimum of left and right vectors
    */
   def min[A <: ToDouble](
-    left: DenseVector[A],
-    right: DenseVector[A]): DenseVector[A] = {
+    left: DenseVectorLike[A],
+    right: DenseVectorLike[A]): DenseVectorLike[A] = {
     left.zipAndMap(right, Math.min)
   }
 
@@ -317,8 +292,8 @@ object DenseVector {
    * @return element-wise maximum of left and right vectors
    */
   def max[A <: ToDouble](
-    left: DenseVector[A],
-    right: DenseVector[A]): DenseVector[A] = {
+    left: DenseVectorLike[A],
+    right: DenseVectorLike[A]): DenseVectorLike[A] = {
     left.zipAndMap(right, Math.max)
   }
 
@@ -334,10 +309,10 @@ object DenseVector {
    */
   def permute[A <: ToDouble](
     ipvt: Array[Int])(
-    x: DenseVector[A]): DenseVector[A] = {
+    x: DenseVectorLike[A]): DenseVector[A] = {
     val xPivoted = new Array[Double](x.length)
-    for (j <- 0 until x.length) xPivoted(ipvt(j)) = x.raw(j)
-    x.withValues(xPivoted)
+    for (j <- 0 until x.length) xPivoted(ipvt(j)) = x.coordinate(j)
+    x.force.newDenseVectorBuilder.withValues(xPivoted)
   }
 
   /**
@@ -352,10 +327,10 @@ object DenseVector {
    */
   def unpermute[A <: ToDouble](
     ipvt: Array[Int])(
-    x: DenseVector[A]): DenseVector[A] = {
+    x: DenseVectorLike[A]): DenseVector[A] = {
     val xUnpivoted = new Array[Double](x.length)
-    for (j <- 0 until x.length) xUnpivoted(j) = x.raw(ipvt(j))
-    x.withValues(xUnpivoted)
+    for (j <- 0 until x.length) xUnpivoted(j) = x.coordinate(ipvt(j))
+    x.force.newDenseVectorBuilder.withValues(xUnpivoted)
   }
 
 }

@@ -83,12 +83,12 @@ class QRSpec extends FlatSpec with Matchers {
     }
 
     // Check qtb is same (up to a sign)
-    qtb.zip(qr.qtb).foreach {
+    qtb.force.zip(qr.qtb.force).foreach {
       case (x, y) => x.x shouldBe y.x +- tol
     }
 
     // Check solution is same
-    sol.zip(qr.solution).foreach {
+    sol.force.zip(qr.solution.force).foreach {
       case (x, y) => x.x shouldBe y.x +- tol
     }
   }
@@ -137,12 +137,12 @@ class QRSpec extends FlatSpec with Matchers {
     }
 
     // Check qtb is same (up to a sign)
-    qtb.zip(qr.qtb).foreach {
+    qtb.force.zip(qr.qtb.force).foreach {
       case (x, y) => x.x shouldBe y.x +- tol
     }
 
     // Check solution is same
-    sol.zip(qr.solution).foreach {
+    sol.force.zip(qr.solution.force).foreach {
       case (x, y) => x.x shouldBe y.x +- tol
     }
   }

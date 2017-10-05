@@ -17,7 +17,7 @@
 package com.github.bruneli.scalaopt.core.linalg
 
 import com.github.bruneli.scalaopt.core._
-import com.github.bruneli.scalaopt.core.variable.{Input, Output, UnconstrainedVariable, VariableFromDouble}
+import com.github.bruneli.scalaopt.core.variable._
 
 /**
  * Results from the QR decomposition of the equation system AX = B.
@@ -95,7 +95,7 @@ class QR(
    * decomposed to R and QtB.
    */
   lazy val solution: UnconstrainedVariablesType = {
-    val firstIdxZero = rDiag.indexWhere(_ == 0.0)
+    val firstIdxZero = rDiag.force.indexWhere(_ == 0.0)
     val nsing = if (firstIdxZero == -1) n - 1 else firstIdxZero
     val qtbSingular = qtb.mapWithIndex {
       (value: Double, col: Int) => if (col <= nsing) value else 0.0
@@ -104,13 +104,13 @@ class QR(
       if (j < 0) {
         x0
       } else {
-        val sum = x0.drop(j + 1) inner r(j).drop(j + 1)
+        val sum = x0.force.drop(j + 1) inner r(j).force.drop(j + 1)
         val x = x0.updated(j, (x0(j).x - sum) / rDiag(j).x)
         solve(x, j - 1)
       }
     }
     DenseVector.permute[UnconstrainedVariable](ipvt)(
-      solve(qtbSingular.asVectorOf[UnconstrainedVariable], nsing))
+      solve(new UnconstrainedVariables(qtbSingular.force.coordinates), nsing))
   }
 
 }
@@ -267,7 +267,7 @@ object QR extends VariableFromDouble {
   }
 
   private def indexColumnLargestNorm(k: Int, rDiag: InputsType): Int = {
-    rDiag.zipWithIndex.drop(k).foldLeft((rDiag(k), k)) {
+    rDiag.force.zipWithIndex.drop(k).foldLeft((rDiag(k), k)) {
       case (r, c) => if (c._1.x > r._1.x) c else r
     }._2
   }

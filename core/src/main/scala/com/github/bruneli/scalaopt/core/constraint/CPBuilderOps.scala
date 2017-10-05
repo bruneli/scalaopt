@@ -17,7 +17,7 @@
 package com.github.bruneli.scalaopt.core.constraint
 
 import com.github.bruneli.scalaopt.core.ConfigPars
-import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.linalg.DenseVectorLike
 import com.github.bruneli.scalaopt.core.variable.Variable
 
 import scala.util.Try
@@ -43,7 +43,7 @@ trait CPBuilderOps[A <: Variable] {
    * @tparam S constrained optimization solver type
    * @return problem solution of failure
    */
-  def solveWith[C <: ConfigPars, B >: P <: CP[A, _, _], S <: CPSolver[B, C]](method: S)(implicit pars: C): Try[DenseVector[A]]
+  def solveWith[C <: ConfigPars, B >: P <: CP[A, _, _], S <: CPSolver[B, C]](method: S)(implicit pars: C): Try[DenseVectorLike[A]]
 
   /**
    * Add a constraint to the problem to solve

@@ -34,7 +34,7 @@ case class AugmentedRow(a: InputsType, b: Output, i: Long) extends VariableFromD
     AugmentedRow(that.a + this.a, that.b.x + this.b.x, i)
   }
 
-  override def toString = s"row $i (${a.mkString(", ")} | $b)"
+  override def toString = s"row $i (${a.force.mkString(", ")} | $b)"
 
 }
 

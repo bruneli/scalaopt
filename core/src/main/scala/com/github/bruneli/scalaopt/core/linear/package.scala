@@ -53,11 +53,11 @@ package object linear {
    */
   def lm(data: DataSet[DataPoint], addOrigin: Boolean = true): Try[UnconstrainedVariablesType] =
     Try {
-      val n = if (addOrigin) data.head.x.size + 1 else data.head.x.size
+      val n = if (addOrigin) data.head.x.length + 1 else data.head.x.length
       val ab = data.zipWithIndex.map {
         case (row, index) =>
-          val a: InputsType = if (addOrigin) Input(1.0) +: row.x else row.x
-          AugmentedRow(a, row.y.head, index)
+          val a: InputsType = if (addOrigin) Input(1.0) +: row.x.force else row.x
+          AugmentedRow(a, row.y(0), index)
       }
       QR(ab, n).solution
     }

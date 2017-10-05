@@ -16,6 +16,7 @@
 
 package com.github.bruneli.scalaopt.core.variable
 
+import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.core.linalg.SimpleDenseVector
 
 /**
@@ -44,6 +45,14 @@ object UnconstrainedVariables {
 
   def apply(vars: Double*): UnconstrainedVariables = {
     new UnconstrainedVariables(vars.toArray)
+  }
+
+  def apply(vector: RealVectorType): UnconstrainedVariables = {
+    val coordinates = new Array[Double](vector.length)
+    for (i <- coordinates.indices) {
+      coordinates(i) = vector.coordinate(i)
+    }
+    new UnconstrainedVariables(coordinates)
   }
 
 }

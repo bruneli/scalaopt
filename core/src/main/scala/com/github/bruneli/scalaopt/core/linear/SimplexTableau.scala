@@ -169,7 +169,7 @@ trait SimplexTableau extends LP {
    * Check if there are variables that can take negative values. If so, split them into x = x+ - x-
    */
   def checkNegativeVariables: SimplexTableau = {
-    val isOnlyPositive = variables.forall(variable => variable.lower.isDefined && variable.lower.get >= 0.0)
+    val isOnlyPositive = variables.force.forall(variable => variable.lower.isDefined && variable.lower.get >= 0.0)
     if (isOnlyPositive) {
       this
     } else {

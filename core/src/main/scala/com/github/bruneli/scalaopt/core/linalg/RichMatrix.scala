@@ -74,7 +74,7 @@ class RichMatrix(m: RealMatrix) {
   /** Matrix-Vector multiplication */
   def * (that: UnconstrainedVariablesType): UnconstrainedVariablesType =
     if (m.getColumnDimension == that.length) {
-      m.operate(that.raw)
+      m.operate(that.force.coordinates)
     } else {
       throw new IllegalArgumentException(
         s"Number of columms ${m.getColumnDimension} != vector dimension ${that.length}")

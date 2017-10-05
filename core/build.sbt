@@ -33,6 +33,6 @@ pomExtra := (
       </developer>
     </developers>)
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 
 libraryDependencies += "org.apache.commons" % "commons-math3" % "3.6.1"

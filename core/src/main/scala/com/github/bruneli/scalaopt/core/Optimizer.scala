@@ -17,7 +17,7 @@
 package com.github.bruneli.scalaopt.core
 
 import com.github.bruneli.scalaopt.core.function.ObjectiveFunction
-import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.linalg.DenseVectorLike
 import com.github.bruneli.scalaopt.core.variable.Variable
 
 import scala.util.Try
@@ -42,7 +42,7 @@ trait Optimizer[A <: Variable, B <: ObjectiveFunction[A], C <: ConfigPars] {
    * @param pars algorithm configuration parameters
    * @return Variables at a local minimum or failure
    */
-  def minimize(f: B, x0: DenseVector[A])(implicit pars: C): Try[DenseVector[A]]
+  def minimize(f: B, x0: DenseVectorLike[A])(implicit pars: C): Try[DenseVectorLike[A]]
 
 }
 

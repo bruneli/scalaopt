@@ -18,7 +18,7 @@ package com.github.bruneli.scalaopt.core.function
 
 import com.github.bruneli.scalaopt.core.MaxIterException
 import com.github.bruneli.scalaopt.core.constraint.LinearLeftOperand
-import com.github.bruneli.scalaopt.core.linalg.{DenseVector, SimpleDenseVector}
+import com.github.bruneli.scalaopt.core.linalg.{DenseVector, DenseVectorLike, SimpleDenseVector}
 import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions.FromDouble
 import com.github.bruneli.scalaopt.core.variable.{Constant, Constants, ContinuousVariable}
 
@@ -42,7 +42,7 @@ case class LinearObjectiveFunction[A <: ContinuousVariable](
    * @param x vector of variables
    * @return real-valued objective function at x
    */
-  override def apply(x: DenseVector[A]): Double = {
+  override def apply(x: DenseVectorLike[A]): Double = {
     cost dot x
   }
 
@@ -54,8 +54,8 @@ case class LinearObjectiveFunction[A <: ContinuousVariable](
    * @param x vector of variables
    * @return gradient of f in x
    */
-  override def gradient(x: DenseVector[A]): DenseVector[A] = {
-    x.withValues(cost.raw)
+  override def gradient(x: DenseVectorLike[A]): DenseVectorLike[A] = {
+    x.withValues(cost.coordinates)
   }
 
   /**
@@ -67,7 +67,7 @@ case class LinearObjectiveFunction[A <: ContinuousVariable](
    * @param d directional vector
    * @return directional derivative of f along d in x
    */
-  override def dirder(x: DenseVector[A], d: DenseVector[A]): Double = {
+  override def dirder(x: DenseVectorLike[A], d: DenseVectorLike[A]): Double = {
     gradient(x) dot d
   }
 
@@ -78,7 +78,7 @@ case class LinearObjectiveFunction[A <: ContinuousVariable](
    * @param d directional vector
    * @return product of the Hessian in x times d
    */
-  override def dirHessian(x: DenseVector[A], d: DenseVector[A]): DenseVector[A] = {
+  override def dirHessian(x: DenseVectorLike[A], d: DenseVectorLike[A]): DenseVectorLike[A] = {
     val zeros = Array.fill(cost.length)(0.0)
     d.withValues(zeros)
   }

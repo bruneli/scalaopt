@@ -26,18 +26,19 @@ import scala.collection.mutable
  *
  * @author bruneli
  */
-case class SimpleDenseVector[+A <: ToDouble](
-  raw: Array[Double])(
+case class SimpleDenseVector[A <: ToDouble](coordinates: Array[Double])(
   implicit fromDouble: FromDouble[A]) extends DenseVector[A] {
 
-  override def apply(idx: Int): A = raw(idx)
+  override type V = SimpleDenseVector[A]
+
+  override def apply(idx: Int): A = coordinates(idx)
 
   override protected[this] def newBuilder: mutable.Builder[A, SimpleDenseVector[A]] = {
     SimpleDenseVector.newBuilder
   }
 
-  override def withValues(updated: Array[Double]): DenseVector[A] = {
-    SimpleDenseVector(updated)
+  override def newDenseVectorBuilder: DenseVectorBuilder[V] = {
+    new SimpleDenseVectorBuilder[A]
   }
 
 }
@@ -60,4 +61,13 @@ object SimpleDenseVector {
     }
   }
   
+}
+
+class SimpleDenseVectorBuilder[A <: ToDouble](implicit fromDouble: FromDouble[A])
+  extends DenseVectorBuilder[SimpleDenseVector[A]] {
+
+  override def withValues(values: Array[Double]): SimpleDenseVector[A] = {
+    new SimpleDenseVector[A](values)(fromDouble)
+  }
+
 }

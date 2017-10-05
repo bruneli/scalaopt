@@ -19,7 +19,7 @@ package com.github.bruneli.scalaopt
 import com.github.bruneli.scalaopt.core.constraint.GeneralConstraintBuilder
 import com.github.bruneli.scalaopt.core.function._
 import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions.{FromDouble, ToDouble}
-import com.github.bruneli.scalaopt.core.linalg.{DenseVector, RichMatrix, SimpleDenseVector}
+import com.github.bruneli.scalaopt.core.linalg.{DenseVector, DenseVectorLike, RichMatrix, SimpleDenseVector}
 import com.github.bruneli.scalaopt.core.variable._
 import org.apache.commons.math3.linear.RealMatrix
 
@@ -41,11 +41,12 @@ import org.apache.commons.math3.linear.RealMatrix
 package object core extends VariableFromDouble {
 
   /** Define the vector of variables as an Array of abstract Variable objects */
-  type UnconstrainedVariablesType = DenseVector[UnconstrainedVariable]
-  type PositiveVariablesType = DenseVector[PositiveVariable]
-  type ContinuousVariablesType = DenseVector[ContinuousVariable]
-  type InputsType = DenseVector[Input]
-  type OutputsType = DenseVector[Output]
+  type RealVectorType = DenseVectorLike[ToDouble]
+  type UnconstrainedVariablesType = DenseVectorLike[UnconstrainedVariable]
+  type PositiveVariablesType = DenseVectorLike[PositiveVariable]
+  type ContinuousVariablesType = DenseVectorLike[ContinuousVariable]
+  type InputsType = DenseVectorLike[Input]
+  type OutputsType = DenseVectorLike[Output]
 
   /** Implicit conversion from a ToDouble derived class to its Double value */
   implicit def DoubleFromToDouble[A <: ToDouble](x: A): Double = x.x
@@ -107,8 +108,11 @@ package object core extends VariableFromDouble {
   }
 
   /** Implicit conversion of a tuple (x, y) to a DataPoint */
-  implicit def toDataPointYVector(xy: (InputsType, OutputsType)): DataPoint = DataPoint(xy._1, xy._2)
-
-  implicit def toDataPointYScalar(xy: (InputsType, Output)): DataPoint = DataPoint(xy._1, xy._2)
+  implicit def toDataPointYVector(xy: (InputsType, OutputsType)): DataPoint = {
+    DataPoint(xy._1, xy._2)
+  }
+  implicit def toDataPointYScalar(xy: (InputsType, Output)): DataPoint = {
+    DataPoint(xy._1, xy._2)
+  }
 
 }

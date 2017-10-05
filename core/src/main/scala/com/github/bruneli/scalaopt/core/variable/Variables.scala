@@ -16,7 +16,7 @@
 
 package com.github.bruneli.scalaopt.core.variable
 
-import com.github.bruneli.scalaopt.core.linalg.{DenseVector, FromToDoubleConversions}
+import com.github.bruneli.scalaopt.core.linalg.{DenseVector, DenseVectorBuilder, FromToDoubleConversions}
 import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions.{FromDouble, ToDouble}
 
 import scala.collection.generic.CanBuildFrom
@@ -27,9 +27,11 @@ import scala.collection.mutable
  * 
  * @author bruneli
  */
-class Variables[+A <: Variable](variables: Vector[A]) extends DenseVector[A] {
+class Variables[A <: Variable](variables: Vector[A]) extends DenseVector[A] {
 
-  lazy val raw: Array[Double] = variables.map(_.x).toArray
+  override type V = Variables[A]
+
+  lazy val coordinates: Array[Double] = variables.map(_.x).toArray
   
   override def apply(idx: Int): A = variables(idx)
 
@@ -37,9 +39,8 @@ class Variables[+A <: Variable](variables: Vector[A]) extends DenseVector[A] {
     Variables.newBuilder
   }
 
-  override def withValues(updated: Array[Double]): DenseVector[A] = {
-    new Variables[A](variables.zipWithIndex.map(
-      tuple => tuple._1.build(updated(tuple._2)).asInstanceOf[A]))
+  override def newDenseVectorBuilder: DenseVectorBuilder[V] = {
+    new VariablesBuilder[A](variables)
   }
 
 }
@@ -60,6 +61,16 @@ object Variables {
 
       def apply() = newBuilder[A]
     }
+  }
+
+}
+
+class VariablesBuilder[A <: Variable](variables: Vector[A])
+  extends DenseVectorBuilder[Variables[A]] {
+
+  override def withValues(values: Array[Double]): Variables[A] = {
+    new Variables[A](variables.zipWithIndex.map(
+      tuple => tuple._1.build(values(tuple._2)).asInstanceOf[A]))
   }
 
 }

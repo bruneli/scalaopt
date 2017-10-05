@@ -18,7 +18,7 @@ package com.github.bruneli.scalaopt.core.constraint
 
 import com.github.bruneli.scalaopt.core.ObjectiveType
 import com.github.bruneli.scalaopt.core.function.ObjectiveFunction
-import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.linalg.DenseVectorLike
 import com.github.bruneli.scalaopt.core.variable.Variable
 
 /**
@@ -36,7 +36,7 @@ trait CP[A <: Variable, +B <: ObjectiveFunction[A], +C <: Constraint[A]] {
   /**
    * Description of the optimization variables used by this program
    */
-  def variables: DenseVector[A]
+  def variables: DenseVectorLike[A]
 
   /**
    * Get the problem objective: minimize or maximize
@@ -66,6 +66,6 @@ trait CP[A <: Variable, +B <: ObjectiveFunction[A], +C <: Constraint[A]] {
   /**
    * Decision variables values
    */
-  def solution: DenseVector[A]
+  def solution: DenseVectorLike[A]
 
 }

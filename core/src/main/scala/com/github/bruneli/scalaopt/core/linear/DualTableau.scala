@@ -51,7 +51,7 @@ case class DualTableau(
    * Extract the solution vector of this tableau
    */
   override def solution: ContinuousVariablesType = {
-    variables.withValues(dual.raw)
+    variables.withValues(dual.coordinates)
   }
 
   /**
@@ -109,7 +109,7 @@ case class DualTableau(
       // Transform the constraint into an equality constraint and then a column
       val signedConstraint = constraint.toLinearConstraint(Some(m))(ContinuousVariableFromDouble) match {
         case Success(resizedConstraint) =>
-          resizedConstraint.a.asVectorOf[Constant].mapWithIndex {
+          resizedConstraint.a.mapWithIndex {
             (value, i) =>
               if (constraintTypes(i) == LowerOrEqualOperator && objective == MINIMIZE ||
                   constraintTypes(i) == GreaterOrEqualOperator && objective == MAXIMIZE) {

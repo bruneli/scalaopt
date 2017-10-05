@@ -2,7 +2,7 @@ package com.github.bruneli.scalaopt.core.function
 
 import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.core.linalg.{AugmentedRow, DenseVector}
-import com.github.bruneli.scalaopt.core.variable.{DataPoint, Input, Output, UnconstrainedVariable}
+import com.github.bruneli.scalaopt.core.variable._
 
 /**
  * Objective function relying on the Mean Squared Error expected loss function
@@ -103,7 +103,9 @@ case class SimpleMSEFunction(
    * @param data a data point in the form (X, Y)
    * @return the absolute difference between observed and estimated values of Y
    */
-  def residual(x: UnconstrainedVariablesType, data: DataPoint) = (data.y - f(x, data.x)).norm
+  def residual(x: UnconstrainedVariablesType, data: DataPoint) = {
+    (data.y - f(x, data.x)).norm
+  }
 
   /**
    * Simultaneously evaluate the Jacobian row and the residual associated to a data point
@@ -116,7 +118,7 @@ case class SimpleMSEFunction(
     x0: UnconstrainedVariablesType,
     point: DataPoint): (InputsType, Output) = {
     val f = (x: UnconstrainedVariablesType) => residual(x, point)
-    val jacobian: InputsType = DenseVector.gradient(f, x0).asVectorOf[Input]
+    val jacobian: InputsType = new Inputs(DenseVector.gradient(f, x0).force.coordinates)
     val residual0 = residual(x0, point)
     (jacobian, residual0)
   }

@@ -43,8 +43,8 @@ class LinearSpec extends FlatSpec with Matchers {
     }
     lm(data) match {
       case Success(solution) => {
-        solution.size shouldBe (n + 1)
-        for ((estimated, expected) <- solution.zip(pars)) {
+        solution.length shouldBe (n + 1)
+        for ((estimated, expected) <- solution.force.zip(pars)) {
           estimated.x shouldBe expected.x +- tol
         }
       }
