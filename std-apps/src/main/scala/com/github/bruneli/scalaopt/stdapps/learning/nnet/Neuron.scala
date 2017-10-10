@@ -17,6 +17,8 @@
 package com.github.bruneli.scalaopt.stdapps.learning.nnet
 
 import com.github.bruneli.scalaopt.core._
+import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.variable.{Input, Inputs, Output, UnconstrainedVariables}
 import com.github.bruneli.scalaopt.stdapps.learning.nnet.activation.ActivationFunction
 
 /**
@@ -27,23 +29,23 @@ import com.github.bruneli.scalaopt.stdapps.learning.nnet.activation.ActivationFu
 case class Neuron(
   layer: Int,
   index: Int,
-  weights: Variables,
-  inputs: Variables = Nil,
+  weights: UnconstrainedVariablesType,
+  inputs: DenseVector[Input] = Inputs(),
   excitation: Double = Double.NaN,
-  output: Double = Double.NaN,
+  output: Output = Output(Double.NaN),
   target: Double = Double.NaN,
   residual: Double = Double.NaN,
   error: Double = Double.NaN) {
 
-  def activate(inputs: Variables, activationFunction: ActivationFunction): Neuron = {
+  def activate(inputs: InputsType, activationFunction: ActivationFunction): Neuron = {
     val excitation =
-      if (weights.size == inputs.size + 1) {
-        weights.head + (inputs dot weights.tail)
+      if (weights.length == inputs.length + 1) {
+        weights(0) + (inputs dot weights.force.tail)
       } else {
         throw new IllegalArgumentException(
-          s"inputs ${inputs.size} do not have same size as weights ${weights.size - 1}")
+          s"inputs ${inputs.length} do not have same size as weights ${weights.length - 1}")
       }
-    this.copy(inputs = inputs, excitation = excitation, output = activationFunction(excitation))
+    this.copy(inputs = inputs.force, excitation = excitation, output = activationFunction(excitation))
   }
 
   def propagateError(target: Double, activationFunction: ActivationFunction): Neuron = {
@@ -60,13 +62,14 @@ case class Neuron(
     this.copy(error = error, residual = neurons.head.residual)
   }
 
-  def gradient: Variables = (1.0 +: inputs) * error
+  def gradient: UnconstrainedVariablesType = new UnconstrainedVariables(1.0 +: inputs.coordinates) * error
 
-  def jacobian: Variables =
+  def jacobian: UnconstrainedVariablesType = {
     if (residual.isNaN || residual == 0.0) {
-      (1.0 +: inputs) * error
+      new UnconstrainedVariables(1.0 +: inputs.coordinates) * error
     } else {
-      (1.0 +: inputs) * error / residual
+      new UnconstrainedVariables(1.0 +: inputs.coordinates) * error / residual
     }
+  }
 
 }

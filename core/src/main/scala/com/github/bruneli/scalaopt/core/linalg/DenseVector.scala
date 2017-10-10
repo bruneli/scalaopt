@@ -230,6 +230,11 @@ object DenseVector {
     }
   }
 
+  def iterate[A <: ToDouble : FromDouble](start: A, n: Int)(f: (A) => A): DenseVector[A] = {
+    def g(x: Double): Double = f(x).x
+    SimpleDenseVector(Array.iterate(start.x, n)(g))
+  }
+
   /** Create an n-vector of Variables filled with a constant value */
   def fill[A <: ToDouble : FromDouble](n: Int)(value: Double): DenseVector[A] = {
     SimpleDenseVector(Array.fill(n)(value))

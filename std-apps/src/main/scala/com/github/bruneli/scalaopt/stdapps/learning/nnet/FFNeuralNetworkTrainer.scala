@@ -17,10 +17,11 @@
 package com.github.bruneli.scalaopt.stdapps.learning.nnet
 
 import com.github.bruneli.scalaopt.core._
+import com.github.bruneli.scalaopt.core.linalg.DenseVector._
 import com.github.bruneli.scalaopt.core.linalg.AugmentedRow
 import SeqDataSetConverter._
-import com.github.bruneli.scalaopt.core.function.MSEFunction
-import com.github.bruneli.scalaopt.core.variable.DataPoint
+import com.github.bruneli.scalaopt.core.function.{ContinuousObjectiveFunction, MSEFunction}
+import com.github.bruneli.scalaopt.core.variable._
 
 import scala.util.{Random, Try}
 
@@ -42,8 +43,8 @@ case class FFNeuralNetworkTrainer(
   val eps = 1.0e-8
   var network = initialNetwork
 
-  def withMethod[A <: ObjectiveFunction, B <: ConfigPars](
-    method: Optimizer[A, B],
+  def withMethod[A <: ContinuousObjectiveFunction[UnconstrainedVariable], B <: ConfigPars](
+    method: Optimizer[UnconstrainedVariable, A, B],
     config: Option[B] = None): Try[FFNeuralNetwork] = {
     implicit val pars = config.getOrElse(method.defaultConfig)
     val objectiveFunction = this match {
@@ -55,33 +56,35 @@ case class FFNeuralNetworkTrainer(
 
   def withDecay(decay: Double) = this.copy(decay = decay)
 
-  override def apply(weights: Variables) = {
+  override def apply(weights: UnconstrainedVariablesType) = {
     if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
     data.aggregate(weights.norm2 / 2.0 * decay)(loss, _ + _) / data.size
   }
 
-  override def gradient(weights: Variables): Variables = {
+  override def gradient(weights: UnconstrainedVariablesType): UnconstrainedVariablesType = {
     if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
-    data.aggregate((weights * decay, 0.0))(backpropagate, sumGradientResidual)._1 / data.size
+    data.aggregate[(UnconstrainedVariablesType, Double)](
+      (weights * decay, 0.0))(
+      backpropagate, sumGradientResidual)._1 / data.size
   }
 
-  override def dirder(weights: Variables, d: Variables): Double = {
+  override def dirder(weights: UnconstrainedVariablesType, d: UnconstrainedVariablesType): Double = {
     if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
     gradient(weights) dot d
   }
 
-  override def dirHessian(weights: Variables, d: Variables): Variables = {
+  override def dirHessian(weights: UnconstrainedVariablesType, d: UnconstrainedVariablesType): UnconstrainedVariablesType = {
     val gradx = gradient(weights)
     val gradxd = gradient(weights + d * eps)
     (gradxd - gradx) / eps
   }
 
-  def apply(weights: Variables, x: Variables): Variables = {
+  def apply(weights: UnconstrainedVariablesType, x: InputsType): OutputsType = {
     if (!isWeightsVectorUnchanged(weights)) network = network.withWeights(weights)
     network.outputs
   }
 
-  def residual(p: Variables, point: DataPoint): Double =
+  def residual(p: UnconstrainedVariablesType, point: DataPoint): Double =
     if (isWeightsVectorUnchanged(p)) {
       val activatedNetwork = network.forward(point.x).backward(point.y)
       activatedNetwork.residual
@@ -92,18 +95,19 @@ case class FFNeuralNetworkTrainer(
       network.residual
     }
 
-  def jacobianAndResidual(p: Variables, point: DataPoint): (Variables, Double) =
+  def jacobianAndResidual(p: UnconstrainedVariablesType,
+                          point: DataPoint): (InputsType, Output) =
     if (isWeightsVectorUnchanged(p)) {
       val activatedNetwork = network.forward(point.x).backward(point.y)
-      (activatedNetwork.gradient, activatedNetwork.residual)
+      (Inputs(activatedNetwork.gradient), activatedNetwork.residual)
     } else {
       network = network.withWeights(p)
         .forward(point.x)
         .backward(point.y)
-      (network.gradient, network.residual)
+      (Inputs(network.gradient), network.residual)
     }
 
-  def jacobianAndResidualsMatrix(p: Variables) = {
+  def jacobianAndResidualsMatrix(p: UnconstrainedVariablesType) = {
     if (!isWeightsVectorUnchanged(p)) network = network.withWeights(p)
     if (decay > 0.0) {
       data.zipWithIndex.map(backpropagateRow) ++ penaltyMatrix(p)
@@ -113,8 +117,8 @@ case class FFNeuralNetworkTrainer(
   }
 
   private def backpropagate(
-    previous: (Variables, Double),
-    point: DataPoint): (Variables, Double) = {
+    previous: (UnconstrainedVariablesType, Double),
+    point: DataPoint): (UnconstrainedVariablesType, Double) = {
     val activatedNetwork = network.forward(point.x).backward(point.y)
     (previous._1 + activatedNetwork.gradient,
       previous._2 + activatedNetwork.residual)
@@ -123,25 +127,26 @@ case class FFNeuralNetworkTrainer(
   private def backpropagateRow(pointWithIndex: (DataPoint, Long)): AugmentedRow = {
     val (point, index) = pointWithIndex
     val activatedNetwork = network.forward(point.x).backward(point.y)
-    AugmentedRow(activatedNetwork.jacobian, activatedNetwork.residual, index)
+    AugmentedRow(Inputs(activatedNetwork.jacobian), activatedNetwork.residual, index)
   }
 
   private def loss(zero: Double, point: DataPoint) = {
     zero + network.forward(point.x).backward(point.y).loss
   }
 
-  private def sumGradientResidual(left: (Variables, Double), right: (Variables, Double)) = {
+  private def sumGradientResidual(left: (UnconstrainedVariablesType, Double),
+                                  right: (UnconstrainedVariablesType, Double)) = {
     (left._1 + right._1, left._2 + right._2)
   }
 
-  private def isWeightsVectorUnchanged(weights: Variables) = {
+  private def isWeightsVectorUnchanged(weights: UnconstrainedVariablesType): Boolean = {
     (weights - network.weights).norm2 < xTol * xTol
   }
 
-  private def penaltyMatrix(p: Variables): DataSet[AugmentedRow] = {
+  private def penaltyMatrix(p: UnconstrainedVariablesType): DataSet[AugmentedRow] = {
     val penalty = Math.sqrt(decay)
-    for (i <- p.indices) yield {
-      AugmentedRow(zeros(p.size).updated(i, penalty), 0.0, data.size + i)
+    for (i <- 0 until p.length) yield {
+      AugmentedRow(zeros[Input](p.length).updated(i, penalty), 0.0, data.size + i)
     }
   }
 

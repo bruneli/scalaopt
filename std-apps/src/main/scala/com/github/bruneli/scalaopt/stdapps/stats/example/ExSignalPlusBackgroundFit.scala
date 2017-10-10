@@ -22,9 +22,11 @@ import org.jfree.chart.plot.DatasetRenderingOrder
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer
 import org.jfree.data.statistics.HistogramDataset
 import SeqDataSetConverter._
+import com.github.bruneli.scalaopt.core.function.RegressionFunction
+import com.github.bruneli.scalaopt.core.variable.{Input, Inputs, Outputs, UnconstrainedVariables}
 import com.github.bruneli.scalaopt.stdapps.stats._
-import scalax.chart.api._
 
+import scalax.chart.api._
 import scala.util.Random
 
 /**
@@ -46,19 +48,19 @@ object ExSignalPlusBackgroundFit extends App {
   /** Generate random variates */
   val data = for (i <- 1 to nbEvents) yield {
     if (random.nextDouble() < fSignal) {
-      random.nextGaussian() * sigmaSignal + muSignal
+      Input(random.nextGaussian() * sigmaSignal + muSignal)
     } else {
-      xMin - Math.log(random.nextDouble()) / lambdaBkg
+      Input(xMin - Math.log(random.nextDouble()) / lambdaBkg)
     }
   }
 
   /** Fit the data with a maximum likelihood method */
-  val p0 = Vector(0.05, 125.0, 10.0, 1.0 / 15.0)
-  val fit = maxLikelihoodFit(pdf, data map (Vector(_)), p0)
+  val p0 = UnconstrainedVariables(0.05, 125.0, 10.0, 1.0 / 15.0)
+  val fit = maxLikelihoodFit(toRegressionFunction(pdf), data map (Inputs(_)), p0)
 
   /** Build a plot with an histogram of the raw data overlaid by the fitted function */
   val histogram = new HistogramDataset
-  histogram.addSeries("h1", data toArray, 150, xMin, xMax)
+  histogram.addSeries("h1", data.map(_.x).toArray, 150, xMin, xMax)
   val xySeries = for (iPt <- 0 to 1000) yield {
     val x = xMin + (xMax - xMin) * iPt / 1000.0
     (x, (fit predict x) * nbEvents.toDouble)
@@ -73,42 +75,42 @@ object ExSignalPlusBackgroundFit extends App {
   /**
    * The objective function is the joint pdf of signal plus background with a normalization factor
    */
-  def pdf(pars: Variables, x: Variables) =
-    if (pars.size != 4) {
+  def pdf(pars: UnconstrainedVariablesType, x: InputsType): OutputsType =
+    if (pars.length != 4) {
       throw new IllegalArgumentException(
         s"pars=($pars) should be a vector of size 5 representing (norm,fSig,mu,sigma,lambda)")
     } else {
       val fSig = pars(0)
-      val signalPars = pars.drop(1).take(2)
-      val bkgPars = pars.takeRight(1)
-      pdfSignal(signalPars, x) * fSig + pdfBkg(bkgPars, x) * (1.0 - fSig)
+      val signalPars = pars.force.drop(1).take(2)
+      val bkgPars = pars.force.takeRight(1)
+      pdfSignal(signalPars, x) * fSig.x + pdfBkg(bkgPars, x) * (1.0 - fSig.x)
     }
 
   /**
    * Signal pdf is a Normal distribution
    */
-  def pdfSignal(pars: Variables, x: Variables) =
-    if (x.size != 1) {
+  def pdfSignal(pars: UnconstrainedVariablesType, x: InputsType) =
+    if (x.length != 1) {
       throw new IllegalArgumentException(s"x=($x) should be a vector of size 1")
-    } else if (pars.size != 2) {
+    } else if (pars.length != 2) {
       throw new IllegalArgumentException(s"pars=($pars) should be a vector of size 2 representing (mu, sigma)")
-    } else if (pars(1) == 0.0) {
+    } else if (pars(1).x == 0.0) {
       throw new IllegalArgumentException(s"sigma=${pars(1)} should be != 0")
     } else {
       val z = (x(0) - pars(0)) / pars(1)
-      Seq(Math.exp(-z * z / 2.0) / Math.sqrt(2.0 * Math.PI) / pars(1))
+      Outputs(Math.exp(-z * z / 2.0) / Math.sqrt(2.0 * Math.PI) / pars(1))
     }
 
   /**
    * Background pdf is an Exponential distribution
    */
-  def pdfBkg(pars: Variables, x: Variables) =
-    if (x.size != 1) {
+  def pdfBkg(pars: UnconstrainedVariablesType, x: InputsType): OutputsType =
+    if (x.length != 1) {
       throw new IllegalArgumentException(s"x=($x) should be a vector of size 1")
-    } else if (pars.size != 1) {
+    } else if (pars.length != 1) {
       throw new IllegalArgumentException(s"pars=($pars) should be a vector of size 1 representing lambda")
     } else {
-      Seq(pars(0) * Math.exp(-pars(0) * (x(0) - xMin)))
+      Outputs(pars(0) * Math.exp(-pars(0) * (x(0) - xMin)))
     }
 
 }

@@ -16,7 +16,9 @@
 
 package com.github.bruneli.scalaopt.stdapps.stats
 
-import com.github.bruneli.scalaopt.core.{RegressionFunction, Variables}
+import com.github.bruneli.scalaopt.core._
+import com.github.bruneli.scalaopt.core.function.RegressionFunction
+import com.github.bruneli.scalaopt.core.variable.{Input, Inputs, Output}
 
 /**
  * Store results from a fit
@@ -25,7 +27,7 @@ import com.github.bruneli.scalaopt.core.{RegressionFunction, Variables}
  * @param fObj objective function applying on data
  * @author bruneli
  */
-class FitResults(pOpt: Variables, fObj: RegressionFunction) {
+class FitResults(pOpt: UnconstrainedVariablesType, fObj: RegressionFunction) {
 
   /**
    * Predict the value of the objective function for new data x
@@ -33,7 +35,9 @@ class FitResults(pOpt: Variables, fObj: RegressionFunction) {
    * @param x vector of observed values
    * @return regression function evaluated at x with parameters obtained from the fit
    */
-  def predict(x: Variables): Variables = fObj(pOpt, x)
+  def predict(x: InputsType): OutputsType = {
+    fObj(pOpt, x)
+  }
 
   /**
    * Predict the value of the objective function at x
@@ -41,6 +45,8 @@ class FitResults(pOpt: Variables, fObj: RegressionFunction) {
    * @param x double value
    * @return regression function evaluated at x with parameters obtained from the fit
    */
-  def predict(x: Double): Double = fObj(pOpt, Seq(x))(0)
+  def predict(x: Input): Output = {
+    fObj(pOpt, Inputs(x))(0)
+  }
 
 }

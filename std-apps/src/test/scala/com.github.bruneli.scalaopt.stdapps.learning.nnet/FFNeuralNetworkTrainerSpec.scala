@@ -23,8 +23,9 @@ import com.github.bruneli.scalaopt.stdapps.learning.data.Iris
 import com.github.bruneli.scalaopt.stdapps.learning.nnet.{FFNeuralNetwork, LossType}
 import com.github.bruneli.scalaopt.stdapps.learning.nnet.activation.{LinearFunction, LogisticFunction, SoftMaxFunction}
 import LossType._
-import com.github.bruneli.scalaopt.core.function.SimpleMSEFunction
-import com.github.bruneli.scalaopt.core.variable.DataPoint
+import com.github.bruneli.scalaopt.core.function.{ObjectiveFunctionFiniteDiffDerivatives, SimpleMSEFunction}
+import com.github.bruneli.scalaopt.core.linalg.DenseVector
+import com.github.bruneli.scalaopt.core.variable.{DataPoint, Input, Outputs, UnconstrainedVariables}
 import org.scalatest._
 
 import scala.util.Random
@@ -39,7 +40,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     val random = new Random(12345)
 
-    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
+    val trueWeights = UnconstrainedVariables(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
     val network = FFNeuralNetwork(
       Vector(2, 2, 1),
       trueWeights,
@@ -47,25 +48,25 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       LogisticFunction,
       LinearFunction)
 
-    val regressionFunc: (Variables, Variables) => Variables = {
+    val regressionFunc: (UnconstrainedVariablesType, InputsType) => OutputsType = {
       (weights, inputs) => network.withWeights(weights).forward(inputs).outputs
     }
 
     val data: DataSet[DataPoint] = for (i <- 1 to 10) yield {
-      val x = for (j <- 1 to 2) yield random.nextGaussian()
+      val x = DenseVector.iterate(Input(random.nextGaussian()), 2)((x: Input) => Input(random.nextGaussian()))
       val y = network.forward(x).outputs
       DataPoint(x, y)
     }
 
-    val w0 = Vector(-0.1, 0.6, -0.3, 0.6, -0.8, -0.7, +0.3, -0.1, 0.35)
+    val w0 = UnconstrainedVariables(-0.1, 0.6, -0.3, 0.6, -0.8, -0.7, +0.3, -0.1, 0.35)
     val trainer = network withWeights w0 trainOn data
     val mseFunction = SimpleMSEFunction(regressionFunc, data)
 
     val gradient1 = trainer.gradient(w0)
     val gradient2 = mseFunction.gradient(w0)
 
-    for ((ele1, ele2) <- gradient1.zip(gradient2)) {
-      ele1 shouldBe ele2 +- 1.0e-5
+    for ((ele1, ele2) <- gradient1.force.zip(gradient2.force)) {
+      ele1.x shouldBe ele2.x +- 1.0e-5
     }
 
   }
@@ -75,7 +76,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     val random = new Random(12345)
 
-    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
+    val trueWeights = UnconstrainedVariables(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
     val network = FFNeuralNetwork(
       Vector(2, 2, 1),
       trueWeights,
@@ -84,13 +85,13 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       LogisticFunction)
 
     val data: DataSet[DataPoint] = for (i <- 1 to 10) yield {
-      val x = for (j <- 1 to 2) yield random.nextGaussian()
+      val x = DenseVector.iterate(Input(random.nextGaussian()), 2)((x: Input) => Input(random.nextGaussian()))
       val y = network.forward(x).outputs
       val target = if (y.norm >= 0.5) 1.0 else 0.0
-      DataPoint(x, Seq(target))
+      DataPoint(x, Outputs(target))
     }
 
-    val objectiveFunc: Variables => Double = {
+    val objectiveFunc: UnconstrainedVariablesType => Double = {
       weights => {
         val trainedNetwork = network.withWeights(weights)
         def loss(sum: Double, point: DataPoint) = {
@@ -100,9 +101,9 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       }
     }
 
-    val w0 = Vector(-0.1, 0.6, -0.3, 0.6, -0.8, -0.7, +0.3, -0.1, 0.35)
+    val w0 = UnconstrainedVariables(-0.1, 0.6, -0.3, 0.6, -0.8, -0.7, +0.3, -0.1, 0.35)
     val trainer = network withWeights w0 trainOn data
-    val objFunction = new SimpleFunctionFiniteDiffGradient(objectiveFunc, BFGS.defaultConfig)
+    val objFunction = ObjectiveFunctionFiniteDiffDerivatives(objectiveFunc, BFGS.defaultConfig)
 
     val loss1 = trainer(w0)
     val loss2 = objFunction(w0)
@@ -110,8 +111,8 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
     val gradient1 = trainer.gradient(w0)
     val gradient2 = objFunction.gradient(w0)
 
-    for ((ele1, ele2) <- gradient1.zip(gradient2)) {
-      ele1 shouldBe ele2 +- 1.0e-5
+    for ((ele1, ele2) <- gradient1.force.zip(gradient2.force)) {
+      ele1.x shouldBe ele2.x +- 1.0e-5
     }
 
   }
@@ -121,7 +122,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     val random = new Random(12345)
 
-    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
+    val trueWeights = UnconstrainedVariables(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
     val network = FFNeuralNetwork(
       Vector(2, 2, 1),
       trueWeights,
@@ -129,17 +130,17 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       LogisticFunction,
       LinearFunction)
 
-    val regressionFunc: (Variables, Variables) => Variables = {
+    val regressionFunc: (UnconstrainedVariablesType, InputsType) => OutputsType = {
       (weights, inputs) => network.withWeights(weights).forward(inputs).outputs
     }
 
     val data: DataSet[DataPoint] = for (i <- 1 to 6) yield {
-      val x = for (j <- 1 to 2) yield random.nextGaussian()
+      val x = DenseVector.iterate(Input(random.nextGaussian()), 2)((x: Input) => Input(random.nextGaussian()))
       val y = network.forward(x).outputs
       DataPoint(x, y)
     }
 
-    val w0 = Vector(-0.1, 0.6, -0.3, 0.6, -0.8, -0.7, +0.3, -0.1, 0.35)
+    val w0 = UnconstrainedVariables(-0.1, 0.6, -0.3, 0.6, -0.8, -0.7, +0.3, -0.1, 0.35)
     val trainer = network withWeights w0 trainOn data
     val mseFunction = SimpleMSEFunction(regressionFunc, data)
 
@@ -148,7 +149,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     for ((row1, row2) <- matrix1.collect().zip(matrix2.collect())) {
       Math.abs(row1.b) shouldBe Math.abs(row2.b) +- 1.0e-5
-      for ((x, y) <- row1.a.zip(row2.a)) {
+      for ((x, y) <- row1.a.force.zip(row2.a.force)) {
         Math.abs(x) shouldBe Math.abs(y) +- 1.0e-5
       }
     }
@@ -159,7 +160,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     val random = new Random(12345)
 
-    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
+    val trueWeights = UnconstrainedVariables(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
     val network = FFNeuralNetwork(
       Vector(2, 2, 1),
       trueWeights,
@@ -168,11 +169,11 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       LinearFunction)
 
     val data: DataSet[DataPoint] = for (i <- 1 to 10000) yield {
-      val x = for (j <- 1 to 2) yield random.nextGaussian()
+      val x = DenseVector.iterate(Input(random.nextGaussian()), 2)((x: Input) => Input(random.nextGaussian()))
       val y = network.forward(x).outputs
       DataPoint(x, y)
     }
-    val w0 = Vector(-0.1, 0.6, 0.6, 0.4, -0.6, 0.5, 0.0, 0.2, 0.35)
+    val w0 = UnconstrainedVariables(-0.1, 0.6, 0.6, 0.4, -0.6, 0.5, 0.0, 0.2, 0.35)
     val trainedNetwork = network
       .withWeights(w0)
       .trainOn(data)
@@ -190,7 +191,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     val random = new Random(12345)
 
-    val trueWeights = Vector(0.1, 1.5, 0.4)
+    val trueWeights = UnconstrainedVariables(0.1, 1.5, 0.4)
     val network = FFNeuralNetwork(
       Vector(2, 1),
       trueWeights,
@@ -199,12 +200,12 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       LogisticFunction)
 
     val data: DataSet[DataPoint] = for (i <- 1 to 10000) yield {
-      val x = for (j <- 1 to 2) yield random.nextGaussian()
-      val p = network.forward(x).outputs.head
+      val x = DenseVector.iterate(Input(random.nextGaussian()), 2)((x: Input) => Input(random.nextGaussian()))
+      val p = network.forward(x).outputs.coordinate(0)
       val k = if (random.nextDouble() < p) 1.0 else 0.0
-      DataPoint(x, Seq(k))
+      DataPoint(x, Outputs(k))
     }
-    val w0 = Vector(-0.5, 0.6, 0.6)
+    val w0 = UnconstrainedVariables(-0.5, 0.6, 0.6)
     val trainedNetwork = network
       .withWeights(w0)
       .trainOn(data)
@@ -223,7 +224,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     val random = new Random(12345)
 
-    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
+    val trueWeights = UnconstrainedVariables(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
     val network = FFNeuralNetwork(
       Vector(2, 3),
       trueWeights,
@@ -232,16 +233,16 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       SoftMaxFunction)
 
     val data: DataSet[DataPoint] = for (i <- 1 to 10000) yield {
-      val x = for (j <- 1 to 2) yield random.nextGaussian()
-      val probs = network.forward(x).outputs
+      val x = DenseVector.iterate(Input(random.nextGaussian()), 2)((x: Input) => Input(random.nextGaussian()))
+      val probs = network.forward(x).outputs.force
       val boundaries = probs.tail.scanLeft((0.0, probs.head)) {
         case (prev, prob) => (prev._2, prev._2 + prob)
       }
       val g = random.nextDouble()
       val y = boundaries.map { case (low, high) => if (g >= low && g < high) 1.0 else 0.0 }
-      DataPoint(x, y)
+      DataPoint(x, new Outputs(y.toArray))
     }
-    val w0 = Vector(-0.1, 0.6, 0.5, 0.6, -0.6, 0.5, 0.0, 0.3, 0.25)
+    val w0 = UnconstrainedVariables(-0.1, 0.6, 0.5, 0.6, -0.6, 0.5, 0.0, 0.3, 0.25)
     val trainedNetwork = network
       .withWeights(w0)
       .trainOn(data)
@@ -260,7 +261,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     val random = new Random(12345)
 
-    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
+    val trueWeights = UnconstrainedVariables(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
     val network = FFNeuralNetwork(
       Vector(2, 2, 1),
       trueWeights,
@@ -269,11 +270,11 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       LinearFunction)
 
     val data: DataSet[DataPoint] = for (i <- 1 to 100) yield {
-      val x = for (j <- 1 to 2) yield random.nextGaussian()
+      val x = DenseVector.iterate(Input(random.nextGaussian()), 2)((x: Input) => Input(random.nextGaussian()))
       val y = network.forward(x).outputs
       DataPoint(x, y)
     }
-    val w0 = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.05, 0.2, 0.2)
+    val w0 = UnconstrainedVariables(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.05, 0.2, 0.2)
     val cgConfig = SteihaugCG.defaultConfig.copy(tol = 0.05)
     val trainedNetwork = network
       .withWeights(w0)
@@ -289,7 +290,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     val random = new Random(12345)
 
-    val trueWeights = Vector(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
+    val trueWeights = UnconstrainedVariables(0.1, 0.5, 0.7, 0.4, -0.5, 0.77, -0.1, 0.2, 0.2)
     val network = FFNeuralNetwork(
       Vector(2, 2, 1),
       trueWeights,
@@ -298,15 +299,15 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       LinearFunction)
 
     val data: DataSet[DataPoint] = for (i <- 1 to 50) yield {
-      val x = for (j <- 1 to 2) yield random.nextGaussian()
+      val x = DenseVector.iterate(Input(random.nextGaussian()), 2)((x: Input) => Input(random.nextGaussian()))
       val y = network.forward(x).outputs
       DataPoint(x, y)
     }
-    val w0 = Vector(-0.1, 0.6, 0.6, 0.4, -0.6, 0.5, 0.0, 0.2, 0.35)
+    val w0 = UnconstrainedVariables(-0.1, 0.6, 0.6, 0.4, -0.6, 0.5, 0.0, 0.2, 0.35)
     val trainedNetwork = network withWeights w0 trainOn data withMethod LevenbergMarquardt
     val optWeights = trainedNetwork.get.weights
 
-    val regressionFunc: (Variables, Variables) => Variables = {
+    val regressionFunc: (UnconstrainedVariablesType, InputsType) => OutputsType = {
       (weights, inputs) => network.withWeights(weights).forward(inputs).outputs
     }
     val mseFunction = SimpleMSEFunction(regressionFunc, data)
@@ -321,7 +322,7 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
 
     val random = new Random(12345)
 
-    val trueWeights = Vector(0.1, 1.5, 0.4)
+    val trueWeights = UnconstrainedVariables(0.1, 1.5, 0.4)
     val network = FFNeuralNetwork(
       Vector(2, 1),
       trueWeights,
@@ -330,12 +331,12 @@ class FFNeuralNetworkTrainerSpec extends FlatSpec with Matchers {
       LogisticFunction)
 
     val data: DataSet[DataPoint] = for (i <- 1 to 1000) yield {
-      val x = for (j <- 1 to 2) yield random.nextGaussian()
-      val p = network.forward(x).outputs.head
+      val x = DenseVector.iterate(Input(random.nextGaussian()), 2)((x: Input) => Input(random.nextGaussian()))
+      val p = network.forward(x).outputs.coordinate(0)
       val k = if (random.nextDouble() < p) 1.0 else 0.0
-      DataPoint(x, Seq(k))
+      DataPoint(x, Outputs(k))
     }
-    val w0 = Vector(1.6, 1.6, 1.6)
+    val w0 = UnconstrainedVariables(1.6, 1.6, 1.6)
     val trainedNetwork = network
       .withWeights(w0)
       .trainOn(data)

@@ -16,9 +16,10 @@
 
 package com.github.bruneli.scalaopt.stdapps.learning.data
 
-import com.github.bruneli.scalaopt.core.{DataSet, SeqDataSetConverter, zeros}
+import com.github.bruneli.scalaopt.core.{DataSet, SeqDataSetConverter}
 import SeqDataSetConverter._
-import com.github.bruneli.scalaopt.core.variable.DataPoint
+import com.github.bruneli.scalaopt.core.variable.{DataPoint, Inputs, Output}
+import com.github.bruneli.scalaopt.core.linalg.DenseVector.zeros
 
 /**
  * @author bruneli
@@ -85,8 +86,8 @@ object Iris {
   val nClasses = 3
   /** Dataset */
   val data: DataSet[DataPoint] = iris.map {
-    case (input, outputStr) => DataPoint(input, strToVector(outputStr))
+    case (input, outputStr) => DataPoint(new Inputs(input.toArray), strToVector(outputStr))
   }
 
-  def strToVector(name: String) = zeros(nClasses).updated(nameToIndex(name), 1.0)
+  def strToVector(name: String) = zeros[Output](nClasses).updated(nameToIndex(name), 1.0)
 }

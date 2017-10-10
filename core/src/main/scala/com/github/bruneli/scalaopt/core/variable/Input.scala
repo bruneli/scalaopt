@@ -16,6 +16,7 @@
 
 package com.github.bruneli.scalaopt.core.variable
 
+import com.github.bruneli.scalaopt.core.RealVectorType
 import com.github.bruneli.scalaopt.core.linalg.FromToDoubleConversions.ToDouble
 import com.github.bruneli.scalaopt.core.linalg.SimpleDenseVector
 
@@ -36,6 +37,14 @@ object Inputs {
 
   def apply(inputs: Double*): Inputs = {
     new Inputs(inputs.toArray)
+  }
+
+  def apply(vector: RealVectorType): Inputs = {
+    val coordinates = new Array[Double](vector.length)
+    for (i <- coordinates.indices) {
+      coordinates(i) = vector.coordinate(i)
+    }
+    new Inputs(coordinates)
   }
 
 }

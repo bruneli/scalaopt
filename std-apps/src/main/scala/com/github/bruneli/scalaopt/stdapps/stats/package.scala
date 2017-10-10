@@ -17,9 +17,10 @@
 package com.github.bruneli.scalaopt.stdapps
 
 import com.github.bruneli.scalaopt.core._
-import com.github.bruneli.scalaopt.core.derivativefree.NelderMead
-import com.github.bruneli.scalaopt.core.function.MSEFunction
+import com.github.bruneli.scalaopt.core.function._
 import com.github.bruneli.scalaopt.core.leastsquares.{LevenbergMarquardt, LevenbergMarquardtConfig}
+import com.github.bruneli.scalaopt.core.variable.UnconstrainedVariable
+import com.github.bruneli.scalaopt.core.derivativefree.NelderMead
 
 /**
  * Statistics package using optimization algorithms to fit and predict set of data.
@@ -35,7 +36,7 @@ package object stats {
    * @param newData new data points X
    * @return set of points (X, y) with y being estimated from fit
    */
-  def predict(fit: FitResults, newData: DataSet[Variables]) = {
+  def predict(fit: FitResults, newData: DataSet[InputsType]) = {
     newData.map(x => (x, fit.predict(x)))
   }
 
@@ -52,12 +53,12 @@ package object stats {
    * @return fit results
    */
   def leastSquaresFit[C <: LevenbergMarquardtConfig](
-    func: MSEFunction,
-    p0: Variables,
+    func: SimpleMSEFunction,
+    p0: UnconstrainedVariablesType,
     config: Option[C] = None): FitResults = {
     implicit val pars = config.getOrElse(LevenbergMarquardt.defaultConfig)
     val pOpt = LevenbergMarquardt.minimize(func, p0).get
-    new FitResults(pOpt, func.apply)
+    new FitResults(pOpt, func.f)
   }
 
   /**
@@ -70,11 +71,11 @@ package object stats {
    * @param config optimization method configuration parameters
    * @return fit results
    */
-  def maxLikelihoodFit[A <: ObjectiveFunction, B <: ConfigPars](
+  def maxLikelihoodFit[A <: ContinuousObjectiveFunction[UnconstrainedVariable], B <: ConfigPars](
     pdf: RegressionFunction,
-    data: DataSet[Variables],
-    p0: Variables,
-    method: Optimizer[A, B] = NelderMead,
+    data: DataSet[InputsType],
+    p0: UnconstrainedVariablesType,
+    method: Optimizer[UnconstrainedVariable, A, B] = NelderMead,
     config: Option[B] = None): FitResults = {
     implicit val pars = config.getOrElse(method.defaultConfig)
     val nllf = negLogLikelihood(pdf, data)_ match {
@@ -95,8 +96,8 @@ package object stats {
    */
   def negLogLikelihood(
     pdf: RegressionFunction,
-    data: DataSet[Variables])(
-    p: Variables): Double = {
+    data: DataSet[InputsType])(
+    p: UnconstrainedVariablesType): Double = {
     val value = data.aggregate(0.0)((sum, x) => sum - 2.0 * Math.log(pdf(p, x)(0)), _ + _)
     value
   }
