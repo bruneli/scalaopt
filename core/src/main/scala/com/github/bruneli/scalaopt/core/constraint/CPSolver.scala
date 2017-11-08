@@ -16,18 +16,19 @@
 
 package com.github.bruneli.scalaopt.core.constraint
 
-import com.github.bruneli.scalaopt.core.ConfigPars
+import com.github.bruneli.scalaopt.core.variable.Variable
+import com.github.bruneli.scalaopt.core.{ConfigPars, Optimum}
 
 import scala.util.Try
 
 /**
  * Method used to solve a constrained optimization problem
  *
- * @tparam P constrained optimization problem type handled by this method
+ * @tparam P constrained optimization problem type returned by this solver
  * @tparam C configuration parameters type
  * @author bruneli
  */
-trait CPSolver[P <: CP[_, _, _], -C <: ConfigPars] {
+trait CPSolver[A <: Variable, -P <: CP[A, _, _], -C <: ConfigPars] {
 
   /**
    * Try to solve a constrained optimization problem
@@ -36,6 +37,6 @@ trait CPSolver[P <: CP[_, _, _], -C <: ConfigPars] {
    * @param pars solver configuration parameters
    * @return solution of the problem or failure
    */
-  def solve(program: P)(implicit pars: C): Try[P]
+  def solve(program: P)(implicit pars: C): Try[Optimum[A]]
 
 }

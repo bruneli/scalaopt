@@ -16,13 +16,9 @@
 
 package com.github.bruneli.scalaopt.core.linear
 
-import com.github.bruneli.scalaopt.core.ConfigPars
-import com.github.bruneli.scalaopt.core.constraint.{CP, CPBuilderOps, CPSolver, LinearConstraint}
-import com.github.bruneli.scalaopt.core.function.LinearObjectiveFunction
-import com.github.bruneli.scalaopt.core.linalg.{DenseVector, DenseVectorLike}
+import com.github.bruneli.scalaopt.core.constraint.{CP, CPBuilder, CPSolver, LinearConstraint}
+import com.github.bruneli.scalaopt.core.function.LinearContinuousObjectiveFunction
 import com.github.bruneli.scalaopt.core.variable.ContinuousVariable
-
-import scala.util.Try
 
 /**
  * Define a linear program as a continuous linear objective function and a set of
@@ -30,25 +26,7 @@ import scala.util.Try
  *
  * @author bruneli
  */
-trait LP
-  extends CP[ContinuousVariable, LinearObjectiveFunction[ContinuousVariable], LinearConstraint[ContinuousVariable]]
-    with CPBuilderOps[ContinuousVariable] {
-
-  type P = LP
-
-  /**
-   * Solve the constrained optimization problem
-   *
-   * @param method method used to solve the program
-   * @param pars solver configuration parameters
-   * @tparam C type of class holding method configuration parameters
-   * @return problem solution of failure
-   */
-  override def solveWith[C <: ConfigPars, B >: P <: CP[ContinuousVariable, _, _], S <: CPSolver[B, C]](
-    method: S)(
-    implicit pars: C): Try[DenseVectorLike[ContinuousVariable]] = {
-    method.solve(this)(pars).map(_.solution)
-  }
+trait LP extends CP[ContinuousVariable, LinearContinuousObjectiveFunction[ContinuousVariable], LinearConstraint[ContinuousVariable]] {
 
   def toTableau: SimplexTableau
 

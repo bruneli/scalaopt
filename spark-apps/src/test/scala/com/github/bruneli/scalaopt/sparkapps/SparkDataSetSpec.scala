@@ -17,8 +17,9 @@
 package com.github.bruneli.scalaopt.sparkapps
 
 import com.github.bruneli.scalaopt.core.linalg.{AugmentedRow, QR}
+import com.github.bruneli.scalaopt.core.variable.Inputs
 import org.apache.spark.SparkContext
-import org.scalatest.{BeforeAndAfter, Matchers, FlatSpec}
+import org.scalatest.{BeforeAndAfter, FlatSpec, Matchers}
 
 import scala.util.Random
 
@@ -33,15 +34,15 @@ class SparkDataSetSpec extends FlatSpec with Matchers with BeforeAndAfter {
 
   // Augmented matrix representing the linear system AX=B to solve
   val ab = List(
-    List(2.0, 3.0, 1.0, 2.0),
-    List(3.0, 8.0, 1.0, 1.0),
-    List(4.0, 2.0, 9.0, 0.5))
+    Array(2.0, 3.0, 1.0, 2.0),
+    Array(3.0, 8.0, 1.0, 1.0),
+    Array(4.0, 2.0, 9.0, 0.5))
 
   // Solution X
   val sol = List(2.5, -0.7, -0.9)
 
   val m = ab.zipWithIndex.map {
-    case (row, i) => AugmentedRow(row.init, row.last, i.toLong)
+    case (row, i) => AugmentedRow(new Inputs(row.init), row.last, i.toLong)
   }
 
   var sc: SparkContext = _
@@ -83,12 +84,12 @@ class SparkDataSetSpec extends FlatSpec with Matchers with BeforeAndAfter {
     }
 
     // Check qtb is same (up to a sign)
-    qtb.zip(qr.qtb).foreach {
+    qtb.zip(qr.qtb.force.coordinates).foreach {
       case (x, y) => x shouldBe y +- tol
     }
 
     // Check solution is same
-    sol.zip(qr.solution).foreach {
+    sol.zip(qr.solution.force.coordinates).foreach {
       case (x, y) => x shouldBe y +- tol
     }
   }
@@ -98,9 +99,9 @@ class SparkDataSetSpec extends FlatSpec with Matchers with BeforeAndAfter {
     val n = 10
     val pars = for (j <- 0 until n) yield (j / 10).toDouble
     val data = for (i <- 0 until 100) yield {
-      val x = randomVec(n, random)
+      val x = randomVec(n, random).toArray
       val y = 80.0 + x.zip(pars).map { case (x, p) => x*p }.sum + random.nextGaussian()
-      AugmentedRow(1.0 +: x, y, i)
+      AugmentedRow(new Inputs(1.0 +: x), y, i)
     }
     val rdd = sc.parallelize(data)
     val sol = QR(rdd, n + 1).solution

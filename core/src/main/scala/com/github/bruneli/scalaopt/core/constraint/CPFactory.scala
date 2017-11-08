@@ -14,15 +14,19 @@
  * limitations under the License.
  */
 
-package com.github.bruneli.scalaopt.core.linear
+package com.github.bruneli.scalaopt.core.constraint
 
-import com.github.bruneli.scalaopt.core.ConfigPars
-import com.github.bruneli.scalaopt.core.constraint.CPSolver
-import com.github.bruneli.scalaopt.core.variable.ContinuousVariable
+import com.github.bruneli.scalaopt.core.function.ObjectiveFunction
+import com.github.bruneli.scalaopt.core.linalg.DenseVectorLike
+import com.github.bruneli.scalaopt.core.variable.Variable
 
 /**
- * Method used to solve a continuous linear programming problem
+ * Constrained optimization problem builder
  *
  * @author bruneli
  */
-trait LPSolver[-C <: ConfigPars] extends CPSolver[ContinuousVariable, LP, C]
+trait CPFactory[A <: Variable, C <: CPBuilder[A, _]] {
+
+  def given(variables: DenseVectorLike[A]): C
+
+}

@@ -88,12 +88,12 @@ package object core extends VariableFromDouble {
 
   /** Implicit conversion of a function to a linear objective function */
   implicit def toLinearObjectiveFunction[A <: ContinuousVariable : FromDouble](
-    f: DenseVector[A] => Double): LinearObjectiveFunction[A] = {
-    LinearObjectiveFunction(f)
+    f: DenseVector[A] => Double): LinearContinuousObjectiveFunction[A] = {
+    LinearContinuousObjectiveFunction(f)
   }
   implicit def toLinearObjectiveFunction(
-    f: ContinuousVariablesType => Double): LinearObjectiveFunction[ContinuousVariable] = {
-    LinearObjectiveFunction(f)(ContinuousVariableFromDouble)
+    f: ContinuousVariablesType => Double): LinearContinuousObjectiveFunction[ContinuousVariable] = {
+    LinearContinuousObjectiveFunction(f)(ContinuousVariableFromDouble)
   }
 
   /** Implicit conversion of RealMatrix to RichMatrix */

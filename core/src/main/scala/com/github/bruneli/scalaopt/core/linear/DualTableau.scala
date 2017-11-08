@@ -22,7 +22,7 @@ import SeqDataSetConverter._
 import SimplexPhase._
 import ObjectiveType._
 import com.github.bruneli.scalaopt.core.constraint._
-import com.github.bruneli.scalaopt.core.function.LinearObjectiveFunction
+import com.github.bruneli.scalaopt.core.function.{LinearContinuousObjectiveFunction, ObjectiveFunction}
 import com.github.bruneli.scalaopt.core.linalg.{DenseVector, SimpleDenseVector}
 import com.github.bruneli.scalaopt.core.variable.{Constant, ContinuousVariable}
 
@@ -47,101 +47,11 @@ case class DualTableau(
   constraintTypes: Vector[ConstraintOperator],
   negativeColumn: Option[TableauColumn] = None) extends SimplexTableau {
 
-  /**
-   * Extract the solution vector of this tableau
-   */
-  override def solution: ContinuousVariablesType = {
-    variables.withValues(dual.coordinates)
-  }
-
-  /**
-   * Add a set of constraints to the tableau
-   *
-   * @param constraints comma separated list of constraints
-   * @return extended tableau
-   */
-  override def subjectTo(constraints: Constraint[ContinuousVariable]*): DualTableau = {
-    if (constraints.isEmpty) {
-      this
-    } else {
-      val n = rhs.constrains.size
-      val headConstraint = this.toLinearConstraint(constraints.head, n)
-      constraints.tail.foldLeft(this.addLinearConstraint(headConstraint)) {
-        case (previousTableau, constraint) =>
-          val linearConstraint = this.toLinearConstraint(constraint, n)
-          previousTableau.addLinearConstraint(linearConstraint)
-      }
-    }
-  }
-
-  /**
-   * Add a constraint to the problem to solve
-   *
-   * @param constraint constraint
-   * @return problem augmented of one additional constraint
-   */
-  override def addConstraint(constraint: Constraint[ContinuousVariable]): LP = {
-    this.addLinearConstraint(constraint.toLinearConstraint()(ContinuousVariableFromDouble).get)
+  override def optimum: Optimum[ContinuousVariable] = {
+    Optimum(variables.withValues(dual.coordinates), rhs.phase2Cost)
   }
 
   override def toTableau: SimplexTableau = this
-
-  /**
-   * Add a linear constraint to the existing tableau
-   *
-   * In case the new constraint include variables that are not yet included in the cost function,
-   * the tableau is extended.
-   * In case of a new inequality, a new column is created to host a slack variable.
-   *
-   * @param constraint a linear constraint
-   * @return updated tableau
-   */
-  def addLinearConstraint(constraint: LinearConstraint[ContinuousVariable]): DualTableau = {
-    if (constraint.b >= 0.0) {
-      // Remove slack variables to re-include them at the tail of the queue
-      val nonSlackColumns = columns.filter(!_.isSlack)
-      // Initial tableau size
-      val m0 = this.rhs.constrains.size
-      val n0 = nonSlackColumns.size.toInt
-      // Updated tableau size
-      val m = Math.max(m0, constraint.a.size)
-      val n = n0 + 1
-      // Transform the constraint into an equality constraint and then a column
-      val signedConstraint = constraint.toLinearConstraint(Some(m))(ContinuousVariableFromDouble) match {
-        case Success(resizedConstraint) =>
-          resizedConstraint.a.mapWithIndex {
-            (value, i) =>
-              if (constraintTypes(i) == LowerOrEqualOperator && objective == MINIMIZE ||
-                  constraintTypes(i) == GreaterOrEqualOperator && objective == MAXIMIZE) {
-                value
-              } else {
-                -value
-              }
-          }
-        case Failure(e) => throw e
-      }
-      val sign = if (objective == MAXIMIZE) -1.0 else 1.0
-      val newColumn = TableauColumn(0.0, sign * constraint.b, signedConstraint, n0)
-      // Add as many slack variables as there are rows
-      val slackVariables = constraintTypes.zipWithIndex.map {
-        case (constraintType, i) => constraintType match {
-          case LowerOrEqualOperator =>
-            TableauColumn(0.0, 0.0, SimpleDenseVector(), n + i, i, true, true, false)
-          case _ =>
-            TableauColumn(0.0, 0.0, DenseVector.e[Constant](m, i) * -1.0, n + i, i, true, false, false)
-        }
-      }
-      // Add the new column to existing ones
-      val modifiedColumns = nonSlackColumns ++ Seq(newColumn) ++ slackVariables
-      // Recompute the negative column
-      val negativeColumn = this.negativeColumn.map(column => getNegativeColumn(modifiedColumns))
-      // Build the new tableau with modified information
-      DualTableau(variables, objective, modifiedColumns, rhs, constraintTypes, negativeColumn)
-    } else {
-      // If constraint has a negative right-hand side, invert it
-      addLinearConstraint(constraint.withPositiveRhs)
-    }
-  }
 
   /**
    * Remove all columns flagged as artificial variables
@@ -208,30 +118,110 @@ case class DualTableau(
 
 }
 
-object DualTableau extends CPBuilder[ContinuousVariable, LinearObjectiveFunction[ContinuousVariable], DualTableau] {
+object DualTableau extends CPFactory[ContinuousVariable, DualTableauBuilder] {
 
-  /**
-   * Minimize an objective function acting on a set of optimization variables
-   */
-  override def min(
-    objectiveFunction: LinearObjectiveFunction[ContinuousVariable],
-    variables: ContinuousVariablesType): DualTableau = {
-    objective(MINIMIZE, objectiveFunction.cost, variables)
+  def given(variables: ContinuousVariablesType): DualTableauBuilder = {
+    DualTableauBuilder(variables, None, Vector(), None, Vector())
   }
 
-  /**
-   * Maximize an objective function acting on a set of optimization variables
-   */
-  override def max(
-    objectiveFunction: LinearObjectiveFunction[ContinuousVariable],
-    variables: ContinuousVariablesType): DualTableau = {
-    objective(MAXIMIZE, objectiveFunction.cost, variables)
+  implicit def canBuildFrom: CanBuildCPFrom[ContinuousVariable, DualTableau, DualTableau] = {
+    new CanBuildCPFrom[ContinuousVariable, DualTableau, DualTableau] {
+
+      def apply(tableau: DualTableau): DualTableauBuilder = {
+        DualTableauBuilder(tableau.variables, Some(tableau.objective), tableau.columns, Some(tableau.rhs),
+          tableau.constraintTypes, tableau.negativeColumn)
+      }
+
+    }
   }
 
-  private def objective(
-    objectiveType: ObjectiveType,
-    cost: DenseVector[Constant],
-    variables: ContinuousVariablesType): DualTableau = {
+}
+
+case class DualTableauBuilder(
+  variables: ContinuousVariablesType,
+  objective: Option[ObjectiveType],
+  columns: DataSet[TableauColumn],
+  rhs: Option[TableauColumn],
+  constraintTypes: Vector[ConstraintOperator],
+  negativeColumn: Option[TableauColumn] = None) extends LPBuilder[DualTableau] with SimplexTableauHelpers {
+
+  type Self = DualTableauBuilder
+
+  def minimize(function: ObjectiveFunction[ContinuousVariable]): DualTableauBuilder = function match {
+    case linear: LinearContinuousObjectiveFunction[_] =>
+      objective(MINIMIZE, linear.cost)
+    case _ =>
+      throw new IllegalArgumentException("objective function should be linear")
+  }
+
+  def maximize(function: ObjectiveFunction[ContinuousVariable]): DualTableauBuilder = function match {
+    case linear: LinearContinuousObjectiveFunction[_] =>
+      objective(MAXIMIZE, linear.cost)
+    case _ =>
+      throw new IllegalArgumentException("objective function should be linear")
+  }
+
+  def addLinearConstraint(constraint: LinearConstraint[ContinuousVariable]): DualTableauBuilder = objective match {
+    case Some(objType) =>
+      if (constraint.b >= 0.0) {
+        // Remove slack variables to re-include them at the tail of the queue
+        val nonSlackColumns = columns.filter(!_.isSlack)
+        // Initial tableau size
+        val m0 = this.rhs.get.constrains.size
+        val n0 = nonSlackColumns.size.toInt
+        // Updated tableau size
+        val m = Math.max(m0, constraint.a.size)
+        val n = n0 + 1
+        // Transform the constraint into an equality constraint and then a column
+        val signedConstraint = constraint.toLinearConstraint(Some(m))(ContinuousVariableFromDouble) match {
+          case Success(resizedConstraint) =>
+            resizedConstraint.a.mapWithIndex {
+              (value, i) =>
+                if (constraintTypes(i) == LowerOrEqualOperator && objType == MINIMIZE ||
+                  constraintTypes(i) == GreaterOrEqualOperator && objType == MAXIMIZE) {
+                  value
+                } else {
+                  -value
+                }
+            }
+          case Failure(e) => throw e
+        }
+        val sign = if (objType == MAXIMIZE) -1.0 else 1.0
+        val newColumn = TableauColumn(0.0, sign * constraint.b, signedConstraint, n0)
+        // Add as many slack variables as there are rows
+        val slackVariables = constraintTypes.zipWithIndex.map {
+          case (constraintType, i) => constraintType match {
+            case LowerOrEqualOperator =>
+              TableauColumn(0.0, 0.0, SimpleDenseVector(), n + i, i, true, true, false)
+            case _ =>
+              TableauColumn(0.0, 0.0, DenseVector.e[Constant](m, i) * -1.0, n + i, i, true, false, false)
+          }
+        }
+        // Add the new column to existing ones
+        val modifiedColumns = nonSlackColumns ++ Seq(newColumn) ++ slackVariables
+        // Recompute the negative column
+        val negativeColumn = this.negativeColumn.map(column => getNegativeColumn(modifiedColumns, constraintTypes))
+        // Build the new tableau with modified information
+        DualTableauBuilder(variables, objective, modifiedColumns, rhs, constraintTypes, negativeColumn)
+      } else {
+        // If constraint has a negative right-hand side, invert it
+        addLinearConstraint(constraint.withPositiveRhs)
+      }
+    case None => throw new IllegalArgumentException("cannot add a constraint without specifying first an objective function")
+  }
+
+  def create: DualTableau = objective match {
+    case Some(objType) => DualTableau(variables, objType, columns, rhs.get, constraintTypes, negativeColumn)
+    case None => throw new IllegalArgumentException("Cannot create a tableau without specifying an objective function")
+  }
+
+  override protected def addConstraintTo(previousBuilder: DualTableauBuilder,
+                                         constraint: Constraint[ContinuousVariable]): DualTableauBuilder = {
+    previousBuilder.addConstraint(constraint)
+  }
+
+  private def objective(objectiveType: ObjectiveType,
+                        cost: DenseVector[Constant]): DualTableauBuilder = {
     require(cost.length == variables.length,
       s"Optimization variables size ${variables.length} != linear coefficients ${cost.length} size")
     val constraintTypes = cost.toVector.map {
@@ -242,7 +232,7 @@ object DualTableau extends CPBuilder[ContinuousVariable, LinearObjectiveFunction
       }
     }
     val rhs = TableauColumn(0.0, 0.0, cost.mapValues(Math.abs), -2)
-    DualTableau(variables, objectiveType, Vector(), rhs, constraintTypes)
+    DualTableauBuilder(variables, Some(objectiveType), Vector(), Some(rhs), constraintTypes)
   }
 
 }

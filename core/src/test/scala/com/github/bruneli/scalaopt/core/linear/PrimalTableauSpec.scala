@@ -18,7 +18,7 @@ package com.github.bruneli.scalaopt.core.linear
 
 import org.scalatest.{FlatSpec, Matchers}
 import com.github.bruneli.scalaopt.core._
-import PrimalTableau.{max, min}
+import PrimalTableau.given
 import com.github.bruneli.scalaopt.core.variable.PositiveVariables
 
 /**
@@ -26,10 +26,11 @@ import com.github.bruneli.scalaopt.core.variable.PositiveVariables
  */
 class PrimalTableauSpec extends FlatSpec with Matchers {
 
-  "min" should "build a tableau from a linear function without any constraint" in {
+  "minimize" should "build a tableau from a linear function without any constraint" in {
 
-    val x0 = PositiveVariables(0.0, 0.0, 0.0)
-    val tableau = min((x: ContinuousVariablesType) => 2.0 * x(0) + 1.0 * x(1) + 3.0 * x(2), x0)
+    val tableau = given(PositiveVariables(0.0, 0.0, 0.0))
+      .minimize((x: ContinuousVariablesType) => 2.0 * x(0) + 1.0 * x(1) + 3.0 * x(2))
+      .create
 
     tableau.columns.size shouldBe 3
     tableau.numberOfConstraints shouldBe 0
@@ -40,10 +41,11 @@ class PrimalTableauSpec extends FlatSpec with Matchers {
 
   }
 
-  "max" should "build a tableau from a linear function without any constraint" in {
+  "maximize" should "build a tableau from a linear function without any constraint" in {
 
-    val x0 = PositiveVariables(0.0, 0.0, 0.0)
-    val tableau = max((x: ContinuousVariablesType) => 2.0 * x(0) + 1.0 * x(1) + 3.0 * x(2), x0)
+    val tableau = given(PositiveVariables(0.0, 0.0, 0.0))
+      .maximize((x: ContinuousVariablesType) => 2.0 * x(0) + 1.0 * x(1) + 3.0 * x(2))
+      .create
 
     tableau.columns.size shouldBe 3
     tableau.numberOfConstraints shouldBe 0
@@ -56,13 +58,12 @@ class PrimalTableauSpec extends FlatSpec with Matchers {
 
   "subjectTo" should "add a set of linear constraints to the tableau" in {
 
-    val x0 = PositiveVariables(0.0, 0.0, 0.0)
-    val tableau =
-      min((x: ContinuousVariablesType) => 2.0 * x(0) + 1.0 * x(1) + 3.0 * x(2), x0)
-        .subjectTo(
-          ((x: ContinuousVariablesType) => x(0).x) ge 1.0,
-          ((x: ContinuousVariablesType) => x(0) + x(1)) equ 3.0
-        )
+    val tableau = given(PositiveVariables(0.0, 0.0, 0.0))
+      .minimize((x: ContinuousVariablesType) => 2.0 * x(0) + 1.0 * x(1) + 3.0 * x(2))
+      .subjectTo(
+        ((x: ContinuousVariablesType) => x(0).x) ge 1.0,
+        ((x: ContinuousVariablesType) => x(0) + x(1)) equ 3.0
+      ).create
 
     // 4 columns because of the 3 decision variables + 1 slack variable introduced by inequality constraint
     tableau.columns.size shouldBe 4
@@ -80,9 +81,9 @@ class PrimalTableauSpec extends FlatSpec with Matchers {
 
   it should "throw an exception when a constraint exceeds objective function size" in {
 
-    val x0 = PositiveVariables(0.0, 0.0, 0.0)
     an[IllegalArgumentException] shouldBe thrownBy {
-      min((x: ContinuousVariablesType) => 2.0 * x(0) + 1.0 * x(1) + 3.0 * x(2), x0)
+      given(PositiveVariables(0.0, 0.0, 0.0))
+        .minimize((x: ContinuousVariablesType) => 2.0 * x(0) + 1.0 * x(1) + 3.0 * x(2))
         .subjectTo(
           ((x: ContinuousVariablesType) => x(0).x) ge 1.0,
           ((x: ContinuousVariablesType) => x(0) + x(1)) equ 3.0,

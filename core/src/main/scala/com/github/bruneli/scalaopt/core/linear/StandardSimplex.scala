@@ -18,6 +18,7 @@ package com.github.bruneli.scalaopt.core.linear
 
 import com.github.bruneli.scalaopt.core.SimplexPhase._
 import com.github.bruneli.scalaopt.core._
+import com.github.bruneli.scalaopt.core.variable.ContinuousVariable
 
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
@@ -48,9 +49,13 @@ case class StandardSimplex() extends LPSolver[StandardSimplexConfig] {
    * @return Tableau at a local minimum or failure
    */
   override def solve(lp: LP)(
-    implicit pars: StandardSimplexConfig): Try[LP] = {
-    val tableau = lp.toTableau.checkNegativeVariables
-    solvePhase1(pars)(tableau).flatMap(solvePhase2(pars))
+    implicit pars: StandardSimplexConfig): Try[Optimum[ContinuousVariable]] = {
+    solveAllPhases(lp.toTableau)(pars).map(_.optimum)
+  }
+
+  def solveAllPhases(tableau: SimplexTableau)(
+    implicit pars: StandardSimplexConfig): Try[SimplexTableau] = {
+    solvePhase1(pars)(tableau.checkNegativeVariables).flatMap(solvePhase2(pars))
   }
 
   /**

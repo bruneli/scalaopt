@@ -20,7 +20,7 @@ import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.core.ObjectiveType._
 import SeqDataSetConverter._
 import com.github.bruneli.scalaopt.core.constraint._
-import com.github.bruneli.scalaopt.core.function.LinearObjectiveFunction
+import com.github.bruneli.scalaopt.core.function.{LinearContinuousObjectiveFunction, ObjectiveFunction}
 import com.github.bruneli.scalaopt.core.linalg.{DenseVector, DenseVectorLike}
 import com.github.bruneli.scalaopt.core.variable.{Constant, ContinuousVariable}
 
@@ -67,41 +67,8 @@ case class PrimalTableau(
   negativeColumn: Option[TableauColumn] = None)
   extends SimplexTableau {
 
-  /**
-   * Extract the solution vector of this tableau
-   */
-  override def solution: DenseVectorLike[ContinuousVariable] = {
-    variables.withValues(primal.coordinates)
-  }
-
-  /**
-   * Add a constraint to the problem to solve
-   *
-   * @param constraint constraint
-   * @return problem augmented of one additional constraint
-   */
-  override def addConstraint(constraint: Constraint[ContinuousVariable]): PrimalTableau = {
-    this.addLinearConstraint(this.toLinearConstraint(constraint, this.columns.size.toInt))
-  }
-
-  /**
-   * Add a set of constraints to the tableau
-   *
-   * @param constraints comma separated list of constraints
-   * @return extended tableau
-   */
-  override def subjectTo(constraints: Constraint[ContinuousVariable]*): PrimalTableau = {
-    if (constraints.isEmpty) {
-      this
-    } else {
-      val headConstraint = this.toLinearConstraint(constraints.head, this.columns.size.toInt)
-      constraints.tail.foldLeft(this.addLinearConstraint(headConstraint)) {
-        case (previousTableau, constraint) =>
-          val n = previousTableau.columns.size.toInt
-          val linearConstraint = this.toLinearConstraint(constraint, n)
-          previousTableau.addLinearConstraint(linearConstraint)
-      }
-    }
+  override def optimum: Optimum[ContinuousVariable] = {
+    Optimum(variables.withValues(primal.coordinates), rhs.phase2Cost)
   }
 
   override def toTableau: SimplexTableau = this
@@ -145,87 +112,115 @@ case class PrimalTableau(
    */
   def withNegativeVariables: PrimalTableau = {
     this.copy(
-      negativeColumn = Some(getNegativeColumn(columns)))
+      negativeColumn = Some(getNegativeColumn(columns, constraintTypes)))
   }
 
-  /**
-   * Add a linear constraint to the existing tableau
-   *
-   * In case the new constraint include variables that are not yet included in the cost function,
-   * the tableau is extended.
-   * In case of a new inequality, a new column is created to host a slack variable.
-   *
-   * @param constraint a linear constraint
-   * @return updated tableau
-   */
-  def addLinearConstraint(constraint: LinearConstraint[ContinuousVariable]): PrimalTableau = {
-    if (constraint.b >= 0.0) {
-      // Initial tableau size
-      val n0 = columns.size.toInt
-      val m0 = this.rhs.constrains.size
-      val isEquality = constraint.operator.isInstanceOf[EqualityOperator]
-      // Updated tableau size
-      val n = if (isEquality) {
-        Math.max(n0, constraint.a.length)
-      } else {
-        Math.max(n0, constraint.a.length) + 1
+}
+
+object PrimalTableau extends CPFactory[ContinuousVariable, PrimalTableauBuilder] {
+
+  def given(variables: ContinuousVariablesType): PrimalTableauBuilder = {
+    PrimalTableauBuilder(variables, None, Vector(), None, Vector())
+  }
+
+  implicit def canBuildFrom: CanBuildCPFrom[ContinuousVariable, PrimalTableau, PrimalTableau] = {
+    new CanBuildCPFrom[ContinuousVariable, PrimalTableau, PrimalTableau] {
+
+      def apply(tableau: PrimalTableau): PrimalTableauBuilder = {
+        PrimalTableauBuilder(tableau.variables, Some(tableau.objective), tableau.columns, Some(tableau.rhs),
+          tableau.constraintTypes, tableau.negativeColumn)
       }
-      // Transform the constraint into an equality constraint
-      val resizedConstraint = if (isEquality) {
-        constraint.toEquality(n)
-      } else {
-        constraint.toEquality(n, Some(n - 1))
-      }
-      // Add new columns like slack variables if necessary
-      val resizedColumns = if (n > n0) {
-        val newColumns = (n0 until n).map(addSlackVariable(n, m0, constraint.operator))
-        columns ++ newColumns
-      } else {
-        columns
-      }
-      // Add the new constraint to the columns
-      val modifiedColumns = resizedColumns.zip(resizedConstraint.a).map {
-        case (column, newElement) => column.copy(constrains = column.constrains :+ Constant(newElement.x))
-      }
-      val rhs = this.rhs.copy(constrains = this.rhs.constrains :+ Constant(resizedConstraint.b))
-      val constraintTypes = this.constraintTypes :+ constraint.operator
-      // Recompute the negative column
-      val negativeColumn = this.negativeColumn.map(column => getNegativeColumn(modifiedColumns))
-      // Build the new tableau with modified information
-      PrimalTableau(variables, objective, modifiedColumns, rhs, constraintTypes, negativeColumn)
-    } else {
-      // If constraint has a negative right-hand side, invert it
-      addLinearConstraint(constraint.withPositiveRhs)
+
     }
   }
 
 }
 
-object PrimalTableau extends CPBuilder[ContinuousVariable, LinearObjectiveFunction[ContinuousVariable], PrimalTableau] {
+case class PrimalTableauBuilder(variables: ContinuousVariablesType,
+                                objective: Option[ObjectiveType],
+                                columns: DataSet[TableauColumn],
+                                rhs: Option[TableauColumn],
+                                constraintTypes: Vector[ConstraintOperator],
+                                negativeColumn: Option[TableauColumn] = None) extends LPBuilder[PrimalTableau] with SimplexTableauHelpers {
+
+  type Self = PrimalTableauBuilder
 
   /**
-   * Minimize an objective function acting on a set of optimization variables
-   */
-  override def min(
-    objectiveFunction: LinearObjectiveFunction[ContinuousVariable],
-    variables: ContinuousVariablesType): PrimalTableau = {
-    objective(MINIMIZE, objectiveFunction.cost.toVector, -1.0, variables) // negative cost when minimizing
+    * Minimize an objective function acting on a set of optimization variables
+    */
+  def minimize(function: ObjectiveFunction[ContinuousVariable]): PrimalTableauBuilder = function match {
+    case linear: LinearContinuousObjectiveFunction[_] =>
+      objective(MINIMIZE, linear.cost.toVector, -1.0) // negative cost when minimizing
+    case _ =>
+      throw new IllegalArgumentException("objective function should be linear")
   }
 
   /**
-   * Maximize an objective function acting on a set of optimization variables
-   */
-  override def max(
-    objectiveFunction: LinearObjectiveFunction[ContinuousVariable],
-    variables: ContinuousVariablesType): PrimalTableau = {
-    objective(MAXIMIZE, objectiveFunction.cost.toVector, 1.0, variables)
+    * Maximize an objective function acting on a set of optimization variables
+    */
+  def maximize(function: ObjectiveFunction[ContinuousVariable]): PrimalTableauBuilder = function match {
+    case linear: LinearContinuousObjectiveFunction[_] =>
+      objective(MAXIMIZE, linear.cost.toVector, 1.0)
+    case _ =>
+      throw new IllegalArgumentException("objective function should be linear")
   }
 
-  private def objective(
-    objectiveType: ObjectiveType,
-    costVector: Vector[Constant],
-    sign: Double,
-    variables: ContinuousVariablesType): PrimalTableau = {
+  override def addLinearConstraint(constraint: LinearConstraint[ContinuousVariable]): PrimalTableauBuilder = objective match {
+    case Some(objType) =>
+      if (constraint.b >= 0.0) {
+        // Initial tableau size
+        val n0 = columns.size.toInt
+        val m0 = this.rhs.get.constrains.size
+        val isEquality = constraint.operator.isInstanceOf[EqualityOperator]
+        // Updated tableau size
+        val n = if (isEquality) {
+          Math.max(n0, constraint.a.length)
+        } else {
+          Math.max(n0, constraint.a.length) + 1
+        }
+        // Transform the constraint into an equality constraint
+        val resizedConstraint = if (isEquality) {
+          constraint.toEquality(n)
+        } else {
+          constraint.toEquality(n, Some(n - 1))
+        }
+        // Add new columns like slack variables if necessary
+        val resizedColumns = if (n > n0) {
+          val newColumns = (n0 until n).map(addSlackVariable(n, m0, constraint.operator))
+          columns ++ newColumns
+        } else {
+          columns
+        }
+        // Add the new constraint to the columns
+        val modifiedColumns = resizedColumns.zip(resizedConstraint.a).map {
+          case (column, newElement) => column.copy(constrains = column.constrains :+ Constant(newElement.x))
+        }
+        val rhs = this.rhs.get.copy(constrains = this.rhs.get.constrains :+ Constant(resizedConstraint.b))
+        val constraintTypes = this.constraintTypes :+ constraint.operator
+        // Recompute the negative column
+        val negativeColumn = this.negativeColumn.map(column => getNegativeColumn(modifiedColumns, constraintTypes))
+        // Build the new tableau with modified information
+        PrimalTableauBuilder(variables, objective, modifiedColumns, Some(rhs), constraintTypes, negativeColumn)
+      } else {
+        // If constraint has a negative right-hand side, invert it
+        addLinearConstraint(constraint.withPositiveRhs)
+      }
+    case None => throw new IllegalArgumentException("cannot add a constraint without specifying first an objective function")
+  }
+
+  override def create: PrimalTableau = objective match {
+    case Some(objType) => PrimalTableau(variables, objType, columns, rhs.get, constraintTypes, negativeColumn)
+    case None => throw new IllegalArgumentException("Cannot create a tableau without specifying an objective function")
+  }
+
+  override protected def addConstraintTo(previousBuilder: PrimalTableauBuilder,
+                                         constraint: Constraint[ContinuousVariable]): PrimalTableauBuilder = {
+    previousBuilder.addConstraint(constraint)
+  }
+
+  private def objective(objectiveType: ObjectiveType,
+                        costVector: Vector[Constant],
+                        sign: Double): PrimalTableauBuilder = {
     require(costVector.length == variables.length,
       s"Optimization variables size ${variables.length} != linear coefficients ${costVector.length} size")
     // Prepare the columns, one per variable
@@ -234,13 +229,12 @@ object PrimalTableau extends CPBuilder[ContinuousVariable, LinearObjectiveFuncti
     }
     val rhs = TableauColumn.costOnlyColumn(costVector.length, 0.0)
     // Add contraints to the tableau if some of the variable have lower or upper bounds
-    val initialTableau = PrimalTableau(variables, objectiveType, columns, rhs, Vector())
+    val initialTableau = PrimalTableauBuilder(variables, Some(objectiveType), columns, Some(rhs), Vector())
     variables.force.zipWithIndex.foldLeft(initialTableau)(addVariableConstraints)
   }
 
-  private def addVariableConstraints(
-    tableau: PrimalTableau,
-    variableAndIndex: (ContinuousVariable, Int)): PrimalTableau = {
+  private def addVariableConstraints(tableau: PrimalTableauBuilder,
+                                     variableAndIndex: (ContinuousVariable, Int)): PrimalTableauBuilder = {
     val (variable, index) = variableAndIndex
     val n = tableau.columns.size.toInt
     def addLowerBound(lowerBound: Double): LinearConstraint[ContinuousVariable] = {

@@ -20,7 +20,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import com.github.bruneli.scalaopt.core._
 import com.github.bruneli.scalaopt.core.linalg.DenseVector._
 import com.github.bruneli.scalaopt.core.constraint.{LinearConstraint, LinearConstraintBuilder}
-import com.github.bruneli.scalaopt.core.function.LinearObjectiveFunction
+import com.github.bruneli.scalaopt.core.function.LinearContinuousObjectiveFunction
 import com.github.bruneli.scalaopt.core.variable._
 
 import scala.collection.immutable.TreeSet
@@ -38,8 +38,9 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMin = PositiveVariables(0.0, 1.0)
 
     val lp = PrimalTableau
-      .min((x: ContinuousVariablesType) => x(0) + x(1), PositiveVariables(0.0, 0.0))
-      .subjectTo(((x: ContinuousVariablesType) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
+        .given(PositiveVariables(0.0, 0.0))
+        .minimize((x: ContinuousVariablesType) => x(0) + x(1))
+        .subjectTo(((x: ContinuousVariablesType) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
 
     val xOpt = lp.solveWith(StandardSimplex())(defaultConfig)
 
@@ -55,7 +56,8 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMin = PositiveVariables(0.0, 1.0)
 
     val xOpt = DualTableau
-      .min((x: ContinuousVariablesType) => x(0) + x(1), PositiveVariables(0.0, 0.0))
+        .given(PositiveVariables(0.0, 0.0))
+        .minimize((x: ContinuousVariablesType) => x(0) + x(1))
         .subjectTo(((x: ContinuousVariablesType) => 0.5 * x(0) + 1.0 * x(1)) >= 1.0)
         .solveWith(StandardSimplex())(defaultConfig)
 
@@ -71,8 +73,9 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMin = Vector(0.0, 0.0)
 
     val xOpt = PrimalTableau
-      .min((x: ContinuousVariablesType) => x(0) + x(1), PositiveVariables(0.0, 0.0))
-      .solveWith(StandardSimplex())(defaultConfig)
+        .given(PositiveVariables(0.0, 0.0))
+        .minimize((x: ContinuousVariablesType) => x(0) + x(1))
+        .solveWith(StandardSimplex())(defaultConfig)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.force.zip(xMin)) {
@@ -87,8 +90,9 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     val variables = Variables(BoundedVariable(0.0, Some(-1.0), None), UnconstrainedVariable(0.0))
     val tableau = PrimalTableau
-      .min((x: ContinuousVariablesType) => x(0) + x(1), variables)
-      .subjectTo(((x: ContinuousVariablesType) => 0.5 * x(0) + 1.0 * x(1)) >= -1.0)
+        .given(variables)
+        .minimize((x: ContinuousVariablesType) => x(0) + x(1))
+        .subjectTo(((x: ContinuousVariablesType) => 0.5 * x(0) + 1.0 * x(1)) >= -1.0)
     val xOpt = tableau
       .solveWith(StandardSimplex())(defaultConfig)
 
@@ -105,12 +109,13 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     val variables = Variables(BoundedVariable(0.0, Some(-2.0), None), UnconstrainedVariable(0.0))
     val xOpt = PrimalTableau
-      .min((x: ContinuousVariablesType) => x(0) + 2.0 * x(1), variables)
-      .subjectTo(
-        ((x: ContinuousVariablesType) => 1.0 * x(0) + 1.0 * x(1)) >= -1.0,
-        ((x: ContinuousVariablesType) => 1.0 * x(0) - 1.0 * x(1)) <= 1.0
-      )
-      .solveWith(StandardSimplex())(defaultConfig)
+        .given(variables)
+        .minimize((x: ContinuousVariablesType) => x(0) + 2.0 * x(1))
+        .subjectTo(
+          ((x: ContinuousVariablesType) => 1.0 * x(0) + 1.0 * x(1)) >= -1.0,
+          ((x: ContinuousVariablesType) => 1.0 * x(0) - 1.0 * x(1)) <= 1.0
+        )
+        .solveWith(StandardSimplex())(defaultConfig)
 
     xOpt shouldBe 'success
     for ((xObs, xExp) <- xOpt.get.force.zip(xMin)) {
@@ -125,7 +130,8 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     val variables = Variables(BoundedVariable(0.0, None, Some(1.0)), PositiveVariable(0.0))
     val xOpt = PrimalTableau
-      .max((x: ContinuousVariablesType) => x(0) + x(1), variables)
+        .given(variables)
+      .maximize((x: ContinuousVariablesType) => x(0) + x(1))
       .subjectTo(((x: ContinuousVariablesType) => -1.0 * x(0) + 1.0 * x(1)) <= 1.0)
       .solveWith(StandardSimplex())(defaultConfig)
 
@@ -141,7 +147,8 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val xMax = Vector(1.0, 2.0)
 
     val xOpt = DualTableau
-      .max((x: ContinuousVariablesType) => x(0) + x(1), PositiveVariables(0.0, 0.0))
+        .given(PositiveVariables(0.0, 0.0))
+      .maximize((x: ContinuousVariablesType) => x(0) + x(1))
       .subjectTo(
         ((x: ContinuousVariablesType) => 1.0 * x(0)) <= 1.0,
         ((x: ContinuousVariablesType) => -x(0) + x(1)) <= 1.0
@@ -163,7 +170,8 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
 
     a[NoSolutionException] shouldBe thrownBy {
       PrimalTableau
-        .max((x: ContinuousVariablesType) => x(0) + x(1), variables)
+          .given(variables)
+        .maximize((x: ContinuousVariablesType) => x(0) + x(1))
         .subjectTo(((x: ContinuousVariablesType) => x(0) + x(1)) >= 3.0)
         .solveWith(StandardSimplex())(defaultConfig)
     }
@@ -175,7 +183,8 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val variables = Variables(BoundedVariable(0.0, None, Some(1.0)), BoundedVariable(0.0, None, Some(1.0)))
 
     val xopt = PrimalTableau
-      .min((x: ContinuousVariablesType) => x(0) + x(1), variables)
+        .given(variables)
+      .minimize((x: ContinuousVariablesType) => x(0) + x(1))
       .solveWith(StandardSimplex())(defaultConfig)
 
     xopt shouldBe 'failure
@@ -211,11 +220,12 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val variables = new PositiveVariables(Array.fill(nOffers)(0.0))
     val costVector = demand("prices") ++ supply("prices").map(_ * -1.0)
     val tableau = PrimalTableau
-      .max(LinearObjectiveFunction[ContinuousVariable](Constants(costVector: _*)), variables)
-      .subjectTo(upperBounds :+ balancing: _*)
-    val tableauOpt = StandardSimplex().solve(tableau)
+      .given(variables)
+      .maximize(LinearContinuousObjectiveFunction[ContinuousVariable](Constants(costVector: _*)))
+      .subjectTo(upperBounds :+ balancing: _*).create
+    val optimum = StandardSimplex().solve(tableau)
 
-    tableauOpt shouldBe 'success
+    optimum shouldBe 'success
 
     // Select all demand offers with prices >= 37.5 and supply offers with prices <= 37.5
     // To match demand and supply, the last supply offer has only 55 MWh selected.
@@ -223,7 +233,7 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
       Vector(250.0, 300.0, 120.0, 80.0, 40.0, 70.0, 60.0, 45.0, 30.0, 0.0, 0.0, 0.0,
         120.0, 50.0, 200.0, 400.0, 60.0, 50.0, 60.0, 55.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-    for ((selectedVolume, expectedVolume) <- tableauOpt.get.solution.force.zip(expectedClearing)) {
+    for ((selectedVolume, expectedVolume) <- optimum.get.coordinates.force.zip(expectedClearing)) {
       selectedVolume.x shouldBe expectedVolume +- 1.0e-8
     }
   }
@@ -258,8 +268,8 @@ class StandardSimplexSpec extends FlatSpec with Matchers {
     val constraints: TreeSet[LinearConstraint[ContinuousVariable]] = TreeSet(upperBounds :+ balancing: _*)
     val variables = new PositiveVariables(Array.fill(nOffers)(0.0))
     val costVector = demand("prices") ++ supply("prices").map(_ * -1.0)
-    val objectiveFunction = LinearObjectiveFunction[ContinuousVariable](Constants(costVector: _*))
-    val tableau = StandardSimplex().solve(DualTableau.max(objectiveFunction, variables).subjectTo(constraints.toSeq: _*))
+    val objectiveFunction = LinearContinuousObjectiveFunction[ContinuousVariable](Constants(costVector: _*))
+    val tableau = StandardSimplex().solveAllPhases(DualTableau.given(variables).maximize(objectiveFunction).subjectTo(constraints.toSeq: _*).create)
 
     tableau shouldBe 'success
 

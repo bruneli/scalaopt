@@ -20,7 +20,7 @@ import com.github.bruneli.scalaopt.core.SimplexPhase._
 import com.github.bruneli.scalaopt.core._
 import SeqDataSetConverter._
 import com.github.bruneli.scalaopt.core.constraint._
-import com.github.bruneli.scalaopt.core.function.LinearObjectiveFunction
+import com.github.bruneli.scalaopt.core.function.LinearContinuousObjectiveFunction
 import com.github.bruneli.scalaopt.core.linalg.{DenseVector, SimpleDenseVector}
 import com.github.bruneli.scalaopt.core.variable._
 
@@ -31,12 +31,14 @@ import scala.util.Try
  *
  * @author bruneli
  */
-trait SimplexTableau extends LP {
+trait SimplexTableau extends LP with SimplexTableauHelpers {
 
   val columns: DataSet[TableauColumn]
   val rhs: TableauColumn
   val constraintTypes: Vector[ConstraintOperator]
   val negativeColumn: Option[TableauColumn]
+
+  def optimum: Optimum[ContinuousVariable]
 
   /**
    * Extract the primal solution vector of this tableau
@@ -70,9 +72,9 @@ trait SimplexTableau extends LP {
    *
    * @return linear objective function
    */
-  override def objectiveFunction: LinearObjectiveFunction[ContinuousVariable] = {
-    val phase1Costs = columns.map(_.phase1Cost).collect().toArray
-    LinearObjectiveFunction[ContinuousVariable](new Constants(phase1Costs))
+  override def objectiveFunction: LinearContinuousObjectiveFunction[ContinuousVariable] = {
+    val phase2Costs = columns.map(_.phase2Cost).collect().toArray
+    LinearContinuousObjectiveFunction[ContinuousVariable](new Constants(phase2Costs))
   }
 
   /**
@@ -276,18 +278,6 @@ trait SimplexTableau extends LP {
     column.copy(phase1Cost = scaledPhase1Cost)
   }
 
-  protected def getNegativeColumn(columns: DataSet[TableauColumn]): TableauColumn = {
-    val initialColumn = TableauColumn(0.0, 0.0, DenseVector.zeros(constraintTypes.size), 0)
-    val isPositiveColumn = (column: TableauColumn) => !column.isSlack && !column.isArtificial
-    val seqOp = (previous: TableauColumn, current: TableauColumn) => {
-      previous + current.negate
-    }
-    columns
-      .filter(isPositiveColumn)
-      .aggregate(initialColumn)(seqOp, _ + _)
-      .copy(column = -1, isSlack = false, isArtificial = false, isBasic = false)
-  }
-
   private def addColumnCost(previousCost: Double, column: TableauColumn): Double = {
     previousCost + column.phase2Cost
   }
@@ -297,24 +287,6 @@ trait SimplexTableau extends LP {
     n0: Int): LinearConstraint[ContinuousVariable] = {
     constraint.toLinearConstraint(Some(n0))(ContinuousVariableFromDouble)
       .getOrElse(throw new IllegalArgumentException(s"could not express constraint $constraint as a linear constraint"))
-  }
-
-  protected def addSlackVariable(
-    n: Int,
-    m0: Int,
-    op: ConstraintOperator)(
-    i: Int): TableauColumn = {
-    val isSlack = i == (n - 1) && (op == LowerOrEqualOperator || op == GreaterOrEqualOperator)
-    val isBasic = isSlack && op == LowerOrEqualOperator
-    val row = if (isBasic) m0 else -1
-    TableauColumn(
-      0.0,
-      0.0,
-      DenseVector.zeros[Constant](m0),
-      i,
-      isSlack = isSlack,
-      isBasic = isBasic,
-      row = row)
   }
 
   override def toString = {

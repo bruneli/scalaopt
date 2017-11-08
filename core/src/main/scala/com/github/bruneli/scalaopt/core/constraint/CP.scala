@@ -16,10 +16,11 @@
 
 package com.github.bruneli.scalaopt.core.constraint
 
-import com.github.bruneli.scalaopt.core.ObjectiveType
+import com.github.bruneli.scalaopt.core.{ObjectiveType, Optimum}
 import com.github.bruneli.scalaopt.core.function.ObjectiveFunction
 import com.github.bruneli.scalaopt.core.linalg.DenseVectorLike
 import com.github.bruneli.scalaopt.core.variable.Variable
+import com.github.bruneli.scalaopt.core.ObjectiveType._
 
 /**
  * Define a constrained optimization problem as minimizing or maximazing an objective function
@@ -32,6 +33,7 @@ import com.github.bruneli.scalaopt.core.variable.Variable
  * @author bruneli
  */
 trait CP[A <: Variable, +B <: ObjectiveFunction[A], +C <: Constraint[A]] {
+  self =>
 
   /**
    * Description of the optimization variables used by this program
@@ -56,16 +58,11 @@ trait CP[A <: Variable, +B <: ObjectiveFunction[A], +C <: Constraint[A]] {
   def numberOfConstraints: Int
 
   /**
-   * Get a linear constraint
+   * Get a constraint
    *
    * @param i index of the constraint
-   * @return linear constraint
+   * @return constraint
    */
   def constraint(i: Int): C
-
-  /**
-   * Decision variables values
-   */
-  def solution: DenseVectorLike[A]
 
 }
